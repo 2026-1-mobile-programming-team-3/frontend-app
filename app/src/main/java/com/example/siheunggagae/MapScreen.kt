@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
@@ -318,15 +319,20 @@ private fun MapBottomSheetContent() {
                 lineHeight = 24.sp,
                 color = TextBlack
             )
-            Text(
-                text = "↕ 거리순",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 17.sp,
-                color = Brown700Mp,
-                modifier = Modifier.clickable { }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { },
+            ) {
+                Icon(Icons.Default.SwapVert, contentDescription = null, tint = Brown700Mp, modifier = Modifier.size(16.dp))
+                Text(
+                    text = "거리순",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 17.sp,
+                    color = Brown700Mp,
+                )
+            }
         }
         HorizontalDivider(color = Color(0xFFF3F4F6))
 

@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
@@ -314,7 +314,7 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
         // 일정 — fw=700 (Figma 실측)
         InfoRowD(
             iconBg = PinkSurfaceD,
-            icon = Icons.Default.CalendarMonth,
+            icon = Icons.Default.CalendarToday,
             iconTint = Pink500D,
             label = "일정",
             value = request.date,

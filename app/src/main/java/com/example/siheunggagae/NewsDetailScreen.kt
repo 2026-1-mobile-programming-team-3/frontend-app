@@ -1,5 +1,6 @@
 package com.example.siheunggagae
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +36,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -272,26 +275,19 @@ private fun HashtagRow(hashtags: List<String>) {
     }
 }
 
-// ─── 본문 이미지 placeholder ───────────────────────────────────────────────────
+// ─── 본문 이미지 ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun ImagePlaceholderND() {
-    Box(
+    Image(
+        painter = painterResource(R.drawable.img_news_detail_body),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Brush.linearGradient(listOf(MintLightND, Color(0xFFE8FAF0)))),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "사진",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            color = Brown700ND
-        )
-    }
+            .clip(RoundedCornerShape(12.dp)),
+    )
 }
 
 // ─── 정보 박스 Card ────────────────────────────────────────────────────────────

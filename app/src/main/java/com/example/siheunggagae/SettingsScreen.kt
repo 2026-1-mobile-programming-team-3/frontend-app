@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
@@ -50,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -98,7 +98,7 @@ fun SettingsScreen(
                 SettingsNavItem(icon = Icons.Default.Pets, label = "반려동물 정보", onClick = onPetListClick)
                 SettingsDivider()
                 SettingsNavItem(
-                    icon = Icons.Default.Leaderboard,
+                    iconRes = R.drawable.ic_social_leaderboard,
                     label = "봉사 이력",
                     rightContent = {
                         Row(
@@ -307,7 +307,8 @@ private fun SettingsDivider() {
 
 @Composable
 private fun SettingsNavItem(
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    iconRes: Int? = null,
     label: String,
     rightContent: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)?,
@@ -327,7 +328,11 @@ private fun SettingsNavItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(OrangeSandSt),
         ) {
-            Icon(icon, null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            if (icon != null) {
+                Icon(icon, null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            } else if (iconRes != null) {
+                Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            }
         }
         Text(
             text = label,

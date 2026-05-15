@@ -18,12 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Article
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -35,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -57,6 +53,7 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
 sealed class Screen(val route: String) {
     object Splash       : Screen("splash")
+    object Login        : Screen("login")
     object Home         : Screen("home")
     object Notification : Screen("notification")
     object Matching     : Screen("matching")
@@ -89,17 +86,18 @@ sealed class Screen(val route: String) {
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
 
 private data class BottomNavEntry(
-    val icon: ImageVector,
+    val icon: ImageVector? = null,
+    val iconRes: Int? = null,
     val label: String,
     val route: String,
 )
 
 private val bottomNavEntries = listOf(
-    BottomNavEntry(Icons.Default.Home,                "홈",   Screen.Home.route),
-    BottomNavEntry(Icons.Default.Handshake,           "매칭", Screen.Matching.route),
-    BottomNavEntry(Icons.Default.Map,                 "지도", Screen.Map.route),
-    BottomNavEntry(Icons.AutoMirrored.Filled.Article, "소식", Screen.News.route),
-    BottomNavEntry(Icons.Default.AccountCircle,       "마이", Screen.My.route),
+    BottomNavEntry(iconRes = R.drawable.ic_home,      label = "홈",   route = Screen.Home.route),
+    BottomNavEntry(iconRes = R.drawable.ic_handshake, label = "매칭", route = Screen.Matching.route),
+    BottomNavEntry(iconRes = R.drawable.ic_map,       label = "지도", route = Screen.Map.route),
+    BottomNavEntry(iconRes = R.drawable.ic_newsmode,  label = "소식", route = Screen.News.route),
+    BottomNavEntry(iconRes = R.drawable.ic_person,    label = "마이", route = Screen.My.route),
 )
 
 @Composable
@@ -130,14 +128,13 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
                             .clickable { }
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Icon(
-                            imageVector = entry.icon,
-                            contentDescription = entry.label,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        if (entry.icon != null) {
+                            Icon(imageVector = entry.icon, contentDescription = entry.label, tint = Color.White, modifier = Modifier.size(18.dp))
+                        } else if (entry.iconRes != null) {
+                            Icon(painter = painterResource(entry.iconRes), contentDescription = entry.label, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
                         Text(
                             text = entry.label,
                             fontFamily = PretendardFamily,
@@ -155,12 +152,11 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
                             .clip(CircleShape)
                             .clickable { onNavigate(entry.route) },
                     ) {
-                        Icon(
-                            imageVector = entry.icon,
-                            contentDescription = entry.label,
-                            tint = Color(0xFFC4A882),
-                            modifier = Modifier.size(22.dp),
-                        )
+                        if (entry.icon != null) {
+                            Icon(imageVector = entry.icon, contentDescription = entry.label, tint = Color(0xFFC4A882), modifier = Modifier.size(22.dp))
+                        } else if (entry.iconRes != null) {
+                            Icon(painter = painterResource(entry.iconRes), contentDescription = entry.label, tint = Color(0xFFC4A882), modifier = Modifier.size(22.dp))
+                        }
                     }
                 }
             }
@@ -178,12 +174,19 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(
-                onLogin = {
+                onLogin = { navController.navigate(Screen.Login.route) },
+                onSignup = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
-                onSignup = {
+            )
+        }
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onBack = { navController.popBackStack() },
+                onLogin = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
@@ -402,6 +405,7 @@ fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFE8D3C2), RoundedCornerShape(16.dp))
                     .background(Color(0xFFFEFEFE))
                     .clickable { onSignup() }
                     .padding(vertical = 14.dp),
@@ -449,7 +453,7 @@ fun MyRequestsScreen(
             ) {
                 IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         contentDescription = "뒤로",
                         tint = Gray10,
                         modifier = Modifier.size(22.dp),

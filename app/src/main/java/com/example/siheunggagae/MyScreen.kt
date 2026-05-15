@@ -1,5 +1,6 @@
 package com.example.siheunggagae
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -157,20 +160,14 @@ private fun ProfileCard() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
+        Image(
+            painter = painterResource(R.drawable.img_profile),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(56.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFD4A574)),
-        ) {
-            Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(36.dp),
-            )
-        }
+                .clip(CircleShape),
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "댕댕이주인",
@@ -337,7 +334,7 @@ private fun StatCard(label: String, value: String, valueColor: Color, modifier: 
 // ─── 봉사 뱃지 Card ────────────────────────────────────────────────────────────
 
 private data class BadgeInfo(
-    val emoji: String,
+    val iconRes: Int,
     val label: String,
     val subLabel: String,
     val achieved: Boolean,
@@ -345,10 +342,10 @@ private data class BadgeInfo(
 )
 
 private val myBadges = listOf(
-    BadgeInfo("", "새싹", "달성",     true,  Green500My),
-    BadgeInfo("", "꽃",  "3건 필요",  false, Color(0xFFF7A35B)),
-    BadgeInfo("", "열매", "8건 필요", false, Color(0xFFF04268)),
-    BadgeInfo("", "나무", "15건 필요", false, Color(0xFF8A6E58)),
+    BadgeInfo(R.drawable.ic_psychiatry, "새싹", "달성",     true,  Green500My),
+    BadgeInfo(R.drawable.ic_deceased,   "꽃",  "3건 필요",  false, Color(0xFFF7A35B)),
+    BadgeInfo(R.drawable.ic_nutrition,  "열매", "8건 필요", false, Color(0xFFF04268)),
+    BadgeInfo(R.drawable.ic_nature,     "나무", "15건 필요", false, Color(0xFF8A6E58)),
 )
 
 @Composable
@@ -432,11 +429,19 @@ private fun BadgeItem(badge: BadgeInfo, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(badge.bgColor),
-        )
+        ) {
+            Icon(
+                painter = painterResource(badge.iconRes),
+                contentDescription = badge.label,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp),
+            )
+        }
         Spacer(Modifier.height(6.dp))
         Text(
             text = badge.label,

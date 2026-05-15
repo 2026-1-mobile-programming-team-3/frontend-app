@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Handshake
@@ -37,11 +38,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -236,7 +240,7 @@ fun WalkIndexSection() {
                     }
                 },
             )
-            Text(text = ">", fontFamily = PretendardFamily, color = Brown700, fontSize = 14.sp)
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Brown700, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -292,14 +296,25 @@ fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -
                 )
             }
             // w600 / 14sp — Figma 실측 (기존 13sp/Medium → 수정)
-            Text(
-                text = "🗺 지도 보기",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Orange500,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.clickable { }
-            )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_map),
+                    contentDescription = null,
+                    tint = Orange500,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = "지도 보기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Orange500,
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Box(
@@ -489,13 +504,12 @@ fun PetNewsSection() {
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
-                    .background(Brush.linearGradient(listOf(Color(0xFFFFE0B2), Color(0xFFFFCC80)))),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Pets, null, tint = Color(0xFFF57C00), modifier = Modifier.size(40.dp))
-            }
+            Image(
+                painter = painterResource(R.drawable.img_home_news_thumb),
+                contentDescription = "뉴스 썸네일",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 SmallTagChip(text = "지원", textColor = Color(0xFF0284C7), bgColor = Color(0xFFE0F2FE))
                 Spacer(Modifier.height(5.dp))

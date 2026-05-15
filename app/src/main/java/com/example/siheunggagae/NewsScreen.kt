@@ -32,12 +32,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -66,18 +69,20 @@ internal data class NewsItem(
     val title: String,
     val date: String,
     val source: String? = null,
+    val imageRes: Int? = null,
 )
 
 private val newsCategories = listOf("전체", "정책", "행사", "봉사", "지원")
 
 private val featuredNews = NewsItem(1, "지원",
-    "2026년 실외 사육견\n중성화 수술비 지원", "4월 10일", "네이버 뉴스")
+    "2026년 실외 사육견\n중성화 수술비 지원", "4월 10일", "네이버 뉴스",
+    imageRes = R.drawable.img_news_banner)
 
 private val gridNews = listOf(
-    NewsItem(2, "행사", "반려동물 등록 무료 캠페인 5월 13일",          "4.5"),
-    NewsItem(3, "봉사", "정왕동 유기견 산책 봉사자 10명 모집",          "4.12"),
-    NewsItem(4, "행사", "봄맞이 펫 사진 공모전",                       "4.5"),
-    NewsItem(5, "봉사", "노령견 의료비 지원 봉사 모집",                 "4.12"),
+    NewsItem(2, "행사", "반려동물 등록 무료 캠페인 5월 13일",          "4.5",  imageRes = R.drawable.img_news_thumb_1),
+    NewsItem(3, "봉사", "정왕동 유기견 산책 봉사자 10명 모집",          "4.12", imageRes = R.drawable.img_news_thumb_2),
+    NewsItem(4, "행사", "봄맞이 펫 사진 공모전",                       "4.5",  imageRes = R.drawable.img_news_thumb_3),
+    NewsItem(5, "봉사", "노령견 의료비 지원 봉사 모집",                 "4.12", imageRes = R.drawable.img_news_thumb_4),
 )
 
 private val listNews = listOf(
@@ -292,10 +297,19 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .fillMaxWidth()
             .height(180.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Brown900Ns, Color(0xFFBF8A63))))
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,
     ) {
+        if (item.imageRes != null) {
+            Image(
+                painter = painterResource(item.imageRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Box(modifier = Modifier.matchParentSize().background(Brush.linearGradient(listOf(Brown900Ns, Color(0xFFBF8A63)))))
+        }
         Column(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -362,13 +376,17 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
             .background(Color.White)
             .clickable { onClick() },
     ) {
-        // 이미지 플레이스홀더
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .background(categoryImageBg(item.category)),
-        )
+        // 이미지
+        if (item.imageRes != null) {
+            Image(
+                painter = painterResource(item.imageRes),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().height(100.dp),
+            )
+        } else {
+            Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(categoryImageBg(item.category)))
+        }
         // 정보 영역
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
