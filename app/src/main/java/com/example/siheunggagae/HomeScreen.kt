@@ -20,8 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Pets
@@ -41,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -49,28 +49,34 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
-private val BrownPrimary = Color(0xFF7B4F2E)
-private val BrownText = Color(0xFFA0522D)
-private val ScoreGreen = Color(0xFF22C55E)
-private val ScoreBlue = Color(0xFF3B82F6)
-private val ScoreOrange = Color(0xFFF97316)
-private val PinkLight = Color(0xFFFFF0F3)
-private val PinkAccent = Color(0xFFFF6B8A)
-private val TextGray = Color(0xFF6B7280)
-private val OrangeAccent = Color(0xFFF97316)
-private val MapSky = Color(0xFFE0F7FA)
-private val MapMint = Color(0xFFB2EBF2)
+// 스펙 컬러
+private val Brown900      = Color(0xFF614B3A)
+private val Brown700      = Color(0xFF8A6E58)
+private val BrownBorderC  = Color(0xFFE8D3C2)
+private val Orange500     = Color(0xFFF7A35B)
+private val Pink500       = Color(0xFFF04268)
+private val Green500      = Color(0xFF00A63E)
+private val Blue400       = Color(0xFF388AF5)
+private val PinkSurface   = Color(0xFFFEE7EC)
+private val Background    = Color(0xFFFEFEFE)
+private val GrayText      = Color(0xFF6B7280)
+private val MapMintC      = Color(0xFFD0FEE1)
+private val TextBlack     = Color(0xFF1E120A)
+private val StarYellow    = Color(0xFFFDC700)
 
 @Composable
 fun HomeScreen(
     onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
+    onPlaceDetailClick: (Int) -> Unit = {},
 ) {
     var selectedCategory by remember { mutableStateOf("전체") }
 
     Scaffold(
-        containerColor = Color(0xFFF9F9F9),
+        containerColor = Background,
         bottomBar = { AppBottomBar(currentRoute = Screen.Home.route, onNavigate = onNavigate) }
     ) { innerPadding ->
         Column(
@@ -79,16 +85,17 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             HomeTopBar(onNotificationClick = onNotificationClick)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             WalkIndexSection()
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             NearbyStoresSection(
                 selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it }
+                onCategorySelected = { selectedCategory = it },
+                onPlaceDetailClick = onPlaceDetailClick,
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
             PetNewsSection()
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -106,58 +113,55 @@ fun HomeTopBar(onNotificationClick: () -> Unit = {}) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
+            // w400 / 12sp / lh20 — Figma 실측
             Text(
                 text = "안녕하세요, 댕댕이주인님",
-                fontSize = 13.sp,
-                color = BrownText
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
+                color = Brown700,
             )
             Text(
-                text = "시흥가개",
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color(0xFF101828))) { append("시흥") }
+                    withStyle(SpanStyle(color = Color(0xFFFDC700))) { append("가개") }
+                },
+                fontFamily = PretendardFamily,
                 fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                color = BrownPrimary
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 32.sp,
             )
+
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            LocationPill()
-            IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "알림",
-                    tint = TextGray,
-                    modifier = Modifier.size(22.dp)
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .border(1.dp, BrownBorderC, RoundedCornerShape(50.dp))
+                    .clickable { }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Icon(Icons.Default.LocationOn, null, tint = Orange500, modifier = Modifier.size(14.dp))
+                // w500 / 14sp / lh20 — Figma 실측 (기존 12sp → 수정)
+                Text(
+                    text = "정왕동",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 20.sp,
+                    color = Brown700,
                 )
             }
+            IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Notifications, "알림", tint = Brown700, modifier = Modifier.size(22.dp))
+            }
         }
-    }
-}
-
-@Composable
-private fun LocationPill() {
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, Color(0xFFE5E7EB), RoundedCornerShape(50))
-            .clickable { }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
-            tint = OrangeAccent,
-            modifier = Modifier.size(14.dp)
-        )
-        Text(
-            text = "정왕동",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF374151)
-        )
     }
 }
 
@@ -166,10 +170,10 @@ private fun LocationPill() {
 @Composable
 fun WalkIndexSection() {
     val score = 92
-    val (scoreColor, statusText) = when {
-        score >= 80 -> ScoreGreen to "좋아요"
-        score >= 50 -> ScoreBlue to "보통이에요"
-        else -> ScoreOrange to "나빠요"
+    val scoreColor = when {
+        score >= 80 -> Green500
+        score >= 50 -> Blue400
+        else        -> Orange500
     }
 
     Column(
@@ -178,58 +182,62 @@ fun WalkIndexSection() {
             .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
+        // w500 / 14sp / lh20 — Figma 실측
         Text(
             text = "오늘 산책지수",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
+            fontFamily = PretendardFamily,
+            color = TextBlack,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(Modifier.height(6.dp))
+        // w800 / 30sp / lh32 — Figma 실측 (기존 36sp/Bold → 수정)
         Text(
             text = buildAnnotatedString {
-                withStyle(SpanStyle(color = scoreColor, fontWeight = FontWeight.Bold, fontSize = 24.sp)) {
+                withStyle(SpanStyle(fontFamily = PretendardFamily, color = scoreColor, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
                     append("${score}점")
                 }
-                withStyle(SpanStyle(color = Color(0xFF111827), fontSize = 24.sp)) {
-                    append("으로 $statusText")
-                }
-            }
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "맑음 · 18° · 미세먼지 좋음",
-            fontSize = 13.sp,
-            color = TextGray
-        )
-        Spacer(modifier = Modifier.height(14.dp))
-        DDayBanner()
-    }
-}
-
-@Composable
-private fun DDayBanner() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(PinkLight)
-            .clickable { }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = buildAnnotatedString {
-                withStyle(SpanStyle(color = Color(0xFFE91E63), fontWeight = FontWeight.Bold)) {
-                    append("#D-2  ")
-                }
-                withStyle(SpanStyle(color = Color(0xFF374151))) {
-                    append("병원 이동 · 신청 2건 검토하기")
+                withStyle(SpanStyle(fontFamily = PretendardFamily, color = TextBlack, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
+                    append("으로 좋아요")
                 }
             },
-            fontSize = 14.sp
+            lineHeight = 32.sp,
         )
-        Text(text = ">", color = TextGray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.height(4.dp))
+        // w400 / 14sp / lh20 — Figma 실측 (기존 12sp → 수정)
+        Text(
+            text = "맑음 · 18° · 미세먼지 좋음",
+            fontFamily = PretendardFamily,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 20.sp,
+            color = GrayText,
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(50.dp))
+                .background(PinkSurface)
+                .clickable { }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = buildAnnotatedString {
+                    // w700 / 12sp — D-day 배지
+                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500, fontWeight = FontWeight.Bold, fontSize = 12.sp)) {
+                        append("[D-2]  ")
+                    }
+                    // w500 / 14sp — 배너 본문
+                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 14.sp)) {
+                        append("병원 이동 · 신청 2건 검토하기  ")
+                    }
+                },
+            )
+            Text(text = ">", fontFamily = PretendardFamily, color = Brown700, fontSize = 14.sp)
+        }
     }
 }
 
@@ -237,175 +245,190 @@ private fun DDayBanner() {
 
 private val storeCategories = listOf("전체", "카페", "공원", "병원", "미용", "식당")
 
-private data class PlaceInfo(val name: String, val category: String, val distance: String, val rating: Float)
+private data class PlaceInfo(
+    val id: Int,
+    val name: String,
+    val category: String,
+    val distance: String,
+    val rating: Float,
+    val isFavorite: Boolean = false,
+)
 
 private val samplePlaces = listOf(
-    PlaceInfo("댕댕 카페", "카페", "0.3km", 4.8f),
-    PlaceInfo("행복 동물병원", "병원", "0.7km", 4.5f)
+    PlaceInfo(5, "반려동물 병원", "병원", "1.8km", 4.9f, isFavorite = true),
+    PlaceInfo(4, "배곧 댕댕카페",  "카페", "2.5km", 4.8f),
 )
 
 @Composable
-fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -> Unit) {
+fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -> Unit, onPlaceDetailClick: (Int) -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(vertical = 20.dp)
     ) {
-        SectionHeader(
-            title = "주변 매장 24곳",
-            actionText = "🗺 지도 보기"
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        MapPreviewCard()
-        Spacer(modifier = Modifier.height(12.dp))
-        CategoryChipRow(selected = selectedCategory, onSelect = onCategorySelected)
-        Spacer(modifier = Modifier.height(4.dp))
-        samplePlaces.forEachIndexed { idx, place ->
-            PlaceItem(number = idx + 1, place = place)
-            if (idx < samplePlaces.lastIndex) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    color = Color(0xFFF3F4F6)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // w700 / 20sp / lh24 — Figma 실측 (기존 18sp → 수정)
+                Text(
+                    text = "주변 매장",
+                    fontFamily = PretendardFamily,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp,
+                    color = TextBlack,
+                )
+                Text(
+                    text = "24곳",
+                    fontFamily = PretendardFamily,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp,
+                    color = Orange500,
+                )
+            }
+            // w600 / 14sp — Figma 실측 (기존 13sp/Medium → 수정)
+            Text(
+                text = "🗺 지도 보기",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Orange500,
+                modifier = Modifier.clickable { }
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(180.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Brush.linearGradient(listOf(MapMintC, Color(0xFFE8FAF0), Color.White)))
+        ) {
+            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+                modifier = Modifier.size(28.dp).align(Alignment.Center).offset(20.dp, (-28).dp))
+            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+                modifier = Modifier.size(22.dp).align(Alignment.Center).offset((-40).dp, 8.dp))
+            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+                modifier = Modifier.size(20.dp).align(Alignment.Center).offset(55.dp, 18.dp))
+            Icon(Icons.Default.LocationOn, null, tint = Orange500,
+                modifier = Modifier.size(34.dp).align(Alignment.Center))
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White.copy(alpha = 0.9f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Icon(Icons.Default.LocationOn, null, tint = Orange500, modifier = Modifier.size(12.dp))
+                // w500 / 14sp — Figma 실측 (기존 12sp → 수정)
+                Text(
+                    text = "정왕동",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF374151),
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun MapPreviewCard() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .height(160.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(MapSky, MapMint, Color(0xFF80DEEA))))
-    ) {
-        // 장식용 위치 핀들
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
-            tint = PinkAccent,
-            modifier = Modifier.size(28.dp).align(Alignment.Center).offset(20.dp, (-28).dp)
-        )
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
-            tint = PinkAccent,
-            modifier = Modifier.size(22.dp).align(Alignment.Center).offset((-40).dp, 8.dp)
-        )
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
-            tint = PinkAccent,
-            modifier = Modifier.size(20.dp).align(Alignment.Center).offset(55.dp, 18.dp)
-        )
-        // 현재 위치 핀 (갈색)
-        Icon(
-            imageVector = Icons.Default.LocationOn,
-            contentDescription = null,
-            tint = BrownPrimary,
-            modifier = Modifier.size(34.dp).align(Alignment.Center)
-        )
-        // 하단 좌측 위치 pill
+        Spacer(Modifier.height(12.dp))
         Row(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.9f))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null,
-                tint = OrangeAccent,
-                modifier = Modifier.size(12.dp)
-            )
-            Text(text = "정왕동", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF374151))
+            storeCategories.forEach { cat ->
+                val isSel = cat == selectedCategory
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(if (isSel) Color(0xFF1A1A1A) else Color.White)
+                        .then(if (!isSel) Modifier.border(1.dp, BrownBorderC, RoundedCornerShape(50.dp)) else Modifier)
+                        .clickable { onCategorySelected(cat) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    // w500 / 14sp / lh20 — Figma 실측
+                    Text(
+                        text = cat,
+                        fontFamily = PretendardFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 20.sp,
+                        color = if (isSel) Color.White else Brown700,
+                    )
+                }
+            }
         }
-    }
-}
-
-@Composable
-private fun CategoryChipRow(selected: String, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        storeCategories.forEach { category ->
-            val isSelected = category == selected
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) Color(0xFF111827) else Color(0xFFF3F4F6))
-                    .clickable { onSelect(category) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = category,
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else Color(0xFF374151)
-                )
+        Spacer(Modifier.height(4.dp))
+        samplePlaces.forEachIndexed { idx, place ->
+            PlaceItem(number = idx + 1, place = place, onPlaceDetailClick = onPlaceDetailClick)
+            if (idx < samplePlaces.lastIndex) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
             }
         }
     }
 }
 
 @Composable
-private fun PlaceItem(number: Int, place: PlaceInfo) {
+private fun PlaceItem(number: Int, place: PlaceInfo, onPlaceDetailClick: (Int) -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onPlaceDetailClick(place.id) }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 번호 원형: 1=Pink500, 나머지=Brown900
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(PinkLight)
+            modifier = Modifier.size(32.dp).clip(CircleShape)
+                .background(if (number == 1) Pink500 else Brown900)
         ) {
+            // w500 / 14sp — Figma: "1"=w500, "2"=w400
             Text(
                 text = "$number",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFE91E63)
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = if (number == 1) FontWeight.Medium else FontWeight.Normal,
+                color = Color.White,
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = place.name, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF111827))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(text = "${place.category} · ${place.distance}", fontSize = 12.sp, color = TextGray)
-                Text(text = "·", fontSize = 12.sp, color = TextGray)
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFFFBBF24),
-                    modifier = Modifier.size(12.dp)
-                )
-                Text(text = "${place.rating}", fontSize = 12.sp, color = TextGray)
-            }
+            // w700 / 14sp / lh20 — Figma 실측 (기존 16sp/SemiBold → 수정)
+            Text(
+                text = place.name,
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp,
+                color = TextBlack,
+            )
+            // w600 / 16sp / lh24 — Figma 실측 (기존 12sp → 수정)
+            Text(
+                text = "${place.category} · ${place.distance} · ⭐ ${place.rating}",
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 24.sp,
+                color = Brown700,
+            )
         }
         IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = Icons.Default.FavoriteBorder,
+                imageVector = if (place.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = "즐겨찾기",
-                tint = Color(0xFFD1D5DB),
+                tint = if (place.isFavorite) Pink500 else BrownBorderC,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -414,21 +437,12 @@ private fun PlaceItem(number: Int, place: PlaceInfo) {
 
 // ─── 반려동물 소식 섹션 ───────────────────────────────────────────────────────
 
-private data class NewsTag(val label: String, val textColor: Color, val bgColor: Color)
-
-private val tagStyles = mapOf(
-    "[행사]" to NewsTag("[행사]", Color(0xFF7C3AED), Color(0xFFF5F3FF)),
-    "[봉사]" to NewsTag("[봉사]", Color(0xFF059669), Color(0xFFECFDF5)),
-    "[지원]" to NewsTag("[지원]", Color(0xFF2563EB), Color(0xFFEFF6FF))
-)
-
-private data class PetNewsItem(val tag: String, val title: String, val date: String)
-
+private data class PetNewsItem(val tag: String, val tagColor: Color, val tagBg: Color, val title: String, val date: String)
 
 private val sampleNews = listOf(
-    PetNewsItem("[행사]", "반려동물 입양 행사", "5월 10일"),
-    PetNewsItem("[봉사]", "이동 봉사 모집 중", "5월 12일"),
-    PetNewsItem("[지원]", "중성화 수술 지원 사업", "5월 14일")
+    PetNewsItem("행사", Color(0xFF7C3AED), Color(0xFFF5F3FF), "반려동물 입양 행사",    "4.5"),
+    PetNewsItem("봉사", Color(0xFF059669), Color(0xFFECFDF5), "이동 봉사 모집 중",    "4.12"),
+    PetNewsItem("지원", Color(0xFF2563EB), Color(0xFFEFF6FF), "중성화 수술 지원 사업", "4.5"),
 )
 
 @Composable
@@ -439,151 +453,172 @@ fun PetNewsSection() {
             .background(Color.White)
             .padding(vertical = 20.dp)
     ) {
-        SectionHeader(title = "반려동물 소식", actionText = "📰 전체 보기")
-        Spacer(modifier = Modifier.height(12.dp))
-        FeaturedNewsCard()
-        Spacer(modifier = Modifier.height(8.dp))
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
-        sampleNews.forEach { item ->
-            NewsListItem(item)
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        VolunteerBanner()
-    }
-}
-
-@Composable
-private fun FeaturedNewsCard() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF9F9F9))
-            .clickable { }
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFFFFE0B2), Color(0xFFFFCC80)))),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Pets,
-                contentDescription = null,
-                tint = Color(0xFFF57C00),
-                modifier = Modifier.size(40.dp)
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            CategoryTag(text = "정책", textColor = Color(0xFF0284C7), bgColor = Color(0xFFE0F2FE))
-            Spacer(modifier = Modifier.height(5.dp))
+            // w700 / 20sp / lh24 — 섹션 헤더 (기존 18sp → 수정)
             Text(
-                text = "2025년 반려동물 등록 의무화 안내",
+                text = "반려동물 소식",
+                fontFamily = PretendardFamily,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack,
+            )
+            // w700 / 20sp — "전체 보기" Figma 실측
+            Text(
+                text = "📰 전체 보기",
+                fontFamily = PretendardFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF111827),
-                maxLines = 2
+                color = Orange500,
+                modifier = Modifier.clickable { }
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "5월 10일 · 시흥시청", fontSize = 11.sp, color = TextGray)
         }
-    }
-}
-
-@Composable
-private fun NewsListItem(item: PetNewsItem) {
-    val tag = tagStyles[item.tag] ?: NewsTag(item.tag, TextGray, Color(0xFFF3F4F6))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { }
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        CategoryTag(text = tag.label, textColor = tag.textColor, bgColor = tag.bgColor)
-        Text(
-            text = item.title,
-            fontSize = 14.sp,
-            color = Color(0xFF111827),
-            modifier = Modifier.weight(1f)
-        )
-        Text(text = item.date, fontSize = 12.sp, color = TextGray)
-    }
-}
-
-@Composable
-private fun VolunteerBanner() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(PinkLight)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "이동 지원 봉사자가 되어 보세요",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF111827)
-        )
-        Box(
+        Spacer(Modifier.height(12.dp))
+        // 메인 뉴스 카드
+        Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .background(Color(0xFFE91E63))
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFFF9F9F9))
                 .clickable { }
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "신청 →", fontSize = 14.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp))
+                    .background(Brush.linearGradient(listOf(Color(0xFFFFE0B2), Color(0xFFFFCC80)))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Pets, null, tint = Color(0xFFF57C00), modifier = Modifier.size(40.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                SmallTagChip(text = "지원", textColor = Color(0xFF0284C7), bgColor = Color(0xFFE0F2FE))
+                Spacer(Modifier.height(5.dp))
+                // w800 / 20sp / lh28 — Figma 실측 (메인 뉴스 카드 제목)
+                Text(
+                    text = "2026년 실외 사육견\n중성화 수술비 지원",
+                    fontFamily = PretendardFamily,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 28.sp,
+                    color = TextBlack,
+                    maxLines = 2,
+                )
+                Spacer(Modifier.height(4.dp))
+                // w400 / 14sp / lh20 — Figma 실측
+                Text(
+                    text = "4월 10일 · 네이버 뉴스",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = GrayText,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
+        sampleNews.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { }
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SmallTagChip(text = item.tag, textColor = item.tagColor, bgColor = item.tagBg)
+                // w700 / 14sp / lh20 — 소식 리스트 제목
+                Text(
+                    text = item.title,
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 20.sp,
+                    color = TextBlack,
+                    modifier = Modifier.weight(1f),
+                )
+                // w400 / 12sp / lh16 — 날짜 캡션
+                Text(
+                    text = item.date,
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 16.sp,
+                    color = GrayText,
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
+        }
+        Spacer(Modifier.height(12.dp))
+        // 봉사자 배너
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(PinkSurface)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Handshake, null, tint = Orange500, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(10.dp))
+            // w700 / 14sp / lh20 — Figma 실측
+            Text(
+                text = "이동 지원 봉사자가 되어 보세요",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp,
+                color = TextBlack,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .clickable { }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "신청 →",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Brown700,
+                )
+            }
         }
     }
 }
 
-// ─── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
-
 @Composable
-private fun SectionHeader(title: String, actionText: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF111827))
-        Text(
-            text = actionText,
-            fontSize = 14.sp,
-            color = OrangeAccent,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { }
-        )
-    }
-}
-
-@Composable
-private fun CategoryTag(text: String, textColor: Color, bgColor: Color) {
+private fun SmallTagChip(text: String, textColor: Color, bgColor: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
             .background(bgColor)
             .padding(horizontal = 6.dp, vertical = 3.dp)
     ) {
-        Text(text = text, fontSize = 11.sp, color = textColor, fontWeight = FontWeight.Medium)
+        // w500 / 12sp / lh16 — Figma 실측
+        Text(
+            text = text,
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 16.sp,
+            color = textColor,
+        )
     }
 }
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
-    HomeScreen()
+    SiheungGagaeTheme { HomeScreen() }
 }

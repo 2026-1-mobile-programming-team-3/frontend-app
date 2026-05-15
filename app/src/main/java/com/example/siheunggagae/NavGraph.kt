@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.padding
@@ -49,23 +50,40 @@ import com.example.siheunggagae.ui.theme.Gray10
 import com.example.siheunggagae.ui.theme.Gray40
 import com.example.siheunggagae.ui.theme.Gray80
 import com.example.siheunggagae.ui.theme.Gray95
+import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
 // ─── 라우트 정의 ───────────────────────────────────────────────────────────────
 
 sealed class Screen(val route: String) {
-    object Splash      : Screen("splash")
-    object Home        : Screen("home")
-    object Notification: Screen("notification")
-    object Matching    : Screen("matching")
-    object RequestFlow : Screen("request_flow")
-    object MyRequests  : Screen("my_requests")
-    object Map         : Screen("map")
-    object News        : Screen("news")
-    object PlaceDetail : Screen("place_detail/{placeId}") {
+    object Splash       : Screen("splash")
+    object Home         : Screen("home")
+    object Notification : Screen("notification")
+    object Matching     : Screen("matching")
+    object RequestFlow  : Screen("request_flow")
+    object MyRequests   : Screen("my_requests")
+    object Map          : Screen("map")
+    object News         : Screen("news")
+    object PlaceDetail  : Screen("place_detail/{placeId}") {
         fun createRoute(placeId: Int) = "place_detail/$placeId"
     }
-    object My          : Screen("my")
+    object My              : Screen("my")
+    object Settings        : Screen("settings")
+    object PetList         : Screen("pet_list")
+    object PetAdd          : Screen("pet_add")
+    object VolunteerApply  : Screen("volunteer_apply")
+    object MatchingDetail       : Screen("matching_detail/{requestId}") {
+        fun createRoute(requestId: Int) = "matching_detail/$requestId"
+    }
+    object MatchingPublicDetail : Screen("matching_public_detail/{requestId}") {
+        fun createRoute(requestId: Int) = "matching_public_detail/$requestId"
+    }
+    object Chat             : Screen("chat/{userId}") {
+        fun createRoute(userId: Int) = "chat/$userId"
+    }
+    object NewsDetail      : Screen("news_detail/{newsId}") {
+        fun createRoute(newsId: Int) = "news_detail/$newsId"
+    }
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -122,8 +140,10 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
                         )
                         Text(
                             text = entry.label,
-                            fontSize = 13.sp,
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
+                            lineHeight = 16.sp,
                             color = Color.White,
                         )
                     }
@@ -175,6 +195,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             HomeScreen(
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
+                onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
             )
         }
 
@@ -186,7 +207,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             MatchingScreen(
                 onMyRequests = { navController.navigate(Screen.MyRequests.route) },
                 onRequestFlowClick = { navController.navigate(Screen.RequestFlow.route) },
+                onCardClick = { requestId -> navController.navigate(Screen.MatchingPublicDetail.createRoute(requestId)) },
                 onNavigate = { route -> navController.navigateTab(route) },
+            )
+        }
+
+        composable(
+            route = Screen.MatchingDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+            MatchingDetailScreen(
+                requestId = requestId,
+                onBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
+            )
+        }
+
+        composable(
+            route = Screen.MatchingPublicDetail.route,
+            arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+            MatchingPublicDetailScreen(
+                requestId = requestId,
+                onBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
+            )
+        }
+
+        composable(
+            route = Screen.Chat.route,
+            arguments = listOf(navArgument("userId") { type = NavType.IntType }),
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getInt("userId") ?: 0
+            ChatScreen(
+                userId = userId,
+                onBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
             )
         }
 
@@ -194,11 +252,15 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             RequestFlowScreen(
                 onBack = { navController.popBackStack() },
                 onComplete = { navController.popBackStack() },
+                onAddPet = { navController.navigate(Screen.PetAdd.route) },
             )
         }
 
         composable(Screen.MyRequests.route) {
-            MyRequestsScreen(onBack = { navController.popBackStack() })
+            MyRequestsScreen(
+                onBack = { navController.popBackStack() },
+                onCardClick = { requestId -> navController.navigate(Screen.MatchingDetail.createRoute(requestId)) },
+            )
         }
 
         composable(Screen.Map.route) {
@@ -207,6 +269,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.News.route) {
             NewsScreen(
+                onNewsDetailClick = { newsId ->
+                    navController.navigate(Screen.NewsDetail.createRoute(newsId))
+                },
                 onPlaceDetailClick = { placeId ->
                     navController.navigate(Screen.PlaceDetail.createRoute(placeId))
                 },
@@ -226,7 +291,42 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.My.route) {
-            MyScreen(onNavigate = { route -> navController.navigateTab(route) })
+            MyScreen(
+                onNavigate = { route -> navController.navigateTab(route) },
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+            )
+        }
+
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onPetListClick = { navController.navigate(Screen.PetList.route) },
+            )
+        }
+
+        composable(Screen.PetList.route) {
+            PetListScreen(
+                onBack = { navController.popBackStack() },
+                onAddPet = { navController.navigate(Screen.PetAdd.route) },
+            )
+        }
+
+        composable(Screen.PetAdd.route) {
+            PetAddScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.VolunteerApply.route) {
+            VolunteerApplyScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(
+            route = Screen.NewsDetail.route,
+            arguments = listOf(navArgument("newsId") { type = NavType.IntType }),
+        ) { backStackEntry ->
+            val newsId = backStackEntry.arguments?.getInt("newsId") ?: 1
+            NewsDetailScreen(newsId = newsId, onBack = { navController.popBackStack() })
         }
     }
 }
@@ -259,14 +359,19 @@ fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "시흥가개",
-                fontSize = 42.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
-                color = Brown40,
+                lineHeight = 48.sp,
+                color = Color(0xFF8A6E58),
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                text = "우리 동네 반려동물 커뮤니티",
-                fontSize = 16.sp,
+                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
                 color = Gray40,
             )
             Spacer(Modifier.height(64.dp))
@@ -275,12 +380,19 @@ fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Color(0xFF3E2A1A))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF8A6E58))
                     .clickable { onLogin() }
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 14.dp),
             ) {
-                Text(text = "로그인하기", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                Text(
+                    text = "로그인하기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 28.sp,
+                    color = Color.White,
+                )
             }
 
             Spacer(Modifier.height(12.dp))
@@ -289,18 +401,27 @@ fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(50.dp))
-                    .border(1.5.dp, Color(0xFF3E2A1A), RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFFEFEFE))
                     .clickable { onSignup() }
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 14.dp),
             ) {
-                Text(text = "회원가입하기", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF3E2A1A))
+                Text(
+                    text = "회원가입하기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 28.sp,
+                    color = Color(0xFF1E120A),
+                )
             }
         }
 
         Text(
             text = "v3.0.0",
+            fontFamily = PretendardFamily,
             fontSize = 12.sp,
+            lineHeight = 16.sp,
             color = Gray80,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -312,13 +433,17 @@ fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
 // ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────
 
 @Composable
-fun MyRequestsScreen(onBack: () -> Unit = {}) {
+fun MyRequestsScreen(
+    onBack: () -> Unit = {},
+    onCardClick: (requestId: Int) -> Unit = {},
+) {
     Scaffold(
         containerColor = Gray95,
         topBar = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .background(Color.White)
                     .padding(vertical = 8.dp),
             ) {
@@ -332,8 +457,10 @@ fun MyRequestsScreen(onBack: () -> Unit = {}) {
                 }
                 Text(
                     text = "내 봉사 요청 목록",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontFamily = PretendardFamily,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 32.sp,
                     color = Gray10,
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -344,7 +471,13 @@ fun MyRequestsScreen(onBack: () -> Unit = {}) {
             modifier = Modifier.fillMaxSize().padding(padding),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "준비 중입니다", fontSize = 16.sp, color = Gray40)
+            Text(
+                text = "준비 중입니다",
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                color = Gray40,
+            )
         }
     }
 }

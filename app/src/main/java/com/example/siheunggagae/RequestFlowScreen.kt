@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,14 +21,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -56,18 +58,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.siheunggagae.ui.theme.Brown40
-import com.example.siheunggagae.ui.theme.Brown80
-import com.example.siheunggagae.ui.theme.Brown90
-import com.example.siheunggagae.ui.theme.Gray10
-import com.example.siheunggagae.ui.theme.Gray40
-import com.example.siheunggagae.ui.theme.Gray80
-import com.example.siheunggagae.ui.theme.Gray90
-import com.example.siheunggagae.ui.theme.Orange40
-import com.example.siheunggagae.ui.theme.Orange90
+import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import java.time.DayOfWeek
 import java.time.YearMonth
+
+// 스펙 컬러
+private val Brown900F    = Color(0xFF614B3A)
+private val Brown700F    = Color(0xFF8A6E58)
+private val Brown400F    = Color(0xFFC4A882)
+private val BrownBorderF = Color(0xFFE8D3C2)
+private val Orange500F   = Color(0xFFF7A35B)
+private val Orange100F   = Color(0xFFE8D3C2)
+private val Pink500F     = Color(0xFFF04268)
+private val Blue400F     = Color(0xFF388AF5)
+private val GrayBg       = Color(0xFFF4F4F4)
+private val GrayText     = Color(0xFF6B7280)
+private val TextBlack    = Color(0xFF1E120A)
+private val OrangeSand   = Color(0xFFFFEDD4)
 
 // ─── 데이터 ────────────────────────────────────────────────────────────────────
 
@@ -95,26 +103,23 @@ private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}) {
+fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}, onAddPet: () -> Unit = {}) {
     var currentStep by remember { mutableStateOf(1) }
 
-    // Step 1 state
     var selectedPetId by remember { mutableStateOf<Int?>(null) }
 
-    // Step 2 state
     var currentMonth by remember { mutableStateOf(YearMonth.of(2026, 10)) }
     var selectedDay by remember { mutableStateOf<Int?>(null) }
     var timeInput by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf<String?>(null) }
 
-    // Step 3 state
-    var title by remember { mutableStateOf("") }
+    var titleInput by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var memo by remember { mutableStateOf("") }
 
     val buttonText = when (currentStep) {
-        1 -> "→ 일정 선택"
-        2 -> "→ 요청 내용 작성"
+        1    -> "→ 일정 선택"
+        2    -> "→ 요청 내용 작성"
         else -> "요청 등록하기"
     }
 
@@ -139,31 +144,22 @@ fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}) {
                 .verticalScroll(rememberScrollState())
         ) {
             StepIndicator(currentStep = currentStep)
-            HorizontalDivider(color = Gray90)
 
             when (currentStep) {
-                1 -> Step1Content(
-                    selectedPetId = selectedPetId,
-                    onSelectPet = { selectedPetId = it }
-                )
+                1 -> Step1Content(selectedPetId = selectedPetId, onSelectPet = { selectedPetId = it }, onAddPet = onAddPet)
                 2 -> Step2Content(
-                    currentMonth = currentMonth,
-                    onMonthChange = { currentMonth = it },
-                    selectedDay = selectedDay,
-                    onSelectDay = { selectedDay = it },
-                    timeInput = timeInput,
-                    onTimeChange = { timeInput = it },
-                    selectedTime = selectedTime,
-                    onSelectTime = { selectedTime = it }
+                    currentMonth = currentMonth, onMonthChange = { currentMonth = it },
+                    selectedDay = selectedDay, onSelectDay = { selectedDay = it },
+                    timeInput = timeInput, onTimeChange = { timeInput = it },
+                    selectedTime = selectedTime, onSelectTime = { selectedTime = it }
                 )
                 3 -> Step3Content(
-                    title = title, onTitleChange = { title = it },
+                    title = titleInput, onTitleChange = { titleInput = it },
                     destination = destination, onDestinationChange = { destination = it },
                     memo = memo, onMemoChange = { if (it.length <= 500) memo = it }
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -175,43 +171,56 @@ private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .background(Color.White)
-            .padding(horizontal = 4.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Text(
-            text = "< 뒤로",
-            fontSize = 14.sp,
-            color = Gray40,
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .align(Alignment.CenterStart)
+                .size(40.dp)
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White)
                 .clickable { onBack() }
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-        )
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "뒤로",
+                tint = TextBlack,
+                modifier = Modifier.size(22.dp)
+            )
+        }
         Text(
             text = "도움 요청하기",
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gray10,
+            fontFamily = PretendardFamily,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 32.sp,
+            color = TextBlack,
             modifier = Modifier.align(Alignment.Center)
         )
         Text(
-            text = "$step/3",
+            text = "$step / 3",
+            fontFamily = PretendardFamily,
             fontSize = 14.sp,
-            color = Gray40,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 17.sp,
+            color = Brown700F,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(horizontal = 16.dp)
+                .padding(end = 4.dp)
         )
     }
 }
 
 // ─── 스텝 인디케이터 ─────────────────────────────────────────────────────────────
 
+private val stepLabels = listOf("반려동물", "일정", "요청 내용")
+
 @Composable
 private fun StepIndicator(currentStep: Int) {
-    val line1Color = if (currentStep > 1) Orange40 else Brown90
-    val line2Color = if (currentStep > 2) Orange40 else Brown90
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,65 +228,36 @@ private fun StepIndicator(currentStep: Int) {
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            StepCircle(stepNumber = 1, currentStep = currentStep)
-            Box(modifier = Modifier.weight(1f).height(2.dp).background(line1Color))
-            StepCircle(stepNumber = 2, currentStep = currentStep)
-            Box(modifier = Modifier.weight(1f).height(2.dp).background(line2Color))
-            StepCircle(stepNumber = 3, currentStep = currentStep)
+            repeat(3) { idx ->
+                val segStep = idx + 1
+                val color = if (segStep <= currentStep) Orange500F
+                            else Brown900F.copy(alpha = 0.3f)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(color)
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                text = "반려동물",
-                fontSize = 11.sp,
-                color = if (currentStep == 1) Orange40 else Brown80
-            )
-            Text(
-                text = "일정",
-                fontSize = 11.sp,
-                color = if (currentStep == 2) Orange40 else Brown80
-            )
-            Text(
-                text = "요청 내용",
-                fontSize = 11.sp,
-                color = if (currentStep == 3) Orange40 else Brown80
-            )
-        }
-    }
-}
-
-@Composable
-private fun StepCircle(stepNumber: Int, currentStep: Int) {
-    val isCompleted = stepNumber < currentStep
-    val isActive = stepNumber == currentStep
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(32.dp)
-            .clip(CircleShape)
-            .background(if (isCompleted || isActive) Orange40 else Color.Transparent)
-            .then(
-                if (!isCompleted && !isActive) Modifier.border(2.dp, Brown80, CircleShape)
-                else Modifier
-            )
-    ) {
-        if (isCompleted) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
-        } else {
-            Text(
-                text = "$stepNumber",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isActive) Color.White else Brown80
-            )
+        Spacer(Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth()) {
+            stepLabels.forEachIndexed { idx, label ->
+                val segStep = idx + 1
+                Text(
+                    text = label,
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = if (segStep == currentStep) FontWeight.Bold else FontWeight.Normal,
+                    lineHeight = 16.sp,
+                    color = if (segStep == currentStep) Orange500F else Brown700F,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -285,15 +265,14 @@ private fun StepCircle(stepNumber: Int, currentStep: Int) {
 // ─── Step 1: 반려동물 선택 ──────────────────────────────────────────────────────
 
 @Composable
-private fun Step1Content(selectedPetId: Int?, onSelectPet: (Int) -> Unit) {
+private fun Step1Content(selectedPetId: Int?, onSelectPet: (Int) -> Unit, onAddPet: () -> Unit = {}) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
         QuestionText("어떤 반려동물과\n함께 이동하나요?")
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
         SubText("도움이 필요한 반려동물을 선택해 주세요.")
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // 2-column pet card grid (pets + add card)
         val totalItems = samplePets.size + 1
         val rowCount = (totalItems + 1) / 2
 
@@ -314,15 +293,27 @@ private fun Step1Content(selectedPetId: Int?, onSelectPet: (Int) -> Unit) {
                                     onClick = { onSelectPet(pet.id) }
                                 )
                             }
-                            itemIdx == samplePets.size -> AddPetCard()
-                            else -> Spacer(modifier = Modifier.fillMaxWidth())
+                            itemIdx == samplePets.size -> AddPetCard(onAddPet)
+                            else -> Spacer(Modifier.fillMaxWidth())
                         }
                     }
                 }
             }
-            if (rowIdx < rowCount - 1) Spacer(modifier = Modifier.height(12.dp))
+            if (rowIdx < rowCount - 1) Spacer(Modifier.height(12.dp))
         }
     }
+}
+
+private fun petIconBg(species: String) = when (species) {
+    "강아지" -> OrangeSand
+    "고양이" -> Color(0xFFFFE4E6)
+    else     -> GrayBg
+}
+
+private fun petIconTint(species: String) = when (species) {
+    "강아지" -> Orange500F
+    "고양이" -> Pink500F
+    else     -> GrayText
 }
 
 @Composable
@@ -330,57 +321,62 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isSelected) Orange90 else Gray90)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
             .border(
                 width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) Orange40 else Gray80,
-                shape = RoundedCornerShape(14.dp)
+                color = if (isSelected) Orange500F else BrownBorderF,
+                shape = RoundedCornerShape(16.dp)
             )
             .clickable { onClick() }
             .padding(16.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) Orange40.copy(alpha = 0.15f) else Color.White)
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(petIconBg(pet.species))
             ) {
                 Icon(
                     imageVector = Icons.Default.Pets,
                     contentDescription = null,
-                    tint = if (isSelected) Orange40 else Brown40,
-                    modifier = Modifier.size(28.dp)
+                    tint = petIconTint(pet.species),
+                    modifier = Modifier.size(44.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = pet.name,
-                fontSize = 15.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Gray10
+                lineHeight = 24.sp,
+                color = TextBlack
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = "${pet.species} · ${pet.age} · ${pet.weight}",
-                fontSize = 12.sp,
-                color = Gray40,
+                fontFamily = PretendardFamily,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                color = Brown700F,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
-
-        // 선택 체크 뱃지
         if (isSelected) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .size(22.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
-                    .background(Orange40)
+                    .background(Orange500F)
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
@@ -394,34 +390,32 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun AddPetCard() {
+private fun AddPetCard(onAddPet: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(130.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .dashedBorder(color = Gray80, cornerRadius = 14.dp)
-            .clickable { }
-            .padding(16.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(GrayBg)
+            .dashedBorder(color = GrayText.copy(alpha = 0.4f), cornerRadius = 16.dp)
+            .clickable { onAddPet() }
+            .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Gray90)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = Gray40,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(text = "반려동물 추가", fontSize = 13.sp, color = Gray40)
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = GrayText,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "반려동물 추가",
+            fontFamily = PretendardFamily,
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            color = GrayText
+        )
     }
 }
 
@@ -439,11 +433,10 @@ private fun Step2Content(
     onSelectTime: (String) -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
         QuestionText("언제 도움이\n필요한가요?")
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // 달력
         CalendarSection(
             yearMonth = currentMonth,
             onMonthChange = onMonthChange,
@@ -451,40 +444,54 @@ private fun Step2Content(
             onSelectDay = onSelectDay
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider(color = Gray90)
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // 희망 시간
-        Text(text = "희망 시간", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gray10)
-        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = "희망 시간",
+            fontFamily = PretendardFamily,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 27.sp,
+            color = TextBlack
+        )
+        Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
             value = timeInput,
             onValueChange = onTimeChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("예: 오전 9:30", color = Gray40, fontSize = 14.sp) },
+            placeholder = {
+                Text(
+                    text = "예: 오전 9:30",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Brown400F
+                )
+            },
             leadingIcon = {
-                Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = Gray40)
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = Orange500F)
             },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Orange40,
-                unfocusedBorderColor = Gray80,
-                focusedLeadingIconColor = Orange40,
+                focusedBorderColor = Orange500F,
+                unfocusedBorderColor = BrownBorderF,
+                focusedLeadingIconColor = Orange500F,
+                unfocusedLeadingIconColor = Orange500F,
+                cursorColor = Orange500F,
             ),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(12.dp)
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
-
+        Spacer(Modifier.height(14.dp))
         Text(
             text = "빠른 선택",
-            fontSize = 13.sp,
-            color = Gray40,
-            fontWeight = FontWeight.Medium
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 16.sp,
+            color = Brown700F
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
         quickTimes.chunked(4).forEach { rowTimes ->
             Row(
@@ -492,15 +499,15 @@ private fun Step2Content(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 rowTimes.forEach { time ->
-                    val isSelected = time == selectedTime
+                    val isSel = time == selectedTime
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) Orange90 else Color.White)
+                            .background(if (isSel) Orange100F else Color.White)
                             .border(
-                                width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) Orange40 else Gray80,
+                                width = if (isSel) 1.5.dp else 1.dp,
+                                color = if (isSel) Orange500F else BrownBorderF,
                                 shape = RoundedCornerShape(8.dp)
                             )
                             .clickable { onSelectTime(time) }
@@ -509,15 +516,17 @@ private fun Step2Content(
                     ) {
                         Text(
                             text = time,
-                            fontSize = 13.sp,
-                            color = if (isSelected) Orange40 else Gray10,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontFamily = PretendardFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 20.sp,
+                            color = if (isSel) Orange500F else Brown700F,
                         )
                     }
                 }
-                repeat(4 - rowTimes.size) { Spacer(modifier = Modifier.weight(1f)) }
+                repeat(4 - rowTimes.size) { Spacer(Modifier.weight(1f)) }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -535,52 +544,53 @@ private fun CalendarSection(
     val totalRows = (startOffset + daysInMonth + 6) / 7
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 월 헤더
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onMonthChange(yearMonth.minusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "이전 달", tint = Gray40)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "이전 달", tint = Brown700F)
             }
             Text(
                 text = "${yearMonth.year}년 ${yearMonth.monthValue}월",
-                fontSize = 16.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Gray10
+                lineHeight = 27.sp,
+                color = TextBlack
             )
             IconButton(onClick = { onMonthChange(yearMonth.plusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "다음 달", tint = Gray40)
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "다음 달", tint = Brown700F)
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 요일 헤더
+        Spacer(Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             dayHeaders.forEachIndexed { idx, day ->
+                val dayColor = when (idx) {
+                    0    -> Pink500F
+                    6    -> Blue400F
+                    else -> Brown900F
+                }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         text = day,
-                        fontSize = 13.sp,
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (idx == 0) Color(0xFFEF4444) else Gray40
+                        lineHeight = 16.sp,
+                        color = dayColor
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 날짜 그리드
+        Spacer(Modifier.height(8.dp))
         repeat(totalRows) { row ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 repeat(7) { col ->
                     val cellIndex = row * 7 + col
                     val day = if (cellIndex < startOffset || cellIndex >= startOffset + daysInMonth) null
-                    else cellIndex - startOffset + 1
-
+                              else cellIndex - startOffset + 1
                     Box(
                         modifier = Modifier.weight(1f).height(40.dp),
                         contentAlignment = Alignment.Center
@@ -589,19 +599,21 @@ private fun CalendarSection(
                             val isSelected = day == selectedDay
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
+                                    .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) Orange40.copy(alpha = 0.2f) else Color.Transparent)
+                                    .background(if (isSelected) Orange100F else Color.Transparent)
                                     .clickable { onSelectDay(day) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "$day",
-                                    fontSize = 14.sp,
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 16.sp,
+                                    lineHeight = 24.sp,
                                     color = when {
-                                        isSelected -> Orange40
-                                        col == 0 -> Color(0xFFEF4444)
-                                        else -> Gray10
+                                        isSelected -> Orange500F
+                                        col == 0   -> Pink500F
+                                        else       -> Brown900F
                                     },
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -623,64 +635,88 @@ private fun Step3Content(
     memo: String, onMemoChange: (String) -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
         QuestionText("요청 내용이\n무엇인가요?")
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(Modifier.height(28.dp))
 
-        // 제목
         RequiredFieldLabel("제목")
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("예: 정왕동 실외견 이동 부탁드립니다.", color = Gray40, fontSize = 14.sp) },
+            placeholder = {
+                Text(
+                    text = "예: 정왕동 실외견 이동 부탁드립니다.",
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp,
+                    color = Brown400F
+                )
+            },
             singleLine = true,
-            colors = flowTextFieldColors(),
-            shape = RoundedCornerShape(10.dp)
+            colors = flowFieldColors(),
+            shape = RoundedCornerShape(16.dp)
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
-        // 목적지
         RequiredFieldLabel("목적지")
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = destination,
             onValueChange = onDestinationChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("예: 정왕 동물병원", color = Gray40, fontSize = 14.sp) },
-            leadingIcon = {
-                Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, tint = Gray40)
-            },
-            singleLine = true,
-            colors = flowTextFieldColors(),
-            shape = RoundedCornerShape(10.dp)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 메모
-        RequiredFieldLabel("메모")
-        Spacer(modifier = Modifier.height(6.dp))
-        OutlinedTextField(
-            value = memo,
-            onValueChange = onMemoChange,
-            modifier = Modifier.fillMaxWidth().height(160.dp),
-            placeholder = { Text("봉사자에게 전달할 내용을 입력하세요.", color = Gray40, fontSize = 14.sp) },
-            maxLines = Int.MAX_VALUE,
-            supportingText = {
+            placeholder = {
                 Text(
-                    text = "${memo.length}/500",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.End,
-                    fontSize = 12.sp,
-                    color = Gray40
+                    text = "예: 정왕 동물병원",
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp,
+                    color = Brown400F
                 )
             },
-            colors = flowTextFieldColors(),
-            shape = RoundedCornerShape(10.dp)
+            leadingIcon = {
+                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Orange500F)
+            },
+            singleLine = true,
+            colors = flowFieldColors(leadingAlwaysOrange = true),
+            shape = RoundedCornerShape(16.dp)
         )
+
+        Spacer(Modifier.height(20.dp))
+
+        RequiredFieldLabel("메모")
+        Spacer(Modifier.height(6.dp))
+        Box {
+            OutlinedTextField(
+                value = memo,
+                onValueChange = onMemoChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 120.dp),
+                placeholder = {
+                    Text(
+                        text = "봉사자에게 전달할 내용을 입력하세요.",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        color = Brown400F
+                    )
+                },
+                maxLines = Int.MAX_VALUE,
+                colors = flowFieldColors(),
+                shape = RoundedCornerShape(16.dp)
+            )
+            Text(
+                text = "${memo.length} / 500",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 16.sp,
+                color = Brown400F,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 12.dp)
+            )
+        }
     }
 }
 
@@ -689,20 +725,23 @@ private fun RequiredFieldLabel(text: String) {
     Text(
         text = buildAnnotatedString {
             append(text)
-            withStyle(SpanStyle(color = Orange40)) { append(" *") }
+            withStyle(SpanStyle(color = Orange500F, fontFamily = PretendardFamily)) { append(" *") }
         },
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Medium,
-        color = Gray10
+        fontFamily = PretendardFamily,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        lineHeight = 16.sp,
+        color = Brown700F
     )
 }
 
 @Composable
-private fun flowTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Orange40,
-    unfocusedBorderColor = Gray80,
-    focusedLeadingIconColor = Orange40,
-    cursorColor = Orange40,
+private fun flowFieldColors(leadingAlwaysOrange: Boolean = false) = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Orange500F,
+    unfocusedBorderColor = BrownBorderF,
+    focusedLeadingIconColor = Orange500F,
+    unfocusedLeadingIconColor = if (leadingAlwaysOrange) Orange500F else BrownBorderF,
+    cursorColor = Orange500F,
 )
 
 // ─── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
@@ -711,16 +750,24 @@ private fun flowTextFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun QuestionText(text: String) {
     Text(
         text = text,
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Bold,
-        color = Gray10,
-        lineHeight = 32.sp
+        fontFamily = PretendardFamily,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.ExtraBold,
+        lineHeight = 33.sp,
+        color = TextBlack,
     )
 }
 
 @Composable
 private fun SubText(text: String) {
-    Text(text = text, fontSize = 14.sp, color = Gray40)
+    Text(
+        text = text,
+        fontFamily = PretendardFamily,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Normal,
+        lineHeight = 20.sp,
+        color = Brown700F
+    )
 }
 
 @Composable
@@ -729,38 +776,39 @@ private fun FlowBottomButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Brown40)
-                .clickable { onClick() }
-                .padding(vertical = 16.dp),
+                .height(56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Brown700F)
+                .clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
-            Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                text = text,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = Color.White
+            )
         }
     }
 }
 
 // ─── 점선 테두리 Modifier ──────────────────────────────────────────────────────
 
-private fun Modifier.dashedBorder(
-    color: Color,
-    cornerRadius: Dp = 12.dp,
-    strokeWidth: Dp = 1.5.dp,
-): Modifier = this.drawBehind {
-    drawRoundRect(
-        color = color,
-        cornerRadius = CornerRadius(cornerRadius.toPx()),
-        style = Stroke(
-            width = strokeWidth.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, strokeWidth: Dp = 1.5.dp): Modifier =
+    this.drawBehind {
+        drawRoundRect(
+            color = color,
+            cornerRadius = CornerRadius(cornerRadius.toPx()),
+            style = Stroke(width = strokeWidth.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
         )
-    )
-}
+    }
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,6 @@ package com.example.siheunggagae.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
     // Primary — Brown
@@ -39,10 +38,9 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun SiheungGagaeTheme(content: @Composable () -> Unit) {
-    val assets = LocalContext.current.assets
     MaterialTheme(
         colorScheme = LightColorScheme,
-        typography  = appTypography(assets),
-        content     = content
+        typography  = AppTypography,
+        content     = content,
     )
 }

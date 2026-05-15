@@ -1,7 +1,6 @@
 package com.example.siheunggagae
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -22,10 +21,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -54,20 +53,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.siheunggagae.ui.theme.Brown40
-import com.example.siheunggagae.ui.theme.Gray10
-import com.example.siheunggagae.ui.theme.Gray40
-import com.example.siheunggagae.ui.theme.Gray80
-import com.example.siheunggagae.ui.theme.Gray90
-import com.example.siheunggagae.ui.theme.MapDeep
-import com.example.siheunggagae.ui.theme.MapMint
-import com.example.siheunggagae.ui.theme.MapSky
-import com.example.siheunggagae.ui.theme.Pink60
-import com.example.siheunggagae.ui.theme.Pink90
+import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+
+// 스펙 컬러
+private val Brown900Mp   = Color(0xFF614B3A)
+private val Brown700Mp   = Color(0xFF8A6E58)
+private val Brown400Mp   = Color(0xFFC4A882)
+private val BrownBorderP = Color(0xFFE8D3C2)
+private val Orange500Mp  = Color(0xFFF7A35B)
+private val Pink500Mp    = Color(0xFFF04268)
+private val TextBlack    = Color(0xFF1E120A)
+private val StarYellow   = Color(0xFFFDC700)
+private val MintLight    = Color(0xFFD0FEE1)
 
 // ─── 데이터 ────────────────────────────────────────────────────────────────────
 
@@ -77,14 +77,15 @@ private data class MapPlace(
     val category: String,
     val distance: String,
     val rating: Float,
+    val isFavorite: Boolean = false,
 )
 
-private val mapCategories = listOf("전체", "카페", "공원", "병원", "미용")
+private val mapCategories = listOf("전체", "카페", "공원", "병원")
 
 private val sampleMapPlaces = listOf(
-    MapPlace(1, "댕댕 카페", "카페", "0.3km", 4.8f),
+    MapPlace(1, "댕댕 카페",    "카페", "0.3km", 4.8f, isFavorite = true),
     MapPlace(2, "행복 동물병원", "병원", "0.7km", 4.5f),
-    MapPlace(3, "정왕 공원", "공원", "1.0km", 4.6f),
+    MapPlace(3, "정왕 공원",    "공원", "1.0km", 4.6f),
     MapPlace(4, "강아지 미용실", "미용", "1.2km", 4.3f),
     MapPlace(5, "시흥 펫 카페", "카페", "1.5km", 4.7f),
 )
@@ -95,6 +96,7 @@ private val sampleMapPlaces = listOf(
 @Composable
 fun MapScreen(onNavigate: (String) -> Unit = {}) {
     var selectedCategory by remember { mutableStateOf("전체") }
+    var showFilterSheet  by remember { mutableStateOf(false) }
 
     val sheetState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
@@ -110,11 +112,11 @@ fun MapScreen(onNavigate: (String) -> Unit = {}) {
         BottomSheetScaffold(
             modifier = Modifier.padding(navPadding),
             scaffoldState = sheetState,
-            sheetPeekHeight = 260.dp,
+            sheetPeekHeight = 280.dp,
             sheetContainerColor = Color.White,
             sheetTonalElevation = 0.dp,
             sheetShadowElevation = 8.dp,
-            sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { MapDragHandle() },
             sheetContent = { MapBottomSheetContent() },
             containerColor = Color.Transparent,
@@ -122,51 +124,54 @@ fun MapScreen(onNavigate: (String) -> Unit = {}) {
             MapContent(
                 selectedCategory = selectedCategory,
                 onCategorySelected = { selectedCategory = it },
+                onLayerClick = { showFilterSheet = true },
             )
         }
     }
+
+    if (showFilterSheet) {
+        MapFilterBottomSheet(
+            onDismiss = { showFilterSheet = false },
+            onApply   = { showFilterSheet = false },
+        )
+    }
 }
 
-// ─── 지도 영역 (placeholder + 오버레이) ─────────────────────────────────────────
+// ─── 지도 영역 ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapContent(selectedCategory: String, onCategorySelected: (String) -> Unit) {
+private fun MapContent(
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+    onLayerClick: () -> Unit = {},
+) {
     Box(modifier = Modifier.fillMaxSize()) {
-
-        // 지도 placeholder (민트/하늘 그라디언트)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.linearGradient(listOf(MapSky, MapMint, MapDeep, MapSky))
+                    Brush.linearGradient(
+                        listOf(MintLight, Color(0xFFE8FAF0), Color(0xFFF4FDFB), Color.White)
+                    )
                 )
         )
 
-        // 핑크 위치 핀 4개
-        PinkLocationPin(x = 90.dp,  y = 95.dp,  size = 30.dp)
-        PinkLocationPin(x = 215.dp, y = 65.dp,  size = 26.dp)
-        PinkLocationPin(x = 300.dp, y = 185.dp, size = 28.dp)
-        PinkLocationPin(x = 155.dp, y = 240.dp, size = 24.dp)
+        Icon(Icons.Default.LocationOn, null, tint = Pink500Mp,
+            modifier = Modifier.offset(x = 90.dp, y = 95.dp).size(30.dp))
+        Icon(Icons.Default.LocationOn, null, tint = Pink500Mp,
+            modifier = Modifier.offset(x = 215.dp, y = 65.dp).size(26.dp))
+        Icon(Icons.Default.LocationOn, null, tint = Orange500Mp,
+            modifier = Modifier.offset(x = 155.dp, y = 200.dp).size(28.dp))
 
-        // 파란 원형 dot (내 위치)
         Box(
             modifier = Modifier
                 .offset(x = 185.dp, y = 170.dp)
-                .size(18.dp)
+                .size(16.dp)
                 .shadow(4.dp, CircleShape)
                 .clip(CircleShape)
-                .background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2563EB))
-            )
-        }
+                .background(Color(0xFF2563EB))
+        )
 
-        // 상단 오버레이: 검색창 + 카테고리 칩
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -174,66 +179,54 @@ private fun MapContent(selectedCategory: String, onCategorySelected: (String) ->
                 .padding(top = 16.dp, start = 16.dp, end = 16.dp),
         ) {
             MapSearchCard()
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             MapCategoryChipRow(selected = selectedCategory, onSelect = onCategorySelected)
         }
 
-        // 우측 세로 FAB 버튼 3개
         Column(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .padding(end = 12.dp, bottom = 80.dp),
+                .padding(end = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             MapIconFab(icon = Icons.Default.MyLocation, contentDescription = "내 위치")
-            MapIconFab(icon = Icons.Default.Layers, contentDescription = "레이어")
-            MapIconFab(icon = Icons.Default.Refresh, contentDescription = "새로고침")
+            MapIconFab(icon = Icons.Default.Layers,     contentDescription = "레이어",  onClick = onLayerClick)
+            MapIconFab(icon = Icons.Default.Refresh,    contentDescription = "새로고침")
         }
     }
 }
 
-// 핑크 핀
-@Composable
-private fun PinkLocationPin(x: Dp, y: Dp, size: Dp) {
-    Icon(
-        imageVector = Icons.Default.LocationOn,
-        contentDescription = null,
-        tint = Pink60,
-        modifier = Modifier
-            .offset(x = x, y = y)
-            .size(size)
-    )
-}
-
-// 검색창 카드
 @Composable
 private fun MapSearchCard() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
+            .height(48.dp)
+            .shadow(4.dp, RoundedCornerShape(50.dp))
+            .clip(RoundedCornerShape(50.dp))
             .background(Color.White)
             .clickable { }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = null,
-            tint = Gray40,
+            tint = Brown400Mp,
             modifier = Modifier.size(20.dp)
         )
         Text(
             text = "매장 · 병원 · 공원 검색",
-            fontSize = 14.sp,
-            color = Gray40,
+            fontFamily = PretendardFamily,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 20.sp,
+            color = Brown400Mp,
         )
     }
 }
 
-// 카테고리 칩 Row
 @Composable
 private fun MapCategoryChipRow(selected: String, onSelect: (String) -> Unit) {
     Row(
@@ -246,39 +239,40 @@ private fun MapCategoryChipRow(selected: String, onSelect: (String) -> Unit) {
             val isSelected = category == selected
             Box(
                 modifier = Modifier
-                    .shadow(2.dp, RoundedCornerShape(50))
-                    .clip(RoundedCornerShape(50))
-                    .background(if (isSelected) Gray10 else Color.White)
+                    .shadow(2.dp, RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(if (isSelected) Color(0xFF1A1A1A) else Color.White)
                     .clickable { onSelect(category) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = category,
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else Gray10
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 20.sp,
+                    color = if (isSelected) Color.White else Brown700Mp
                 )
             }
         }
     }
 }
 
-// 우측 FAB 버튼
 @Composable
-private fun MapIconFab(icon: ImageVector, contentDescription: String) {
+private fun MapIconFab(icon: ImageVector, contentDescription: String, onClick: () -> Unit = {}) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(44.dp)
-            .shadow(4.dp, CircleShape)
-            .clip(CircleShape)
+            .size(40.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { }
+            .clickable { onClick() }
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Gray40,
+            tint = Brown700Mp,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -296,10 +290,10 @@ private fun MapDragHandle() {
     ) {
         Box(
             modifier = Modifier
-                .width(40.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Gray80)
+                .width(48.dp)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color(0xFFE8E8E8))
         )
     }
 }
@@ -309,42 +303,42 @@ private fun MapDragHandle() {
 @Composable
 private fun MapBottomSheetContent() {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 헤더
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "주변 매장 24곳",
-                fontSize = 16.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Gray10
+                lineHeight = 24.sp,
+                color = TextBlack
             )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .border(1.dp, Gray80, RoundedCornerShape(6.dp))
-                    .clickable { }
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Text(text = "↕ 거리순", fontSize = 13.sp, color = Gray40)
-            }
+            Text(
+                text = "↕ 거리순",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 17.sp,
+                color = Brown700Mp,
+                modifier = Modifier.clickable { }
+            )
         }
-        HorizontalDivider(color = Gray90)
+        HorizontalDivider(color = Color(0xFFF3F4F6))
 
-        // 장소 리스트
         LazyColumn {
             items(sampleMapPlaces, key = { it.id }) { place ->
                 MapPlaceItem(place = place)
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 20.dp),
-                    color = Gray90
+                    color = Color(0xFFF3F4F6)
                 )
             }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+            item { Spacer(Modifier.height(16.dp)) }
         }
     }
 }
@@ -355,63 +349,74 @@ private fun MapPlaceItem(place: MapPlace) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { }
-            .padding(horizontal = 20.dp, vertical = 13.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 번호 circle (핑크)
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(32.dp)
+                .size(40.dp)
                 .clip(CircleShape)
-                .background(Pink90)
+                .background(if (place.id == 1) Pink500Mp else Brown900Mp)
         ) {
             Text(
                 text = "${place.id}",
-                fontSize = 13.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFE91E63)
+                lineHeight = 24.sp,
+                color = Color.White
             )
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // 텍스트
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = place.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Gray10
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(text = "${place.category} · ${place.distance}", fontSize = 12.sp, color = Gray40)
-                Text(text = "·", fontSize = 12.sp, color = Gray40)
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFFFBBF24),
-                    modifier = Modifier.size(12.dp)
+                Text(
+                    text = "${place.category} · ${place.distance}",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700Mp
                 )
-                Text(text = "${place.rating}", fontSize = 12.sp, color = Gray40)
+                Text(
+                    text = "·",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Brown700Mp
+                )
+                Icon(Icons.Default.Star, null, tint = StarYellow, modifier = Modifier.size(12.dp))
+                Text(
+                    text = "${place.rating}",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700Mp
+                )
             }
         }
-
-        // 즐겨찾기
         IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = Icons.Default.FavoriteBorder,
+                imageVector = if (place.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = "즐겨찾기",
-                tint = Gray80,
+                tint = if (place.isFavorite) Pink500Mp else BrownBorderP,
                 modifier = Modifier.size(20.dp)
             )
         }
     }
 }
-
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 

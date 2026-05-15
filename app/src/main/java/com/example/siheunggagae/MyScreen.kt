@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,14 +20,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,29 +38,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.siheunggagae.ui.theme.Brown40
-import com.example.siheunggagae.ui.theme.Gray10
-import com.example.siheunggagae.ui.theme.Gray40
-import com.example.siheunggagae.ui.theme.Gray80
-import com.example.siheunggagae.ui.theme.Gray90
-import com.example.siheunggagae.ui.theme.Gray95
-import com.example.siheunggagae.ui.theme.Orange40
-import com.example.siheunggagae.ui.theme.Pink90
+import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
-import com.example.siheunggagae.ui.theme.WalkGood
+
+// 스펙 컬러
+private val Brown900My   = Color(0xFF614B3A)
+private val Brown700My   = Color(0xFF8A6E58)
+private val Brown400My   = Color(0xFFC4A882)
+private val BrownBorderY = Color(0xFFE8D3C2)
+private val Orange500My  = Color(0xFFF7A35B)
+private val Pink500My    = Color(0xFFF04268)
+private val Green500My   = Color(0xFF00A63E)
+private val PinkSurface  = Color(0xFFFEE7EC)
+private val Background9  = Color(0xFFFEFEFE)
+private val Divider9     = Color(0xFFE8E8E8)
+private val TextBlack    = Color(0xFF1E120A)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun MyScreen(onNavigate: (String) -> Unit = {}) {
+fun MyScreen(
+    onNavigate: (String) -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onPetListClick: () -> Unit = {},
+    onVolunteerApplyClick: () -> Unit = {},
+) {
     Scaffold(
-        topBar = { MyTopBar() },
+        topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.My.route, onNavigate = onNavigate) },
-        containerColor = Gray95,
+        containerColor = Background9,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -69,18 +82,26 @@ fun MyScreen(onNavigate: (String) -> Unit = {}) {
             Spacer(Modifier.height(12.dp))
             ProfileCard()
             Spacer(Modifier.height(12.dp))
-            MyPetSection()
+            MyPetSection(onPetListClick = onPetListClick)
             Spacer(Modifier.height(12.dp))
+            MySectionLabel("활동")
+            Spacer(Modifier.height(6.dp))
             ActivityStatsRow()
             Spacer(Modifier.height(12.dp))
+            MySectionLabel("봉사 뱃지", fontSize = 18)
+            Spacer(Modifier.height(6.dp))
             VolunteerBadgeCard()
             Spacer(Modifier.height(12.dp))
+            MySectionLabel("내 기록")
+            Spacer(Modifier.height(6.dp))
             MyRecordsSection()
             Spacer(Modifier.height(12.dp))
-            SettingsSection()
-            Spacer(Modifier.height(20.dp))
+            MySectionLabel("설정")
+            Spacer(Modifier.height(6.dp))
+            SettingsSection(onVolunteerApplyClick = onVolunteerApplyClick)
+            Spacer(Modifier.height(16.dp))
             LogoutButton()
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -88,33 +109,41 @@ fun MyScreen(onNavigate: (String) -> Unit = {}) {
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyTopBar() {
+private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "마이",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gray10,
+            fontFamily = PretendardFamily,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 32.sp,
+            color = TextBlack,
         )
-        IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clickable { onSettingsClick() }
+        ) {
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "설정",
-                tint = Gray40,
+                tint = Brown700My,
                 modifier = Modifier.size(22.dp),
             )
         }
     }
 }
 
-// ─── 프로필 카드 ───────────────────────────────────────────────────────────────
+// ─── 프로필 Card ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun ProfileCard() {
@@ -123,16 +152,15 @@ private fun ProfileCard() {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Pink90)
+            .background(PinkSurface)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // 원형 프로필 placeholder
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(62.dp)
+                .size(56.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFD4A574)),
         ) {
@@ -140,94 +168,121 @@ private fun ProfileCard() {
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = null,
                 tint = Color.White,
-                modifier = Modifier.size(42.dp),
+                modifier = Modifier.size(36.dp),
             )
         }
-
-        // 닉네임 + 위치
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "댕댕이주인",
-                fontSize = 17.sp,
+                fontFamily = PretendardFamily,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Gray10,
+                lineHeight = 28.sp,
+                color = TextBlack
             )
-            Spacer(Modifier.height(5.dp))
+            Spacer(Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = Gray40,
-                    modifier = Modifier.size(14.dp),
+                Icon(Icons.Default.LocationOn, null, tint = Brown700My, modifier = Modifier.size(14.dp))
+                Text(
+                    text = "정왕동",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700My
                 )
-                Text(text = "정왕동", fontSize = 13.sp, color = Gray40)
             }
         }
-
-        // 편집 아웃라인 버튼
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
-                .border(1.dp, Brown40, RoundedCornerShape(50.dp))
+                .background(Color(0xFFFEFEFE))
                 .clickable { }
-                .padding(horizontal = 14.dp, vertical = 7.dp),
+                .padding(horizontal = 13.dp, vertical = 6.dp),
         ) {
-            Text(text = "편집", fontSize = 13.sp, color = Brown40, fontWeight = FontWeight.Medium)
+            Text(
+                text = "편집",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 16.sp,
+                color = Brown700My,
+            )
         }
     }
 }
 
-// ─── 내 반려동물 섹션 ──────────────────────────────────────────────────────────
+// ─── 내 반려동물 ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyPetSection() {
+private fun MyPetSection(onPetListClick: () -> Unit = {}) {
     SectionCard {
-        Text(
-            text = "내 반려동물",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gray10,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-        )
-        HorizontalDivider(color = Gray90)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { }
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFFFF3E0)),
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "내 반려동물",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 16.sp,
+                color = Brown700My,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Default.Pets,
-                    contentDescription = null,
-                    tint = Orange40,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = "파댕이", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Gray10)
-                Spacer(Modifier.height(2.dp))
-                Text(text = "강아지 · 3살 · 수컷", fontSize = 13.sp, color = Gray40)
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Gray90)
-                    .clickable { }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(text = "전체 보기", fontSize = 12.sp, color = Gray40)
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFFF3E0)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = null,
+                        tint = Orange500My,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "파댕이",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        color = TextBlack
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = "강아지 · 3살 · 수컷",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = Brown700My
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Divider9)
+                        .clickable { onPetListClick() }
+                        .padding(horizontal = 14.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = "전체 보기",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 16.sp,
+                        color = Brown700My
+                    )
+                }
             }
         }
     }
@@ -241,31 +296,45 @@ private fun ActivityStatsRow() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        StatCard(label = "내 요청", value = "3", valueColor = Color(0xFFE84B6A), modifier = Modifier.weight(1f))
-        StatCard(label = "봉사 참여", value = "2", valueColor = WalkGood, modifier = Modifier.weight(1f))
-        StatCard(label = "즐겨찾기", value = "5", valueColor = Orange40, modifier = Modifier.weight(1f))
+        StatCard("내 요청",  "3", Pink500My,    Modifier.weight(1f))
+        StatCard("봉사 참여", "2", Green500My,   Modifier.weight(1f))
+        StatCard("즐겨찾기", "5", Orange500My,  Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier = Modifier) {
+private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .clickable { }
             .padding(vertical = 16.dp),
     ) {
-        Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(
+            text = value,
+            fontFamily = PretendardFamily,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 36.sp,
+            color = valueColor
+        )
         Spacer(Modifier.height(4.dp))
-        Text(text = label, fontSize = 12.sp, color = Gray40)
+        Text(
+            text = label,
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 16.sp,
+            color = Brown700My
+        )
     }
 }
 
-// ─── 봉사 뱃지 카드 ────────────────────────────────────────────────────────────
+// ─── 봉사 뱃지 Card ────────────────────────────────────────────────────────────
 
 private data class BadgeInfo(
     val emoji: String,
@@ -276,43 +345,40 @@ private data class BadgeInfo(
 )
 
 private val myBadges = listOf(
-    BadgeInfo("🌱", "새싹", "달성", true, Color(0xFFDCFCE7)),
-    BadgeInfo("🌸", "꽃", "3건 필요", false, Color(0xFFFEF3E2)),
-    BadgeInfo("🍎", "열매", "8건 필요", false, Color(0xFFFFF0F3)),
-    BadgeInfo("🌳", "나무", "15건 필요", false, Color(0xFFF3F4F6)),
+    BadgeInfo("", "새싹", "달성",     true,  Green500My),
+    BadgeInfo("", "꽃",  "3건 필요",  false, Color(0xFFF7A35B)),
+    BadgeInfo("", "열매", "8건 필요", false, Color(0xFFF04268)),
+    BadgeInfo("", "나무", "15건 필요", false, Color(0xFF8A6E58)),
 )
 
 @Composable
 private fun VolunteerBadgeCard() {
     SectionCard {
-        Text(
-            text = "봉사 뱃지",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gray10,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-        )
-        HorizontalDivider(color = Gray90)
-
         Column(modifier = Modifier.padding(16.dp)) {
-            // 봉사 등급 + 전체 보기
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "🌱 봉사 등급", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Gray10)
+                Text(
+                    text = "봉사 등급",
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp,
+                    color = TextBlack,
+                )
                 Text(
                     text = "전체 보기 >",
-                    fontSize = 13.sp,
-                    color = Gray40,
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 16.sp,
+                    color = Brown700My,
                     modifier = Modifier.clickable { },
                 )
             }
-
             Spacer(Modifier.height(12.dp))
-
-            // 현재 등급 + 목표
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -320,30 +386,33 @@ private fun VolunteerBadgeCard() {
             ) {
                 Text(
                     text = "새싹 등급 · 누적 2건",
-                    fontSize = 13.sp,
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Gray10,
+                    lineHeight = 16.sp,
+                    color = Brown700My
                 )
-                Text(text = "꽃까지 3건", fontSize = 12.sp, color = Orange40)
+                Text(
+                    text = "꽃까지 3건",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 16.sp,
+                    color = Brown700My
+                )
             }
-
             Spacer(Modifier.height(8.dp))
-
-            // 진행 바 (2건 / 5건 = 0.4)
             LinearProgressIndicator(
-                progress = { 0.4f },
+                progress = { 2f / 5f },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = Orange40,
-                trackColor = Color(0xFFF3F4F6),
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                color = Orange500My,
+                trackColor = Color(0xFFE5E7EB),
                 strokeCap = StrokeCap.Round,
             )
-
-            Spacer(Modifier.height(18.dp))
-
-            // 뱃지 4개
+            Spacer(Modifier.height(20.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -363,73 +432,53 @@ private fun BadgeItem(badge: BadgeInfo, modifier: Modifier = Modifier) {
         modifier = modifier,
     ) {
         Box(
-            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(badge.bgColor),
-        ) {
-            Text(text = badge.emoji, fontSize = 22.sp)
-        }
+        )
         Spacer(Modifier.height(6.dp))
         Text(
             text = badge.label,
+            fontFamily = PretendardFamily,
             fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (badge.achieved) Gray10 else Gray40,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 16.sp,
+            color = TextBlack,
         )
         Text(
             text = badge.subLabel,
-            fontSize = 10.sp,
-            color = if (badge.achieved) WalkGood else Gray80,
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = 16.sp,
+            color = if (badge.achieved) Green500My else Brown700My,
         )
     }
 }
 
-// ─── 내 기록 섹션 ──────────────────────────────────────────────────────────────
+// ─── 내 기록 ───────────────────────────────────────────────────────────────────
 
 @Composable
 private fun MyRecordsSection() {
     SectionCard {
-        SimpleListItem(title = "봉사 활동 이력", showDivider = true)
-        SimpleListItem(title = "즐겨찾기 매장", showDivider = false)
-    }
-}
-
-// ─── 설정 섹션 ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SettingsSection() {
-    SectionCard {
-        SettingsItem(title = "알림 설정")
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Gray90)
-        SettingsItem(title = "지역 설정", subtitle = "정왕동")
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Gray90)
-        SettingsItem(title = "개인정보 및 보안")
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Gray90)
-        SettingsItem(title = "앱 정보", subtitle = "v3.0.0")
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Gray90)
-        SettingsItem(title = "봉사자 자격 신청", titleColor = WalkGood)
-    }
-}
-
-// ─── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun SectionCard(content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White),
-    ) {
-        content()
+        RecordItem(
+            icon = Icons.Default.VolunteerActivism,
+            iconTint = Green500My,
+            title = "봉사 활동 이력",
+            showDivider = true,
+        )
+        RecordItem(
+            icon = Icons.Default.Favorite,
+            iconTint = Pink500My,
+            title = "즐겨찾기 매장",
+            showDivider = false,
+        )
     }
 }
 
 @Composable
-private fun SimpleListItem(title: String, showDivider: Boolean) {
+private fun RecordItem(icon: ImageVector, iconTint: Color, title: String, showDivider: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -438,43 +487,87 @@ private fun SimpleListItem(title: String, showDivider: Boolean) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = title, fontSize = 14.sp, color = Gray10)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Text(
+                text = title,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 24.sp,
+                color = TextBlack
+            )
+        }
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = Gray80,
-            modifier = Modifier.size(18.dp),
+            tint = Brown400My,
+            modifier = Modifier.size(20.dp),
         )
     }
-    if (showDivider) HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Gray90)
+    if (showDivider) HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
+}
+
+// ─── 설정 섹션 ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun SettingsSection(onVolunteerApplyClick: () -> Unit = {}) {
+    SectionCard {
+        SettingsItem(title = "알림 설정")
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
+        SettingsItem(title = "지역 설정", subtitle = "정왕동")
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
+        SettingsItem(title = "개인정보 및 보안")
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
+        SettingsItem(title = "앱 정보", subtitle = "v3.0.0")
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
+        SettingsItem(title = "봉사자 자격 신청", titleColor = Green500My, onClick = onVolunteerApplyClick)
+    }
 }
 
 @Composable
 private fun SettingsItem(
     title: String,
     subtitle: String? = null,
-    titleColor: Color = Gray10,
+    titleColor: Color = TextBlack,
+    onClick: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text(text = title, fontSize = 14.sp, color = titleColor)
+            Text(
+                text = title,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 24.sp,
+                color = titleColor
+            )
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
-                Text(text = subtitle, fontSize = 12.sp, color = Gray40)
+                Text(
+                    text = subtitle,
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    color = Orange500My
+                )
             }
         }
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = Gray80,
-            modifier = Modifier.size(18.dp),
+            tint = Brown400My,
+            modifier = Modifier.size(20.dp),
         )
     }
 }
@@ -488,15 +581,52 @@ private fun LogoutButton() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(50.dp))
-            .border(1.dp, Gray80, RoundedCornerShape(50.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, Brown700My, RoundedCornerShape(12.dp))
+            .background(Color.White)
             .clickable { }
-            .padding(vertical = 14.dp),
+            .padding(vertical = 16.dp),
     ) {
-        Text(text = "로그아웃", fontSize = 15.sp, color = Gray40, fontWeight = FontWeight.Medium)
+        Text(
+            text = "로그아웃",
+            fontFamily = PretendardFamily,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 24.sp,
+            color = Brown700My
+        )
     }
 }
 
+// ─── 공통: 섹션 라벨 ───────────────────────────────────────────────────────────
+
+@Composable
+private fun MySectionLabel(label: String, fontSize: Int = 12) {
+    Text(
+        text = label,
+        fontFamily = PretendardFamily,
+        fontSize = fontSize.sp,
+        fontWeight = if (fontSize == 12) FontWeight.Bold else FontWeight.Bold,
+        lineHeight = if (fontSize == 12) 16.sp else 27.sp,
+        color = if (fontSize == 12) Brown700My else TextBlack,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
+}
+
+// ─── 공통: 섹션 카드 래퍼 ─────────────────────────────────────────────────────
+
+@Composable
+private fun SectionCard(content: @Composable () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White),
+    ) {
+        content()
+    }
+}
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 
