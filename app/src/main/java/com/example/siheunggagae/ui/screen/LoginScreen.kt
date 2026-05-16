@@ -1,5 +1,10 @@
-package com.example.siheunggagae
+﻿package com.example.siheunggagae.ui.screen
 
+import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.viewmodel.AuthUiState
+import com.example.siheunggagae.ui.viewmodel.AuthViewModel
+
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,22 +21,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,47 +53,58 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
 // ─── 컬러 ──────────────────────────────────────────────────────────────────────
 
-private val BackgroundReg   = Color(0xFFFEFEFE)
-private val TextBlackReg    = Color(0xFF1E120A)
-private val Brown700Reg     = Color(0xFF8A6E58)
-private val BorderBeigeReg  = Color(0xFFE8D3C2)
-private val PlaceholderReg  = Color(0xFFC1AEA0)
-private val Orange500Reg    = Color(0xFFF7A35B)
-private val Pink500Reg      = Color(0xFFF04268)
-private val Green600Reg     = Color(0xFF00A63E)
-private val Gray300Reg      = Color(0xFFE8E8E8)
+private val BackgroundLogin  = Color(0xFFFEFEFE)
+private val TextBlackLogin   = Color(0xFF1E120A)
+private val Brown700Login    = Color(0xFF8A6E58)
+private val BorderBeigeLogin = Color(0xFFE8D3C2)
+private val PlaceholderLogin = Color(0xFFC1AEA0)
+private val Orange500Login   = Color(0xFFF7A35B)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun RegisterScreen(
+fun LoginScreen(
+    viewModel: AuthViewModel? = null,
     onBack: () -> Unit = {},
-    onSignUpClick: () -> Unit = {},
-    onNavigateToLogin: () -> Unit = {},
+    onLogin: () -> Unit = {},
+    onNavigateToRegister: () -> Unit = {},
 ) {
-    var email by remember { mutableStateOf("") }
-    var nickname by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var passwordConfirm by remember { mutableStateOf("") }
-    var passwordConfirmVisible by remember { mutableStateOf(false) }
-    var city by remember { mutableStateOf("") }
-    var dong by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val uiState by remember(viewModel) {
+        viewModel?.uiState ?: MutableStateFlow(AuthUiState.Idle)
+    }.collectAsState()
 
-    val hasMinLength = password.length >= 8
-    val hasLetter    = password.any { it.isLetter() }
-    val hasDigit     = password.any { it.isDigit() }
-    val hasSpecial   = password.any { !it.isLetterOrDigit() }
-    val passwordsMatch = password == passwordConfirm
+    val isLoading = uiState is AuthUiState.Loading
+    val errorMessage = (uiState as? AuthUiState.Error)?.message
+
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is AuthUiState.Success -> {
+                viewModel?.resetState()
+                onLogin()
+            }
+            is AuthUiState.RateLimited -> {
+                Toast.makeText(context, "잠시 후 다시 시도해주세요", Toast.LENGTH_SHORT).show()
+                viewModel?.resetState()
+            }
+            else -> {}
+        }
+    }
+
+    var emailInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = BackgroundReg,
-        topBar = { RegisterTopBar(onBack = onBack) },
+        containerColor = BackgroundLogin,
+        topBar = { LoginTopBar(onBack = onBack) },
         bottomBar = {
             Column(
                 modifier = Modifier
@@ -103,39 +120,50 @@ fun RegisterScreen(
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Orange500Reg)
-                        .clickable { onSignUpClick() },
+                        .background(if (isLoading) Orange500Login.copy(alpha = 0.6f) else Orange500Login)
+                        .then(
+                            if (!isLoading) Modifier.clickable {
+                                viewModel?.login(emailInput, passwordInput)
+                            } else Modifier
+                        ),
                 ) {
-                    Text(
-                        text = "회원가입하기",
-                        fontFamily = PretendardFamily,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 28.sp,
-                        color = Color.White,
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    } else {
+                        Text(
+                            text = "로그인",
+                            fontFamily = PretendardFamily,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 28.sp,
+                            color = Color.White,
+                        )
+                    }
                 }
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = "이미 계정이 있으신가요?  ",
+                        text = "계정이 없으신가요?  ",
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         lineHeight = 20.sp,
-                        color = Brown700Reg,
+                        color = Brown700Login,
                     )
                     Text(
-                        text = "로그인",
+                        text = "회원가입",
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 20.sp,
-                        color = Orange500Reg,
-                        modifier = Modifier.clickable { onNavigateToLogin() },
+                        color = Orange500Login,
+                        modifier = Modifier.clickable { onNavigateToRegister() },
                     )
                 }
             }
@@ -151,87 +179,58 @@ fun RegisterScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "시흥가개에\n오신 것을 환영해요!",
+                text = "반가워요!\n로그인을 진행해 주세요.",
                 fontFamily = PretendardFamily,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 42.sp,
-                color = TextBlackReg,
+                color = TextBlackLogin,
             )
 
             Spacer(Modifier.height(24.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                RegInputSection(label = "이메일") {
-                    RegTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        placeholder = "이메일 입력",
+                LoginInputSection(label = "아이디") {
+                    LoginTextField(
+                        value = emailInput,
+                        onValueChange = { emailInput = it },
+                        placeholder = "아이디 또는 이메일 입력",
                         keyboardType = KeyboardType.Email,
                     )
                 }
 
-                RegInputSection(label = "닉네임") {
-                    RegTextField(
-                        value = nickname,
-                        onValueChange = { nickname = it },
-                        placeholder = "닉네임 입력",
-                    )
-                }
-
-                RegInputSection(label = "비밀번호") {
+                LoginInputSection(label = "비밀번호") {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        RegPasswordTextField(
-                            value = password,
-                            onValueChange = { password = it },
+                        PasswordTextField(
+                            value = passwordInput,
+                            onValueChange = { passwordInput = it },
                             visible = passwordVisible,
                             onToggleVisibility = { passwordVisible = !passwordVisible },
-                            placeholder = "비밀번호 입력",
                         )
-                        PasswordValidationHints(
-                            hasMinLength = hasMinLength,
-                            hasLetter = hasLetter,
-                            hasDigit = hasDigit,
-                            hasSpecial = hasSpecial,
-                        )
-                    }
-                }
-
-                RegInputSection(label = "비밀번호 확인") {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        RegPasswordTextField(
-                            value = passwordConfirm,
-                            onValueChange = { passwordConfirm = it },
-                            visible = passwordConfirmVisible,
-                            onToggleVisibility = { passwordConfirmVisible = !passwordConfirmVisible },
-                            placeholder = "비밀번호 재입력",
-                        )
-                        if (passwordConfirm.isNotEmpty() && !passwordsMatch) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd,
+                        ) {
                             Text(
-                                text = "비밀번호가 일치하지 않아요.",
+                                text = "비밀번호를 잊으셨나요?",
+                                fontFamily = PretendardFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 20.sp,
+                                color = PlaceholderLogin,
+                            )
+                        }
+                        if (errorMessage != null) {
+                            Text(
+                                text = errorMessage,
                                 fontFamily = PretendardFamily,
                                 fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
                                 lineHeight = 18.sp,
-                                color = Pink500Reg,
+                                color = Color(0xFFF04268),
                             )
                         }
                     }
-                }
-
-                RegInputSection(label = "거주 시") {
-                    RegTextField(
-                        value = city,
-                        onValueChange = { city = it },
-                        placeholder = "예: 시흥시",
-                    )
-                }
-
-                RegInputSection(label = "거주 동") {
-                    RegTextField(
-                        value = dong,
-                        onValueChange = { dong = it },
-                        placeholder = "예: 정왕동",
-                    )
                 }
             }
 
@@ -243,7 +242,7 @@ fun RegisterScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun RegisterTopBar(onBack: () -> Unit) {
+private fun LoginTopBar(onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -264,17 +263,17 @@ private fun RegisterTopBar(onBack: () -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "뒤로",
-                tint = TextBlackReg,
+                tint = TextBlackLogin,
                 modifier = Modifier.size(22.dp),
             )
         }
         Text(
-            text = "회원가입",
+            text = "로그인",
             fontFamily = PretendardFamily,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
-            color = TextBlackReg,
+            color = TextBlackLogin,
             modifier = Modifier.align(Alignment.Center),
         )
     }
@@ -283,7 +282,7 @@ private fun RegisterTopBar(onBack: () -> Unit) {
 // ─── 입력 섹션 래퍼 ────────────────────────────────────────────────────────────
 
 @Composable
-private fun RegInputSection(label: String, content: @Composable () -> Unit) {
+private fun LoginInputSection(label: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = label,
@@ -291,7 +290,7 @@ private fun RegInputSection(label: String, content: @Composable () -> Unit) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 20.sp,
-            color = TextBlackReg,
+            color = TextBlackLogin,
         )
         content()
     }
@@ -300,7 +299,7 @@ private fun RegInputSection(label: String, content: @Composable () -> Unit) {
 // ─── 일반 텍스트 입력 ──────────────────────────────────────────────────────────
 
 @Composable
-private fun RegTextField(
+private fun LoginTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
@@ -315,12 +314,12 @@ private fun RegTextField(
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            color = TextBlackReg,
+            color = TextBlackLogin,
         ),
-        cursorBrush = SolidColor(Orange500Reg),
+        cursorBrush = SolidColor(Orange500Login),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BorderBeigeReg, RoundedCornerShape(16.dp))
+            .border(1.dp, BorderBeigeLogin, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         decorationBox = { inner ->
             if (value.isEmpty()) {
@@ -329,7 +328,7 @@ private fun RegTextField(
                     fontFamily = PretendardFamily,
                     fontSize = 16.sp,
                     lineHeight = 24.sp,
-                    color = PlaceholderReg,
+                    color = PlaceholderLogin,
                 )
             }
             inner()
@@ -340,17 +339,16 @@ private fun RegTextField(
 // ─── 비밀번호 입력 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun RegPasswordTextField(
+private fun PasswordTextField(
     value: String,
     onValueChange: (String) -> Unit,
     visible: Boolean,
     onToggleVisibility: () -> Unit,
-    placeholder: String = "비밀번호 입력",
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BorderBeigeReg, RoundedCornerShape(16.dp))
+            .border(1.dp, BorderBeigeLogin, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -365,18 +363,18 @@ private fun RegPasswordTextField(
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
-                color = TextBlackReg,
+                color = TextBlackLogin,
             ),
-            cursorBrush = SolidColor(Orange500Reg),
+            cursorBrush = SolidColor(Orange500Login),
             modifier = Modifier.weight(1f),
             decorationBox = { inner ->
                 if (value.isEmpty()) {
                     Text(
-                        text = placeholder,
+                        text = "비밀번호 입력",
                         fontFamily = PretendardFamily,
                         fontSize = 16.sp,
                         lineHeight = 24.sp,
-                        color = PlaceholderReg,
+                        color = PlaceholderLogin,
                     )
                 }
                 inner()
@@ -387,62 +385,10 @@ private fun RegPasswordTextField(
                 if (visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off,
             ),
             contentDescription = if (visible) "비밀번호 숨기기" else "비밀번호 표시",
-            tint = Brown700Reg,
+            tint = Brown700Login,
             modifier = Modifier
                 .size(22.dp)
                 .clickable { onToggleVisibility() },
-        )
-    }
-}
-
-// ─── 비밀번호 유효성 힌트 ──────────────────────────────────────────────────────
-
-@Composable
-private fun PasswordValidationHints(
-    hasMinLength: Boolean,
-    hasLetter: Boolean,
-    hasDigit: Boolean,
-    hasSpecial: Boolean,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        ValidationHint(met = hasMinLength, label = "8자 이상")
-        ValidationHint(met = hasLetter,    label = "영문 포함")
-        ValidationHint(met = hasDigit,     label = "숫자 포함")
-        ValidationHint(met = hasSpecial,   label = "특수문자")
-    }
-}
-
-@Composable
-private fun ValidationHint(met: Boolean, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(14.dp)
-                .clip(CircleShape)
-                .background(if (met) Green600Reg else Gray300Reg),
-        ) {
-            if (met) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(9.dp),
-                )
-            }
-        }
-        Text(
-            text = label,
-            fontFamily = PretendardFamily,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            color = if (met) Green600Reg else PlaceholderReg,
         )
     }
 }
@@ -451,6 +397,6 @@ private fun ValidationHint(met: Boolean, label: String) {
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun RegisterScreenPreview() {
-    SiheungGagaeTheme { RegisterScreen() }
+fun LoginScreenPreview() {
+    SiheungGagaeTheme { LoginScreen() }
 }

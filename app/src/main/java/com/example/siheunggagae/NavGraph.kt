@@ -22,7 +22,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.siheunggagae.data.repository.AuthRepository
+import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -41,6 +46,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.siheunggagae.ui.screen.ChatScreen
+import com.example.siheunggagae.ui.screen.HomeScreen
+import com.example.siheunggagae.ui.screen.LoginScreen
+import com.example.siheunggagae.ui.screen.MapScreen
+import com.example.siheunggagae.ui.screen.MatchingDetailScreen
+import com.example.siheunggagae.ui.screen.MatchingPublicDetailScreen
+import com.example.siheunggagae.ui.screen.MatchingScreen
+import com.example.siheunggagae.ui.screen.MyScreen
+import com.example.siheunggagae.ui.screen.NewsDetailScreen
+import com.example.siheunggagae.ui.screen.NewsScreen
+import com.example.siheunggagae.ui.screen.NotificationScreen
+import com.example.siheunggagae.ui.screen.PetAddScreen
+import com.example.siheunggagae.ui.screen.PetListScreen
+import com.example.siheunggagae.ui.screen.PlaceDetailScreen
+import com.example.siheunggagae.ui.screen.RequestFlowScreen
+import com.example.siheunggagae.ui.screen.SettingsScreen
+import com.example.siheunggagae.ui.screen.SignUpScreen
+import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.theme.Brown40
 import com.example.siheunggagae.ui.theme.Gray10
 import com.example.siheunggagae.ui.theme.Gray40
@@ -54,7 +77,7 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 sealed class Screen(val route: String) {
     object Splash       : Screen("splash")
     object Login        : Screen("login")
-    object Register     : Screen("register")
+    object SignUp       : Screen("signup")
     object Home         : Screen("home")
     object Notification : Screen("notification")
     object Matching     : Screen("matching")
@@ -176,13 +199,17 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         composable(Screen.Splash.route) {
             SplashScreen(
                 onLogin = { navController.navigate(Screen.Login.route) },
-                onSignup = { navController.navigate(Screen.Register.route) },
+                onSignup = { navController.navigate(Screen.SignUp.route) },
             )
         }
 
-        composable(Screen.Register.route) {
-            RegisterScreen(
-                onBack = { navController.popBackStack() },
+        composable(Screen.SignUp.route) {
+            SignUpScreen(
+                onBack = {
+                    navController.navigate(Screen.Splash.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onSignUpClick = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
@@ -190,22 +217,33 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 },
                 onNavigateToLogin = {
                     navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Register.route) { inclusive = true }
+                        popUpTo(Screen.SignUp.route) { inclusive = true }
                     }
                 },
             )
         }
 
         composable(Screen.Login.route) {
+            val context = LocalContext.current
+            val authRepository = remember {
+                AuthRepository((context.applicationContext as SiheungGagaeApp).tokenManager)
+            }
+            val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory(authRepository))
+
             LoginScreen(
-                onBack = { navController.popBackStack() },
+                viewModel = authViewModel,
+                onBack = {
+                    navController.navigate(Screen.Splash.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onLogin = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
-                    navController.navigate(Screen.Register.route) {
+                    navController.navigate(Screen.SignUp.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },

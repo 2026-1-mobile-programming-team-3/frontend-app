@@ -1,4 +1,6 @@
-package com.example.siheunggagae
+﻿package com.example.siheunggagae.ui.screen
+
+import com.example.siheunggagae.R
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

@@ -59,6 +59,15 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.compose.ui.text.google.fonts)
 
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+    implementation(libs.datastore.preferences)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.coroutines.android)
+
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)

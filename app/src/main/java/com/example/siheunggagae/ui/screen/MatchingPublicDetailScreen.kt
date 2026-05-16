@@ -1,4 +1,7 @@
-package com.example.siheunggagae
+﻿package com.example.siheunggagae.ui.screen
+
+import com.example.siheunggagae.R
+import com.example.siheunggagae.Screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,11 +13,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,23 +46,22 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
 // ── 스펙 컬러 (Figma 실측) ────────────────────────────────────────────────────
-private val Brown700D     = Color(0xFF8A6E58)
-private val Brown400D     = Color(0xFFC4A882)
-private val BrownBorderD  = Color(0xFFE8D3C2)
-private val Orange500D    = Color(0xFFF7A35B)
-private val Pink500D      = Color(0xFFF04268)
-private val MintLightD    = Color(0xFFD0FEE1)
-private val OrangeSandD   = Color(0xFFFFEDD4)
-private val PinkSurfaceD  = Color(0xFFFEE7EC)
-private val BackgroundD   = Color(0xFFFEFEFE)
-private val TagGrayD      = Color(0xFFF2F2F2)
-private val Gray300D      = Color(0xFFE8E8E8)
-private val TextBlackD    = Color(0xFF1E120A)
-private val Green600D     = Color(0xFF00A63E)
+private val Brown700P     = Color(0xFF8A6E58)
+private val Brown400P     = Color(0xFFC4A882)
+private val BrownBorderP  = Color(0xFFE8D3C2)
+private val Orange500P    = Color(0xFFF7A35B)
+private val Pink500P      = Color(0xFFF04268)
+private val MintLightP    = Color(0xFFD0FEE1)
+private val OrangeSandP   = Color(0xFFFFEDD4)
+private val PinkSurfaceP  = Color(0xFFFEE7EC)
+private val BackgroundP   = Color(0xFFFEFEFE)
+private val Gray300P      = Color(0xFFE8E8E8)
+private val TextBlackP    = Color(0xFF1E120A)
+private val Green600P     = Color(0xFF00A63E)
 
 // ── 데이터 ────────────────────────────────────────────────────────────────────
 
-data class MatchingRequestDetail(
+data class PublicRequestDetail(
     val id: Int,
     val title: String,
     val statusText: String,
@@ -72,17 +76,15 @@ data class MatchingRequestDetail(
     val distanceKm: Float,
 )
 
-data class VolunteerApplicant(
-    val id: Int,
+data class RequesterInfo(
     val name: String,
     val rating: Float,
-    val volunteerCount: Int,
+    val requestCount: Int,
     val distanceKm: Float,
-    val memo: String?,
     val avatarColor: Color,
 )
 
-private val sampleRequest = MatchingRequestDetail(
+private val samplePublicRequest = PublicRequestDetail(
     id = 1,
     title = "정왕동 실외견 병원 이동 부탁드립니다",
     statusText = "봉사자 모집 중 · 신청 2건",
@@ -97,38 +99,26 @@ private val sampleRequest = MatchingRequestDetail(
     distanceKm = 0.8f,
 )
 
-private val sampleApplicants = listOf(
-    VolunteerApplicant(
-        id = 1,
-        name = "봉사천사",
-        rating = 4.9f,
-        volunteerCount = 12,
-        distanceKm = 1.2f,
-        memo = "차량 있고 강아지 좋아해요. 오전 시간대 편합니다!",
-        avatarColor = MintLightD,
-    ),
-    VolunteerApplicant(
-        id = 2,
-        name = "댕댕러버",
-        rating = 4.7f,
-        volunteerCount = 5,
-        distanceKm = 2.3f,
-        memo = null,
-        avatarColor = OrangeSandD,
-    ),
+private val sampleRequester = RequesterInfo(
+    name = "정왕동주민",
+    rating = 4.9f,
+    requestCount = 6,
+    distanceKm = 1.2f,
+    avatarColor = MintLightP,
 )
 
 // ── 메인 화면 ──────────────────────────────────────────────────────────────────
 
 @Composable
-fun MatchingDetailScreen(
+fun MatchingPublicDetailScreen(
     requestId: Int = 0,
     onBack: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
 ) {
     Scaffold(
-        containerColor = BackgroundD,
-        topBar = { MatchingDetailTopBar(onBack = onBack) },
+        containerColor = BackgroundP,
+        topBar = { PublicDetailTopBar(onBack = onBack) },
+        bottomBar = { PublicDetailBottomBar(onApply = {}, onChat = { onNavigate(Screen.Chat.createRoute(samplePublicRequest.id)) }) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -136,7 +126,7 @@ fun MatchingDetailScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            // 상태 배너 + 요청 정보 Card
+            // 상태 배너 + 요청 정보 Card — pT=8 pB=8 pH=24 gap=16
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,11 +134,11 @@ fun MatchingDetailScreen(
                     .padding(top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                StatusBannerD(request = sampleRequest)
-                RequestInfoCardD(request = sampleRequest)
+                PublicStatusBanner(request = samplePublicRequest)
+                PublicRequestInfoCard(request = samplePublicRequest)
             }
 
-            // 경로 Row + 지도 Card
+            // 경로 Row + 지도 Card — pT=16 pB=16 pH=24 gap=12
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,22 +146,27 @@ fun MatchingDetailScreen(
                     .padding(top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                RouteRowD(request = sampleRequest)
-                MapCardD()
+                PublicRouteRow(request = samplePublicRequest)
+                PublicMapCard()
             }
 
-            // 신청한 봉사자 섹션
+            // 요청자 정보 섹션 — pT=8 pB=8 pH=24 gap=4
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
                     .padding(top = 8.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                VolunteerSectionHeaderD(count = sampleRequest.applicantCount)
-                sampleApplicants.forEach { applicant ->
-                    VolunteerCardD(applicant = applicant, onNavigate = onNavigate)
-                }
+                Text(
+                    text = "요청자 정보",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700P,
+                )
+                RequesterCard(requester = sampleRequester, onChat = { onNavigate(Screen.Chat.createRoute(samplePublicRequest.id)) })
             }
         }
     }
@@ -180,7 +175,7 @@ fun MatchingDetailScreen(
 // ── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MatchingDetailTopBar(onBack: () -> Unit) {
+private fun PublicDetailTopBar(onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -201,31 +196,31 @@ private fun MatchingDetailTopBar(onBack: () -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                 contentDescription = "뒤로",
-                tint = TextBlackD,
+                tint = TextBlackP,
                 modifier = Modifier.size(22.dp),
             )
         }
         Text(
-            text = "내 봉사 상세",
+            text = "이동 지원 요청",
             fontFamily = PretendardFamily,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
-            color = TextBlackD,
+            color = TextBlackP,
             modifier = Modifier.align(Alignment.Center),
         )
         Row(
             modifier = Modifier.align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TopBarIconD(iconRes = R.drawable.ic_more_vert, desc = "더보기")
-            TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
+            PublicTopBarIcon(iconRes = R.drawable.ic_bookmark, desc = "북마크")
+            PublicTopBarIcon(iconRes = R.drawable.ic_share, desc = "공유")
         }
     }
 }
 
 @Composable
-private fun TopBarIconD(iconRes: Int, desc: String) {
+private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -235,19 +230,19 @@ private fun TopBarIconD(iconRes: Int, desc: String) {
             .background(Color.White)
             .clickable { },
     ) {
-        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackD, modifier = Modifier.size(20.dp))
+        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
     }
 }
 
 // ── 상태 배너 ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StatusBannerD(request: MatchingRequestDetail) {
+private fun PublicStatusBanner(request: PublicRequestDetail) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(50.dp))
-            .background(PinkSurfaceD)
+            .background(PinkSurfaceP)
             .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -258,21 +253,17 @@ private fun StatusBannerD(request: MatchingRequestDetail) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 20.sp,
-            color = TextBlackD,
+            color = TextBlackP,
         )
         if (request.dDay != null) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
+            Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
                 Text(
                     text = "D-${request.dDay}",
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 16.sp,
-                    color = Pink500D,
+                    color = Pink500P,
                 )
             }
         }
@@ -282,7 +273,7 @@ private fun StatusBannerD(request: MatchingRequestDetail) {
 // ── 요청 정보 Card ────────────────────────────────────────────────────────────
 
 @Composable
-private fun RequestInfoCardD(request: MatchingRequestDetail) {
+private fun PublicRequestInfoCard(request: PublicRequestDetail) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -298,48 +289,48 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             lineHeight = 28.sp,
-            color = TextBlackD,
+            color = TextBlackP,
         )
 
-        // 일정 — fw=700 (Figma 실측)
-        InfoRowD(
-            iconBg = PinkSurfaceD,
+        // 일정 — fw=700
+        PublicInfoRow(
+            iconBg = PinkSurfaceP,
             iconRes = R.drawable.ic_calendar_today,
-            iconTint = Pink500D,
+            iconTint = Pink500P,
             label = "일정",
             value = request.date,
             valueFontWeight = FontWeight.Bold,
         )
-        HorizontalDivider(color = Gray300D)
+        HorizontalDivider(color = Gray300P)
 
         // 시간 — fw=500
-        InfoRowD(
-            iconBg = OrangeSandD,
+        PublicInfoRow(
+            iconBg = OrangeSandP,
             iconRes = R.drawable.ic_schedule,
-            iconTint = Orange500D,
+            iconTint = Orange500P,
             label = "시간",
             value = request.time,
         )
-        HorizontalDivider(color = Gray300D)
+        HorizontalDivider(color = Gray300P)
 
         // 목적지 — fw=500
-        InfoRowD(
-            iconBg = MintLightD,
+        PublicInfoRow(
+            iconBg = MintLightP,
             iconRes = R.drawable.ic_location_on,
-            iconTint = Green600D,
+            iconTint = Green600P,
             label = "목적지",
             value = request.destination,
         )
-        HorizontalDivider(color = Gray300D)
+        HorizontalDivider(color = Gray300P)
 
-        // 반려동물 — chip 형태
+        // 반려동물 — chip
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            IconBoxD(bg = BrownBorderD) {
-                Icon(painter = painterResource(R.drawable.ic_pets), null, tint = Brown700D, modifier = Modifier.size(20.dp))
+            PublicIconBox(bg = BrownBorderP) {
+                Icon(painter = painterResource(R.drawable.ic_pets), null, tint = Brown700P, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -348,13 +339,13 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     lineHeight = 16.sp,
-                    color = Brown700D,
+                    color = Brown700P,
                 )
                 Spacer(Modifier.height(4.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50.dp))
-                        .background(OrangeSandD)
+                        .background(OrangeSandP)
                         .padding(horizontal = 12.dp, vertical = 3.dp),
                 ) {
                     Text(
@@ -363,12 +354,12 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         lineHeight = 20.sp,
-                        color = Brown700D,
+                        color = Brown700P,
                     )
                 }
             }
         }
-        HorizontalDivider(color = Gray300D)
+        HorizontalDivider(color = Gray300P)
 
         // 요청 메모 — fs=14 fw=400 lh=20
         Row(
@@ -376,8 +367,8 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            IconBoxD(bg = Gray300D) {
-                Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = TextBlackD, modifier = Modifier.size(20.dp))
+            PublicIconBox(bg = Gray300P) {
+                Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = TextBlackP, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -386,7 +377,7 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     lineHeight = 16.sp,
-                    color = Brown700D,
+                    color = Brown700P,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -395,7 +386,7 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
                     lineHeight = 20.sp,
-                    color = TextBlackD,
+                    color = TextBlackP,
                 )
             }
         }
@@ -403,7 +394,7 @@ private fun RequestInfoCardD(request: MatchingRequestDetail) {
 }
 
 @Composable
-private fun InfoRowD(
+private fun PublicInfoRow(
     iconBg: Color,
     iconRes: Int,
     iconTint: Color,
@@ -416,7 +407,7 @@ private fun InfoRowD(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBoxD(bg = iconBg) {
+        PublicIconBox(bg = iconBg) {
             Icon(painter = painterResource(iconRes), null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
@@ -426,7 +417,7 @@ private fun InfoRowD(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 16.sp,
-                color = Brown700D,
+                color = Brown700P,
             )
             Spacer(Modifier.height(2.dp))
             Text(
@@ -435,14 +426,14 @@ private fun InfoRowD(
                 fontSize = 16.sp,
                 fontWeight = valueFontWeight,
                 lineHeight = 24.sp,
-                color = TextBlackD,
+                color = TextBlackP,
             )
         }
     }
 }
 
 @Composable
-private fun IconBoxD(bg: Color, content: @Composable () -> Unit) {
+private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -455,7 +446,7 @@ private fun IconBoxD(bg: Color, content: @Composable () -> Unit) {
 // ── 경로 Row ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun RouteRowD(request: MatchingRequestDetail) {
+private fun PublicRouteRow(request: PublicRequestDetail) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -465,28 +456,23 @@ private fun RouteRowD(request: MatchingRequestDetail) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500D, modifier = Modifier.size(16.dp))
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(16.dp))
         Text(
             text = request.originName,
             fontFamily = PretendardFamily,
             fontSize = 14.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 20.sp,
-            color = TextBlackD,
+            color = TextBlackP,
         )
-        Text(
-            text = "→",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            color = Brown400D,
-        )
+        Text(text = "→", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown400P)
         Text(
             text = request.destination,
             fontFamily = PretendardFamily,
             fontSize = 14.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 20.sp,
-            color = TextBlackD,
+            color = TextBlackP,
             modifier = Modifier.weight(1f),
         )
         Text(
@@ -495,7 +481,7 @@ private fun RouteRowD(request: MatchingRequestDetail) {
             fontSize = 14.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 20.sp,
-            color = Brown700D,
+            color = Brown700P,
         )
     }
 }
@@ -503,19 +489,19 @@ private fun RouteRowD(request: MatchingRequestDetail) {
 // ── 경로 지도 Card ────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapCardD() {
+private fun PublicMapCard() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(192.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(
-                Brush.linearGradient(listOf(MintLightD, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))
+                Brush.linearGradient(listOf(MintLightP, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))
             ),
     ) {
         // 출발 핀
         Icon(
-            painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500D,
+            painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P,
             modifier = Modifier
                 .size(28.dp)
                 .align(Alignment.Center)
@@ -523,14 +509,14 @@ private fun MapCardD() {
         )
         // 도착 핀
         Icon(
-            painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500D,
+            painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P,
             modifier = Modifier
                 .size(28.dp)
                 .align(Alignment.Center)
                 .offset(40.dp, 20.dp),
         )
 
-        // 지도에서 보기 버튼 — fill=#FFFFFF pill
+        // 지도에서 보기 버튼 — fill=#FFFFFF pill, 좌하단
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -542,198 +528,143 @@ private fun MapCardD() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(painter = painterResource(R.drawable.ic_map), null, tint = TextBlackD, modifier = Modifier.size(14.dp))
+            Icon(painter = painterResource(R.drawable.ic_map), null, tint = TextBlackP, modifier = Modifier.size(14.dp))
             Text(
                 text = "지도에서 보기",
                 fontFamily = PretendardFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 20.sp,
-                color = TextBlackD,
+                color = TextBlackP,
             )
         }
     }
 }
 
-// ── 신청한 봉사자 헤더 ────────────────────────────────────────────────────────
+// ── 요청자 정보 Card ──────────────────────────────────────────────────────────
 
 @Composable
-private fun VolunteerSectionHeaderD(count: Int) {
+private fun RequesterCard(requester: RequesterInfo, onChat: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(painter = painterResource(R.drawable.ic_group), null, tint = Orange500D, modifier = Modifier.size(24.dp))
-            Text(
-                text = "신청한 봉사자",
-                fontFamily = PretendardFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 27.sp,
-                color = TextBlackD,
-            )
-        }
-        Text(
-            text = "${count}명",
-            fontFamily = PretendardFamily,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 24.sp,
-            color = Orange500D,
-        )
-    }
-}
-
-// ── 봉사자 Card ───────────────────────────────────────────────────────────────
-
-@Composable
-private fun VolunteerCardD(
-    applicant: VolunteerApplicant,
-    onNavigate: (String) -> Unit,
-) {
-    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // 상단: 아바타 + 이름/정보
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(applicant.avatarColor),
-            ) {
-                Text(
-                    text = applicant.name.first().toString(),
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlackD,
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = applicant.name,
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlackD,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "⭐ ${applicant.rating} · 봉사 ${applicant.volunteerCount}건 · 📍 ${applicant.distanceKm}km",
-                    fontFamily = PretendardFamily,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 16.sp,
-                    color = Brown700D,
-                )
-            }
-        }
-
-        // 메모 박스 — fill=#F2F2F2 r=16
+        // 아바타 — 48x48 circle, fill=#D0FEE1
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(TagGrayD)
-                .padding(12.dp),
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(requester.avatarColor),
         ) {
             Text(
-                text = applicant.memo ?: "메모 없음",
+                text = requester.name.first().toString(),
                 fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Brown700D,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextBlackP,
             )
         }
 
-        // 버튼 Row: 채팅 | 수락 | 거절
+        // 이름 + 정보
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = requester.name,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlackP,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "⭐ ${requester.rating} · 요청 ${requester.requestCount}건 · 📍 ${requester.distanceKm}km",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown700P,
+            )
+        }
+
+        // 채팅 버튼 — fill=#FFFFFF pill h=32 pL=12 pR=12 pT=6 pB=6
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(50.dp))
+                .background(Color.White)
+                .border(1.dp, BrownBorderP, RoundedCornerShape(50.dp))
+                .clickable { onChat() }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            // 채팅 — outline Brown700
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(50.dp))
-                    .border(1.dp, Brown700D, RoundedCornerShape(50.dp))
-                    .clickable { onNavigate(Screen.Chat.createRoute(applicant.id)) }
-                    .padding(vertical = 10.dp),
-            ) {
-                Text(
-                    text = "채팅",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 20.sp,
-                    color = Brown700D,
-                )
-            }
+            Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = Brown700P, modifier = Modifier.size(14.dp))
+            Text(
+                text = "채팅",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 20.sp,
+                color = Brown700P,
+            )
+        }
+    }
+}
 
-            // 수락 — fill=Pink500 + 체크 아이콘
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Pink500D)
-                    .clickable { }
-                    .padding(vertical = 10.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(painter = painterResource(R.drawable.ic_check), null, tint = Color.White, modifier = Modifier.size(16.dp))
-                    Text(
-                        text = "수락",
-                        fontFamily = PretendardFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 20.sp,
-                        color = Color.White,
-                    )
-                }
-            }
+// ── 하단 고정 버튼 바 ─────────────────────────────────────────────────────────
 
-            // 거절 — border+text Pink500
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(50.dp))
-                    .border(1.dp, Pink500D, RoundedCornerShape(50.dp))
-                    .background(BackgroundD)
-                    .clickable { }
-                    .padding(vertical = 10.dp),
-            ) {
-                Text(
-                    text = "거절",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 20.sp,
-                    color = Pink500D,
-                )
-            }
+@Composable
+private fun PublicDetailBottomBar(onApply: () -> Unit, onChat: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .navigationBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // ChatBubble 아이콘 버튼 — fill=#FFFFFF pill 44x44
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, BrownBorderP, CircleShape)
+                .clickable { onChat() },
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_chat_bubble),
+                contentDescription = "채팅",
+                tint = Brown700P,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        // 봉사 신청하기 — fill=#F04268 pill h=44 fs=14 fw=600 white
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .weight(1f)
+                .height(44.dp)
+                .clip(RoundedCornerShape(50.dp))
+                .background(Pink500P)
+                .clickable { onApply() },
+        ) {
+            Text(
+                text = "봉사 신청하기",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 20.sp,
+                color = Color.White,
+            )
         }
     }
 }
@@ -742,6 +673,6 @@ private fun VolunteerCardD(
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun MatchingDetailScreenPreview() {
-    SiheungGagaeTheme { MatchingDetailScreen() }
+fun MatchingPublicDetailScreenPreview() {
+    SiheungGagaeTheme { MatchingPublicDetailScreen() }
 }
