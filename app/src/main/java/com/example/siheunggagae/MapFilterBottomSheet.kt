@@ -13,12 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.Forest
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,8 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,8 +44,7 @@ private val Gray300Mf   = Color(0xFFE8E8E8)  // rgba(232,232,232)— 아이콘 �
 
 data class MapFilterEntry(
     val name: String,
-    val icon: ImageVector? = null,
-    val iconRes: Int? = null,
+    val iconRes: Int,
     val isSelected: Boolean,
 )
 
@@ -66,11 +58,11 @@ fun MapFilterBottomSheet(
 ) {
     val entries = remember {
         mutableStateListOf(
-            MapFilterEntry("카페",     icon = Icons.Default.LocalCafe,               isSelected = true),
+            MapFilterEntry("카페",     iconRes = R.drawable.ic_local_cafe,           isSelected = true),
             MapFilterEntry("식당",     iconRes = R.drawable.ic_fork_spoon,           isSelected = false),
-            MapFilterEntry("공원",     icon = Icons.Default.Forest,                  isSelected = true),
+            MapFilterEntry("공원",     iconRes = R.drawable.ic_forest,               isSelected = true),
             MapFilterEntry("동물병원", iconRes = R.drawable.ic_health_cross,         isSelected = false),
-            MapFilterEntry("미용",     icon = Icons.Default.ContentCut,              isSelected = false),
+            MapFilterEntry("미용",     iconRes = R.drawable.ic_content_cut,          isSelected = false),
         )
     }
 
@@ -111,7 +103,7 @@ fun MapFilterBottomSheet(
                             .clickable { onDismiss() },
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            painter = painterResource(R.drawable.ic_close),
                             contentDescription = "닫기",
                             tint = Brown700Mf,
                             modifier = Modifier.size(14.dp),
@@ -196,11 +188,7 @@ private fun FilterItemRow(entry: MapFilterEntry, onToggle: () -> Unit) {
                     .clip(RoundedCornerShape(10.dp))
                     .background(Gray300Mf),
             ) {
-                if (entry.icon != null) {
-                    Icon(imageVector = entry.icon, contentDescription = entry.name, tint = TextBlackMf, modifier = Modifier.size(24.dp))
-                } else if (entry.iconRes != null) {
-                    Icon(painter = painterResource(entry.iconRes), contentDescription = entry.name, tint = TextBlackMf, modifier = Modifier.size(24.dp))
-                }
+                Icon(painter = painterResource(entry.iconRes), contentDescription = entry.name, tint = TextBlackMf, modifier = Modifier.size(24.dp))
             }
             Text(
                 text = entry.name,
@@ -235,7 +223,7 @@ private fun FilterCheckboxMf(checked: Boolean) {
     ) {
         if (checked) {
             Icon(
-                imageVector = Icons.Default.Check,
+                painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(16.dp),

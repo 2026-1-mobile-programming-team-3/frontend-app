@@ -20,14 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
@@ -41,11 +33,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -137,7 +130,7 @@ private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
                 .clickable { onSettingsClick() }
         ) {
             Icon(
-                imageVector = Icons.Default.Settings,
+                painter = painterResource(R.drawable.ic_settings),
                 contentDescription = "설정",
                 tint = Brown700My,
                 modifier = Modifier.size(22.dp),
@@ -182,7 +175,7 @@ private fun ProfileCard() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Icon(Icons.Default.LocationOn, null, tint = Brown700My, modifier = Modifier.size(14.dp))
+                Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Brown700My, modifier = Modifier.size(14.dp))
                 Text(
                     text = "정왕동",
                     fontFamily = PretendardFamily,
@@ -240,7 +233,7 @@ private fun MyPetSection(onPetListClick: () -> Unit = {}) {
                         .background(Color(0xFFFFF3E0)),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Pets,
+                        painter = painterResource(R.drawable.ic_pets),
                         contentDescription = null,
                         tint = Orange500My,
                         modifier = Modifier.size(22.dp),
@@ -468,13 +461,13 @@ private fun BadgeItem(badge: BadgeInfo, modifier: Modifier = Modifier) {
 private fun MyRecordsSection() {
     SectionCard {
         RecordItem(
-            icon = Icons.Default.VolunteerActivism,
+            iconRes = R.drawable.ic_volunteer_activism,
             iconTint = Green500My,
             title = "봉사 활동 이력",
             showDivider = true,
         )
         RecordItem(
-            icon = Icons.Default.Favorite,
+            iconRes = R.drawable.ic_favorite,
             iconTint = Pink500My,
             title = "즐겨찾기 매장",
             showDivider = false,
@@ -483,7 +476,7 @@ private fun MyRecordsSection() {
 }
 
 @Composable
-private fun RecordItem(icon: ImageVector, iconTint: Color, title: String, showDivider: Boolean) {
+private fun RecordItem(iconRes: Int, iconTint: Color, title: String, showDivider: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -496,7 +489,7 @@ private fun RecordItem(icon: ImageVector, iconTint: Color, title: String, showDi
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Icon(painter = painterResource(iconRes), contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
             Text(
                 text = title,
                 fontFamily = PretendardFamily,

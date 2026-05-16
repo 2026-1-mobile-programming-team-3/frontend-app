@@ -21,16 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -42,11 +33,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -218,14 +210,14 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             modifier = Modifier.align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            PublicTopBarIcon(icon = Icons.Default.BookmarkBorder, desc = "북마크")
-            PublicTopBarIcon(icon = Icons.Default.Share, desc = "공유")
+            PublicTopBarIcon(iconRes = R.drawable.ic_bookmark, desc = "북마크")
+            PublicTopBarIcon(iconRes = R.drawable.ic_share, desc = "공유")
         }
     }
 }
 
 @Composable
-private fun PublicTopBarIcon(icon: ImageVector, desc: String) {
+private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -235,7 +227,7 @@ private fun PublicTopBarIcon(icon: ImageVector, desc: String) {
             .background(Color.White)
             .clickable { },
     ) {
-        Icon(imageVector = icon, contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
+        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -300,7 +292,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
         // 일정 — fw=700
         PublicInfoRow(
             iconBg = PinkSurfaceP,
-            icon = Icons.Default.CalendarToday,
+            iconRes = R.drawable.ic_calendar_today,
             iconTint = Pink500P,
             label = "일정",
             value = request.date,
@@ -311,7 +303,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
         // 시간 — fw=500
         PublicInfoRow(
             iconBg = OrangeSandP,
-            icon = Icons.Default.Schedule,
+            iconRes = R.drawable.ic_schedule,
             iconTint = Orange500P,
             label = "시간",
             value = request.time,
@@ -321,7 +313,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
         // 목적지 — fw=500
         PublicInfoRow(
             iconBg = MintLightP,
-            icon = Icons.Default.LocationOn,
+            iconRes = R.drawable.ic_location_on,
             iconTint = Green600P,
             label = "목적지",
             value = request.destination,
@@ -335,7 +327,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PublicIconBox(bg = BrownBorderP) {
-                Icon(Icons.Default.Pets, null, tint = Brown700P, modifier = Modifier.size(20.dp))
+                Icon(painter = painterResource(R.drawable.ic_pets), null, tint = Brown700P, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -373,7 +365,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PublicIconBox(bg = Gray300P) {
-                Icon(Icons.Default.ChatBubble, null, tint = TextBlackP, modifier = Modifier.size(20.dp))
+                Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = TextBlackP, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -401,7 +393,7 @@ private fun PublicRequestInfoCard(request: PublicRequestDetail) {
 @Composable
 private fun PublicInfoRow(
     iconBg: Color,
-    icon: ImageVector,
+    iconRes: Int,
     iconTint: Color,
     label: String,
     value: String,
@@ -413,7 +405,7 @@ private fun PublicInfoRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         PublicIconBox(bg = iconBg) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+            Icon(painter = painterResource(iconRes), null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -461,7 +453,7 @@ private fun PublicRouteRow(request: PublicRequestDetail) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.Default.LocationOn, null, tint = Orange500P, modifier = Modifier.size(16.dp))
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(16.dp))
         Text(
             text = request.originName,
             fontFamily = PretendardFamily,
@@ -506,7 +498,7 @@ private fun PublicMapCard() {
     ) {
         // 출발 핀
         Icon(
-            Icons.Default.LocationOn, null, tint = Pink500P,
+            painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P,
             modifier = Modifier
                 .size(28.dp)
                 .align(Alignment.Center)
@@ -514,7 +506,7 @@ private fun PublicMapCard() {
         )
         // 도착 핀
         Icon(
-            Icons.Default.LocationOn, null, tint = Orange500P,
+            painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P,
             modifier = Modifier
                 .size(28.dp)
                 .align(Alignment.Center)
@@ -533,7 +525,7 @@ private fun PublicMapCard() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Default.Map, null, tint = TextBlackP, modifier = Modifier.size(14.dp))
+            Icon(painter = painterResource(R.drawable.ic_map), null, tint = TextBlackP, modifier = Modifier.size(14.dp))
             Text(
                 text = "지도에서 보기",
                 fontFamily = PretendardFamily,
@@ -608,7 +600,7 @@ private fun RequesterCard(requester: RequesterInfo, onChat: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Icon(Icons.Default.ChatBubble, null, tint = Brown700P, modifier = Modifier.size(14.dp))
+            Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = Brown700P, modifier = Modifier.size(14.dp))
             Text(
                 text = "채팅",
                 fontFamily = PretendardFamily,
@@ -645,7 +637,7 @@ private fun PublicDetailBottomBar(onApply: () -> Unit, onChat: () -> Unit) {
                 .clickable { onChat() },
         ) {
             Icon(
-                imageVector = Icons.Default.ChatBubble,
+                painter = painterResource(R.drawable.ic_chat_bubble),
                 contentDescription = "채팅",
                 tint = Brown700P,
                 modifier = Modifier.size(20.dp),

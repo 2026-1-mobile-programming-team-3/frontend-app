@@ -19,15 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +44,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -151,7 +144,7 @@ fun HomeTopBar(onNotificationClick: () -> Unit = {}) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Icon(Icons.Default.LocationOn, null, tint = Orange500, modifier = Modifier.size(14.dp))
+                Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500, modifier = Modifier.size(14.dp))
                 // w500 / 14sp / lh20 — Figma 실측 (기존 12sp → 수정)
                 Text(
                     text = "정왕동",
@@ -163,7 +156,7 @@ fun HomeTopBar(onNotificationClick: () -> Unit = {}) {
                 )
             }
             IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Notifications, "알림", tint = Brown700, modifier = Modifier.size(22.dp))
+                Icon(painter = painterResource(R.drawable.ic_notifications), contentDescription = "알림", tint = Brown700, modifier = Modifier.size(22.dp))
             }
         }
     }
@@ -240,7 +233,7 @@ fun WalkIndexSection() {
                     }
                 },
             )
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Brown700, modifier = Modifier.size(18.dp))
+            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Brown700, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -292,7 +285,7 @@ fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 24.sp,
-                    color = Orange500,
+                    color = Pink500,
                 )
             }
             // w600 / 14sp — Figma 실측 (기존 13sp/Medium → 수정)
@@ -325,13 +318,13 @@ fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -
                 .clip(RoundedCornerShape(16.dp))
                 .background(Brush.linearGradient(listOf(MapMintC, Color(0xFFE8FAF0), Color.White)))
         ) {
-            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+            Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500,
                 modifier = Modifier.size(28.dp).align(Alignment.Center).offset(20.dp, (-28).dp))
-            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+            Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500,
                 modifier = Modifier.size(22.dp).align(Alignment.Center).offset((-40).dp, 8.dp))
-            Icon(Icons.Default.LocationOn, null, tint = Pink500,
+            Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500,
                 modifier = Modifier.size(20.dp).align(Alignment.Center).offset(55.dp, 18.dp))
-            Icon(Icons.Default.LocationOn, null, tint = Orange500,
+            Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500,
                 modifier = Modifier.size(34.dp).align(Alignment.Center))
             Row(
                 modifier = Modifier
@@ -343,7 +336,7 @@ fun NearbyStoresSection(selectedCategory: String, onCategorySelected: (String) -
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Icon(Icons.Default.LocationOn, null, tint = Orange500, modifier = Modifier.size(12.dp))
+                Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500, modifier = Modifier.size(12.dp))
                 // w500 / 14sp — Figma 실측 (기존 12sp → 수정)
                 Text(
                     text = "정왕동",
@@ -441,7 +434,7 @@ private fun PlaceItem(number: Int, place: PlaceInfo, onPlaceDetailClick: (Int) -
         }
         IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = if (place.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
                 tint = if (place.isFavorite) Pink500 else BrownBorderC,
                 modifier = Modifier.size(20.dp)
@@ -455,9 +448,9 @@ private fun PlaceItem(number: Int, place: PlaceInfo, onPlaceDetailClick: (Int) -
 private data class PetNewsItem(val tag: String, val tagColor: Color, val tagBg: Color, val title: String, val date: String)
 
 private val sampleNews = listOf(
-    PetNewsItem("행사", Color(0xFF7C3AED), Color(0xFFF5F3FF), "반려동물 입양 행사",    "4.5"),
-    PetNewsItem("봉사", Color(0xFF059669), Color(0xFFECFDF5), "이동 봉사 모집 중",    "4.12"),
-    PetNewsItem("지원", Color(0xFF2563EB), Color(0xFFEFF6FF), "중성화 수술 지원 사업", "4.5"),
+    PetNewsItem("행사", Color(0xFF7C3AED), Color(0xFFFFFFFF), "반려동물 입양 행사",    "4.5"),
+    PetNewsItem("봉사", Color(0xFF059669), Color(0xFFFFFFFF), "이동 봉사 모집 중",    "4.12"),
+    PetNewsItem("지원", StarYellow, Color(0xFFFFFFFF), "중성화 수술 지원 사업", "4.5"),
 )
 
 @Composable
@@ -482,15 +475,25 @@ fun PetNewsSection() {
                 lineHeight = 24.sp,
                 color = TextBlack,
             )
-            // w700 / 20sp — "전체 보기" Figma 실측
-            Text(
-                text = "📰 전체 보기",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Orange500,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.clickable { }
-            )
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_newsmode),
+                    contentDescription = null,
+                    tint = Orange500,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = "전체 보기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Orange500,
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         // 메인 뉴스 카드
@@ -580,7 +583,7 @@ fun PetNewsSection() {
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Handshake, null, tint = Orange500, modifier = Modifier.size(24.dp))
+            Icon(painter = painterResource(R.drawable.ic_handshake), contentDescription = null, tint = Orange500, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(10.dp))
             // w700 / 14sp / lh20 — Figma 실측
             Text(

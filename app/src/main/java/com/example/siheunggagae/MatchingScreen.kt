@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -159,7 +157,7 @@ fun MatchingScreen(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.size(56.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "새 요청", modifier = Modifier.size(24.dp))
+                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "새 요청", modifier = Modifier.size(24.dp))
             }
         }
     ) { innerPadding ->
@@ -359,14 +357,25 @@ private fun RequestListHeader() {
             lineHeight = 24.sp,
             color = TextBlack
         )
-        Text(
-            text = "🗺 지도 보기",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            color = Orange500M,
-            fontWeight = FontWeight.SemiBold,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.clickable { }
-        )
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_map),
+                contentDescription = null,
+                tint = Color(0xFFF7A35B),
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = "지도 보기",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFFF7A35B),
+            )
+        }
     }
 }
 

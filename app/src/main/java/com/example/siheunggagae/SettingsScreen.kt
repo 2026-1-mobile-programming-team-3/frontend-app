@@ -17,19 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.automirrored.filled.Help
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -48,12 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -93,9 +82,9 @@ fun SettingsScreen(
         ) {
             SettingsSectionLabel("계정")
             SettingsSectionCard {
-                SettingsNavItem(icon = Icons.Default.AccountCircle, label = "프로필 편집", onClick = {})
+                SettingsNavItem(iconRes = R.drawable.ic_account_circle, label = "프로필 편집", onClick = {})
                 SettingsDivider()
-                SettingsNavItem(icon = Icons.Default.Pets, label = "반려동물 정보", onClick = onPetListClick)
+                SettingsNavItem(iconRes = R.drawable.ic_pets, label = "반려동물 정보", onClick = onPetListClick)
                 SettingsDivider()
                 SettingsNavItem(
                     iconRes = R.drawable.ic_social_leaderboard,
@@ -113,7 +102,7 @@ fun SettingsScreen(
                                 lineHeight = 20.sp,
                                 color = Orange500St
                             )
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Gray300St, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Gray300St, modifier = Modifier.size(20.dp))
                         }
                     },
                     onClick = {},
@@ -125,21 +114,21 @@ fun SettingsScreen(
             SettingsSectionLabel("알림")
             SettingsSectionCard {
                 SettingsSwitchItem(
-                    icon = Icons.Default.Notifications,
+                    iconRes = R.drawable.ic_notifications,
                     label = "매칭 알림",
                     checked = matchingNotif,
                     onCheckedChange = { matchingNotif = it },
                 )
                 SettingsDivider()
                 SettingsSwitchItem(
-                    icon = Icons.Default.Campaign,
+                    iconRes = R.drawable.ic_campaign,
                     label = "공지 알림",
                     checked = announcementNotif,
                     onCheckedChange = { announcementNotif = it },
                 )
                 SettingsDivider()
                 SettingsSwitchItem(
-                    icon = Icons.Default.ChatBubble,
+                    iconRes = R.drawable.ic_chat_bubble,
                     label = "리뷰 알림",
                     checked = reviewNotif,
                     onCheckedChange = { reviewNotif = it },
@@ -151,7 +140,7 @@ fun SettingsScreen(
             SettingsSectionLabel("앱")
             SettingsSectionCard {
                 SettingsNavItem(
-                    icon = Icons.Default.LocationOn,
+                    iconRes = R.drawable.ic_location_on,
                     label = "위치 설정",
                     rightContent = {
                         Row(
@@ -166,14 +155,14 @@ fun SettingsScreen(
                                 lineHeight = 20.sp,
                                 color = Orange500St
                             )
-                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Gray300St, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Gray300St, modifier = Modifier.size(20.dp))
                         }
                     },
                     onClick = {},
                 )
                 SettingsDivider()
                 SettingsNavItem(
-                    icon = Icons.Default.PhoneAndroid,
+                    iconRes = R.drawable.ic_mobile,
                     label = "버전",
                     rightContent = {
                         Text(
@@ -193,9 +182,9 @@ fun SettingsScreen(
 
             SettingsSectionLabel("기타")
             SettingsSectionCard {
-                SettingsNavItem(icon = Icons.AutoMirrored.Filled.Help, label = "도움말", onClick = {})
+                SettingsNavItem(iconRes = R.drawable.ic_help, label = "도움말", onClick = {})
                 SettingsDivider()
-                SettingsNavItem(icon = Icons.Default.Lock, label = "개인정보 처리 방침", onClick = {})
+                SettingsNavItem(iconRes = R.drawable.ic_lock, label = "개인정보 처리 방침", onClick = {})
                 SettingsDivider()
                 Row(
                     modifier = Modifier
@@ -212,7 +201,7 @@ fun SettingsScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(PinkSurfaceSt),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Pink500St, modifier = Modifier.size(20.dp))
+                        Icon(painter = painterResource(R.drawable.ic_logout), contentDescription = null, tint = Pink500St, modifier = Modifier.size(20.dp))
                     }
                     Text(
                         text = "로그아웃",
@@ -307,7 +296,6 @@ private fun SettingsDivider() {
 
 @Composable
 private fun SettingsNavItem(
-    icon: ImageVector? = null,
     iconRes: Int? = null,
     label: String,
     rightContent: @Composable (() -> Unit)? = null,
@@ -328,9 +316,7 @@ private fun SettingsNavItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(OrangeSandSt),
         ) {
-            if (icon != null) {
-                Icon(icon, null, tint = Orange500St, modifier = Modifier.size(20.dp))
-            } else if (iconRes != null) {
+            if (iconRes != null) {
                 Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
             }
         }
@@ -346,14 +332,14 @@ private fun SettingsNavItem(
         if (rightContent != null) {
             rightContent()
         } else {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Gray300St, modifier = Modifier.size(20.dp))
+            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Gray300St, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
 private fun SettingsSwitchItem(
-    icon: ImageVector,
+    iconRes: Int,
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -372,7 +358,7 @@ private fun SettingsSwitchItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(OrangeSandSt),
         ) {
-            Icon(icon, null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
         }
         Text(
             text = label,
