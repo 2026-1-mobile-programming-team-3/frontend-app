@@ -21,11 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +48,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -237,7 +235,7 @@ private fun PetPreviewCard(
                     .background(Color.White),
             ) {
                 Icon(
-                    imageVector = Icons.Default.Pets,
+                    painter = painterResource(R.drawable.ic_pets),
                     contentDescription = null,
                     tint = Orange500PA,
                     modifier = Modifier.size(32.dp),
@@ -458,7 +456,7 @@ private fun DetailInfoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AgeControlButton(icon = { Icon(Icons.Default.Remove, null, tint = Brown700PA, modifier = Modifier.size(16.dp)) }, onClick = onDecrement)
+                AgeControlButton(icon = { Text("−", color = Brown700PA, fontSize = 16.sp, fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) }, onClick = onDecrement)
                 Text(
                     text = "$age",
                     fontFamily = PretendardFamily,
@@ -469,7 +467,7 @@ private fun DetailInfoCard(
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center,
                 )
-                AgeControlButton(icon = { Icon(Icons.Default.Add, null, tint = Brown700PA, modifier = Modifier.size(16.dp)) }, onClick = onIncrement)
+                AgeControlButton(icon = { Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null, tint = Brown700PA, modifier = Modifier.size(16.dp)) }, onClick = onIncrement)
 
                 Spacer(Modifier.width(4.dp))
 

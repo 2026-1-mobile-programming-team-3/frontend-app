@@ -19,14 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -38,11 +31,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -230,7 +224,7 @@ fun PlaceDetailScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Default.LocationOn,
+                    painter = painterResource(R.drawable.ic_location_on),
                     contentDescription = null,
                     tint = Pink500PL,
                     modifier = Modifier.size(48.dp),
@@ -269,7 +263,7 @@ fun PlaceDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(Icons.Default.Star, null, tint = StarYellowPL, modifier = Modifier.size(20.dp))
+                    Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(20.dp))
                     Text(
                         text = "${place.rating}",
                         fontFamily = PretendardFamily,
@@ -301,7 +295,7 @@ fun PlaceDetailScreen(
             ) {
                 // 영업 시간
                 PlaceInfoRowPL(
-                    icon = Icons.Default.Schedule,
+                    iconRes = R.drawable.ic_schedule,
                     label = "영업 시간",
                     content = place.hours,
                 ) {
@@ -344,7 +338,7 @@ fun PlaceDetailScreen(
 
                 // 주소
                 PlaceInfoRowPL(
-                    icon = Icons.Default.LocationOn,
+                    iconRes = R.drawable.ic_location_on,
                     label = "주소",
                     content = place.address,
                 ) { CopyButtonPL() }
@@ -353,7 +347,7 @@ fun PlaceDetailScreen(
 
                 // 전화
                 PlaceInfoRowPL(
-                    icon = Icons.Default.Call,
+                    iconRes = R.drawable.ic_call,
                     label = "전화",
                     content = place.phone,
                 ) { CopyButtonPL() }
@@ -386,7 +380,7 @@ fun PlaceDetailScreen(
                         .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        painter = painterResource(R.drawable.ic_location_on),
                         contentDescription = null,
                         tint = Pink500PL,
                         modifier = Modifier.size(32.dp).align(Alignment.Center),
@@ -402,7 +396,7 @@ fun PlaceDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Icon(Icons.Default.LocationOn, null, tint = Orange500PL, modifier = Modifier.size(12.dp))
+                        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500PL, modifier = Modifier.size(12.dp))
                         Text(
                             text = place.areaName,
                             fontFamily = PretendardFamily,
@@ -447,7 +441,7 @@ fun PlaceDetailScreen(
                         color = TextBlackPL,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        repeat(5) { Icon(Icons.Default.Star, null, tint = StarYellowPL, modifier = Modifier.size(18.dp)) }
+                        repeat(5) { Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(18.dp)) }
                     }
                     Text(
                         text = "총 ${place.reviewCount}개의 리뷰",
@@ -510,14 +504,14 @@ private fun PlaceDetailTopBar(onBack: () -> Unit) {
 
         // 북마크 + 공유 — Figma: 70x30 container, gap=10
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PlaceTopIconBtn(icon = Icons.Default.BookmarkBorder, desc = "북마크")
-            PlaceTopIconBtn(icon = Icons.Default.Share, desc = "공유")
+            PlaceTopIconBtn(iconRes = R.drawable.ic_bookmark, desc = "북마크")
+            PlaceTopIconBtn(iconRes = R.drawable.ic_share, desc = "공유")
         }
     }
 }
 
 @Composable
-private fun PlaceTopIconBtn(icon: ImageVector, desc: String) {
+private fun PlaceTopIconBtn(iconRes: Int, desc: String) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -527,7 +521,7 @@ private fun PlaceTopIconBtn(icon: ImageVector, desc: String) {
             .background(Color.White)
             .clickable { },
     ) {
-        Icon(imageVector = icon, contentDescription = desc, tint = TextBlackPL, modifier = Modifier.size(16.dp))
+        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackPL, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -535,7 +529,7 @@ private fun PlaceTopIconBtn(icon: ImageVector, desc: String) {
 
 @Composable
 private fun PlaceInfoRowPL(
-    icon: ImageVector,
+    iconRes: Int,
     label: String,
     content: String,
     action: @Composable () -> Unit,
@@ -554,7 +548,7 @@ private fun PlaceInfoRowPL(
                 .background(Color.White)
                 .border(1.dp, BrownBorderPL, RoundedCornerShape(10.dp)),
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = Brown700PL, modifier = Modifier.size(20.dp))
+            Icon(painter = painterResource(iconRes), contentDescription = null, tint = Brown700PL, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             // 라벨 — Figma: fs=12, fw=400, #8B6F59
@@ -646,7 +640,7 @@ private fun PlaceReviewCard(review: PlaceReview) {
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     repeat(review.rating) {
-                        Icon(Icons.Default.Star, null, tint = StarYellowPL, modifier = Modifier.size(12.dp))
+                        Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(12.dp))
                     }
                 }
             }

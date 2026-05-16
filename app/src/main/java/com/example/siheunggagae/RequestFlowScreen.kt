@@ -21,14 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -59,6 +52,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import java.time.DayOfWeek
@@ -339,15 +335,15 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .size(76.dp)
+                    .clip(RoundedCornerShape(18.dp))
                     .background(petIconBg(pet.species))
             ) {
                 Icon(
-                    imageVector = Icons.Default.Pets,
+                    painter = painterResource(R.drawable.ic_pets),
                     contentDescription = null,
                     tint = petIconTint(pet.species),
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(34.dp)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -380,7 +376,7 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
                     .background(Orange500F)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    painter = painterResource(R.drawable.ic_check),
                     contentDescription = "선택됨",
                     tint = Color.White,
                     modifier = Modifier.size(14.dp)
@@ -399,17 +395,25 @@ private fun AddPetCard(onAddPet: () -> Unit = {}) {
             .background(GrayBg)
             .dashedBorder(color = GrayText.copy(alpha = 0.4f), cornerRadius = 16.dp)
             .clickable { onAddPet() }
-            .padding(vertical = 32.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            tint = GrayText,
-            modifier = Modifier.size(28.dp)
-        )
-        Spacer(Modifier.height(8.dp))
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(76.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(GrayText.copy(alpha = 0.08f))
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = null,
+                tint = GrayText,
+                modifier = Modifier.size(34.dp)
+            )
+        }
+        Spacer(Modifier.height(12.dp))
         Text(
             text = "반려동물 추가",
             fontFamily = PretendardFamily,
@@ -470,7 +474,7 @@ private fun Step2Content(
                 )
             },
             leadingIcon = {
-                Icon(Icons.Default.Schedule, contentDescription = null, tint = Orange500F)
+                Icon(painter = painterResource(R.drawable.ic_schedule), contentDescription = null, tint = Orange500F)
             },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
@@ -551,7 +555,7 @@ private fun CalendarSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { onMonthChange(yearMonth.minusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "이전 달", tint = Brown700F)
+                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "이전 달", tint = Brown700F)
             }
             Text(
                 text = "${yearMonth.year}년 ${yearMonth.monthValue}월",
@@ -562,7 +566,7 @@ private fun CalendarSection(
                 color = TextBlack
             )
             IconButton(onClick = { onMonthChange(yearMonth.plusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "다음 달", tint = Brown700F)
+                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "다음 달", tint = Brown700F)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -676,7 +680,7 @@ private fun Step3Content(
                 )
             },
             leadingIcon = {
-                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Orange500F)
+                Icon(painter = painterResource(R.drawable.ic_location_on), contentDescription = null, tint = Orange500F)
             },
             singleLine = true,
             colors = flowFieldColors(leadingAlwaysOrange = true),

@@ -14,11 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pets
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -36,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -90,7 +88,7 @@ fun PetListScreen(
                 contentColor = Color.White,
                 modifier = Modifier.size(56.dp),
             ) {
-                Icon(Icons.Default.Add, contentDescription = "반려동물 추가", modifier = Modifier.size(24.dp))
+                Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "반려동물 추가", modifier = Modifier.size(24.dp))
             }
         },
     ) { innerPadding ->
@@ -185,7 +183,7 @@ private fun PetListTopBar(onBack: () -> Unit) {
                 .clickable { },
         ) {
             Icon(
-                imageVector = Icons.Default.MoreVert,
+                painter = painterResource(R.drawable.ic_more_vert),
                 contentDescription = "더보기",
                 tint = TextBlackPL,
                 modifier = Modifier.size(20.dp),
@@ -214,7 +212,7 @@ private fun PetRow(pet: PetEntry) {
                 .background(pet.kind.iconBg),
         ) {
             Icon(
-                imageVector = Icons.Default.Pets,
+                painter = painterResource(R.drawable.ic_pets),
                 contentDescription = null,
                 tint = pet.kind.iconTint,
                 modifier = Modifier.size(28.dp),
@@ -242,7 +240,7 @@ private fun PetRow(pet: PetEntry) {
         }
 
         Icon(
-            imageVector = Icons.Default.MoreVert,
+            painter = painterResource(R.drawable.ic_more_vert),
             contentDescription = "옵션",
             tint = Brown700PL,
             modifier = Modifier.size(20.dp),

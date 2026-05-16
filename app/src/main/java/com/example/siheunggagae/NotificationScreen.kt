@@ -21,9 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -44,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -311,7 +311,7 @@ private fun NotificationItemContent(item: NotificationItem) {
                 .border(1.dp, Color(0xFFE5E7EB), CircleShape)
         ) {
             Icon(
-                imageVector = Icons.Default.PriorityHigh,
+                painter = painterResource(R.drawable.ic_priority_high),
                 contentDescription = null,
                 tint = iconColor,
                 modifier = Modifier.size(22.dp)
@@ -363,7 +363,7 @@ private fun EmptyNotification() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Default.PriorityHigh,
+                painter = painterResource(R.drawable.ic_priority_high),
                 contentDescription = null,
                 tint = Color(0xFFD1D5DB),
                 modifier = Modifier.size(48.dp)

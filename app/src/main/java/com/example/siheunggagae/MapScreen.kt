@@ -20,16 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,7 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -157,11 +147,11 @@ private fun MapContent(
                 )
         )
 
-        Icon(Icons.Default.LocationOn, null, tint = Pink500Mp,
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500Mp,
             modifier = Modifier.offset(x = 90.dp, y = 95.dp).size(30.dp))
-        Icon(Icons.Default.LocationOn, null, tint = Pink500Mp,
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500Mp,
             modifier = Modifier.offset(x = 215.dp, y = 65.dp).size(26.dp))
-        Icon(Icons.Default.LocationOn, null, tint = Orange500Mp,
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500Mp,
             modifier = Modifier.offset(x = 155.dp, y = 200.dp).size(28.dp))
 
         Box(
@@ -190,9 +180,9 @@ private fun MapContent(
                 .padding(end = 16.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            MapIconFab(icon = Icons.Default.MyLocation, contentDescription = "내 위치")
-            MapIconFab(icon = Icons.Default.Layers,     contentDescription = "레이어",  onClick = onLayerClick)
-            MapIconFab(icon = Icons.Default.Refresh,    contentDescription = "새로고침")
+            MapIconFab(iconRes = R.drawable.ic_my_location, contentDescription = "내 위치")
+            MapIconFab(iconRes = R.drawable.ic_layers,     contentDescription = "레이어",  onClick = onLayerClick)
+            MapIconFab(iconRes = R.drawable.ic_refresh,    contentDescription = "새로고침")
         }
     }
 }
@@ -212,7 +202,7 @@ private fun MapSearchCard() {
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.Search,
+            painter = painterResource(R.drawable.ic_search),
             contentDescription = null,
             tint = Brown400Mp,
             modifier = Modifier.size(20.dp)
@@ -260,7 +250,7 @@ private fun MapCategoryChipRow(selected: String, onSelect: (String) -> Unit) {
 }
 
 @Composable
-private fun MapIconFab(icon: ImageVector, contentDescription: String, onClick: () -> Unit = {}) {
+private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> Unit = {}) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -271,7 +261,7 @@ private fun MapIconFab(icon: ImageVector, contentDescription: String, onClick: (
             .clickable { onClick() }
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = Brown700Mp,
             modifier = Modifier.size(20.dp)
@@ -323,7 +313,7 @@ private fun MapBottomSheetContent() {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.clickable { },
             ) {
-                Icon(Icons.Default.SwapVert, contentDescription = null, tint = Brown700Mp, modifier = Modifier.size(16.dp))
+                Icon(painter = painterResource(R.drawable.ic_swap_vert), contentDescription = null, tint = Brown700Mp, modifier = Modifier.size(16.dp))
                 Text(
                     text = "거리순",
                     fontFamily = PretendardFamily,
@@ -402,7 +392,7 @@ private fun MapPlaceItem(place: MapPlace) {
                     fontSize = 14.sp,
                     color = Brown700Mp
                 )
-                Icon(Icons.Default.Star, null, tint = StarYellow, modifier = Modifier.size(12.dp))
+                Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellow, modifier = Modifier.size(12.dp))
                 Text(
                     text = "${place.rating}",
                     fontFamily = PretendardFamily,
@@ -415,7 +405,7 @@ private fun MapPlaceItem(place: MapPlace) {
         }
         IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = if (place.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
                 tint = if (place.isFavorite) Pink500Mp else BrownBorderP,
                 modifier = Modifier.size(20.dp)

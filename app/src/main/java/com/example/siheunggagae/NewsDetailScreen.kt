@@ -19,11 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.PriorityHigh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -42,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -176,15 +173,15 @@ private fun NewsDetailTopBar(onBack: () -> Unit) {
                 .background(Color.White)
                 .clickable { onBack() },
         ) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = TextBlackND, modifier = Modifier.size(22.dp))
+            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = null, tint = TextBlackND, modifier = Modifier.size(22.dp))
         }
 
         Row(
             modifier = Modifier.align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TopBarIconBtn(icon = { Icon(Icons.Default.BookmarkBorder, null, tint = TextBlackND, modifier = Modifier.size(20.dp)) })
-            TopBarIconBtn(icon = { Icon(Icons.Default.Share, null, tint = TextBlackND, modifier = Modifier.size(20.dp)) })
+            TopBarIconBtn(icon = { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) })
+            TopBarIconBtn(icon = { Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) })
         }
     }
 }
@@ -356,7 +353,7 @@ private fun RelatedNewsCard(news: RelatedNews) {
                     .clip(CircleShape)
                     .background(OrangeSandND),
             ) {
-                Icon(Icons.Default.PriorityHigh, null, tint = Orange500ND, modifier = Modifier.size(18.dp))
+                Icon(painter = painterResource(R.drawable.ic_priority_high), null, tint = Orange500ND, modifier = Modifier.size(18.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(

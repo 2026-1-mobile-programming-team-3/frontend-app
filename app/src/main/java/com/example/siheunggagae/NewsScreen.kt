@@ -20,10 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -207,9 +203,9 @@ private fun NewsTopBar() {
             modifier = Modifier.weight(1f),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NewsTopBarIcon { Icon(Icons.Default.BookmarkBorder, null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
+            NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon { Icon(Icons.Default.Notifications, null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
+                NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
                 // 알림 뱃지
                 Box(
                     modifier = Modifier
@@ -251,7 +247,7 @@ private fun NewsSearchBar() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(Icons.Default.Search, null, tint = Brown700Ns, modifier = Modifier.size(20.dp))
+        Icon(painter = painterResource(R.drawable.ic_search), null, tint = Brown700Ns, modifier = Modifier.size(20.dp))
         Text(
             text = "뉴스 · 정책 · 행사 검색",
             fontFamily = PretendardFamily,

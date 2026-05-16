@@ -22,12 +22,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -227,7 +226,7 @@ private fun RequestPreviewCard() {
                 .background(PinkSurfaceC),
         ) {
             Icon(
-                imageVector = Icons.Default.Handshake,
+                painter = painterResource(R.drawable.ic_handshake),
                 contentDescription = null,
                 tint = Pink500C,
                 modifier = Modifier.size(24.dp),
@@ -501,7 +500,7 @@ private fun ChatInputBar(inputText: String, onTextChange: (String) -> Unit) {
                 .clickable { },
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
+                painter = painterResource(R.drawable.ic_send),
                 contentDescription = "전송",
                 tint = Color.White,
                 modifier = Modifier.size(20.dp),
