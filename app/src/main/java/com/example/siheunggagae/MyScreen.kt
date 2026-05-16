@@ -22,12 +22,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,7 +69,10 @@ fun MyScreen(
     onSettingsClick: () -> Unit = {},
     onPetListClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
+    onLogout: () -> Unit = {},
 ) {
+    var showLogoutDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.My.route, onNavigate = onNavigate) },
@@ -96,9 +105,56 @@ fun MyScreen(
             Spacer(Modifier.height(6.dp))
             SettingsSection(onVolunteerApplyClick = onVolunteerApplyClick)
             Spacer(Modifier.height(16.dp))
-            LogoutButton()
+            LogoutButton(onClick = { showLogoutDialog = true })
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "로그아웃",
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlack,
+                )
+            },
+            text = {
+                Text(
+                    text = "정말 로그아웃하시겠어요?",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Brown700My,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text(
+                        text = "로그아웃",
+                        fontFamily = PretendardFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Pink500My,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(
+                        text = "취소",
+                        fontFamily = PretendardFamily,
+                        color = Brown700My,
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+        )
     }
 }
 
@@ -573,7 +629,7 @@ private fun SettingsItem(
 // ─── 로그아웃 버튼 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun LogoutButton() {
+private fun LogoutButton(onClick: () -> Unit = {}) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -582,7 +638,7 @@ private fun LogoutButton() {
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, Brown700My, RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { }
+            .clickable { onClick() }
             .padding(vertical = 16.dp),
     ) {
         Text(

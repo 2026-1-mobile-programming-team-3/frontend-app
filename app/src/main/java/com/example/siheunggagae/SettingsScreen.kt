@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -25,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,10 +65,12 @@ private val TextBlackSt   = Color(0xFF1E120A)
 fun SettingsScreen(
     onBack: () -> Unit = {},
     onPetListClick: () -> Unit = {},
+    onLogout: () -> Unit = {},
 ) {
     var matchingNotif      by remember { mutableStateOf(true) }
     var announcementNotif  by remember { mutableStateOf(true) }
     var reviewNotif        by remember { mutableStateOf(false) }
+    var showLogoutDialog   by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = BackgroundSt,
@@ -189,7 +193,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { }
+                        .clickable { showLogoutDialog = true }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -216,6 +220,53 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = {
+                Text(
+                    text = "로그아웃",
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlackSt,
+                )
+            },
+            text = {
+                Text(
+                    text = "정말 로그아웃하시겠어요?",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Brown700St,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) {
+                    Text(
+                        text = "로그아웃",
+                        fontFamily = PretendardFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Pink500St,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(
+                        text = "취소",
+                        fontFamily = PretendardFamily,
+                        color = Brown700St,
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp),
+        )
     }
 }
 

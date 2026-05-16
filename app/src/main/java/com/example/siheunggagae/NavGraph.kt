@@ -54,6 +54,7 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 sealed class Screen(val route: String) {
     object Splash       : Screen("splash")
     object Login        : Screen("login")
+    object Register     : Screen("register")
     object Home         : Screen("home")
     object Notification : Screen("notification")
     object Matching     : Screen("matching")
@@ -175,9 +176,21 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         composable(Screen.Splash.route) {
             SplashScreen(
                 onLogin = { navController.navigate(Screen.Login.route) },
-                onSignup = {
+                onSignup = { navController.navigate(Screen.Register.route) },
+            )
+        }
+
+        composable(Screen.Register.route) {
+            RegisterScreen(
+                onBack = { navController.popBackStack() },
+                onSignUpClick = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Register.route) { inclusive = true }
                     }
                 },
             )
@@ -189,6 +202,11 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onLogin = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToRegister = {
+                    navController.navigate(Screen.Register.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
             )
@@ -299,6 +317,11 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -306,6 +329,11 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onLogout = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 
