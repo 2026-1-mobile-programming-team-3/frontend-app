@@ -1,38 +1,50 @@
 package com.example.siheunggagae.data.local
 
 import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
-private val Context.dataStore by preferencesDataStore(name = "auth_tokens")
+class TokenManager(context: Context) {
 
-class TokenManager(private val context: Context) {
+    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        "secure_auth_tokens",
+        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+    )
+
+    val accessToken: String?
+        get() = prefs.getString(KEY_ACCESS, null)
+
+    val refreshToken: String?
+        get() = prefs.getString(KEY_REFRESH, null)
+
+    val expiresAt: Long
+        get() = prefs.getLong(KEY_EXPIRES_AT, 0L)
+
+    fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int = 3600) {
+        prefs.edit()
+            .putString(KEY_ACCESS, accessToken)
+            .putString(KEY_REFRESH, refreshToken)
+            .putLong(KEY_EXPIRES_AT, System.currentTimeMillis() + expiresIn * 1000L)
+            .apply()
+    }
+
+    fun clearTokens() {
+        prefs.edit().clear().apply()
+    }
+
+    // 만료 30초 전부터 갱신이 필요하다고 판단
+    fun isAccessTokenExpired(): Boolean {
+        val exp = expiresAt
+        return exp == 0L || System.currentTimeMillis() > exp - 30_000L
+    }
 
     companion object {
-        private val KEY_ACCESS  = stringPreferencesKey("access_token")
-        private val KEY_REFRESH = stringPreferencesKey("refresh_token")
-    }
-
-    val accessTokenFlow: Flow<String?> = context.dataStore.data.map { it[KEY_ACCESS] }
-    val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { it[KEY_REFRESH] }
-
-    // OkHttp interceptor(동기 컨텍스트)에서 사용
-    val accessToken: String?  get() = runBlocking { accessTokenFlow.first() }
-    val refreshToken: String? get() = runBlocking { refreshTokenFlow.first() }
-
-    suspend fun saveTokens(accessToken: String, refreshToken: String) {
-        context.dataStore.edit { prefs ->
-            prefs[KEY_ACCESS]  = accessToken
-            prefs[KEY_REFRESH] = refreshToken
-        }
-    }
-
-    suspend fun clearTokens() {
-        context.dataStore.edit { it.clear() }
+        private const val KEY_ACCESS = "access_token"
+        private const val KEY_REFRESH = "refresh_token"
+        private const val KEY_EXPIRES_AT = "expires_at"
     }
 }

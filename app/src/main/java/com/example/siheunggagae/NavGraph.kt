@@ -22,7 +22,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,7 +50,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.siheunggagae.ui.screen.AutoSplashScreen
 import com.example.siheunggagae.ui.screen.ChatScreen
+import com.example.siheunggagae.ui.screen.StartScreen
 import com.example.siheunggagae.ui.screen.HomeScreen
 import com.example.siheunggagae.ui.screen.LoginScreen
 import com.example.siheunggagae.ui.screen.MapScreen
@@ -75,7 +81,8 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 // ─── 라우트 정의 ───────────────────────────────────────────────────────────────
 
 sealed class Screen(val route: String) {
-    object Splash       : Screen("splash")
+    object AutoSplash   : Screen("auto_splash")  // 재호-1: 로고 표시 + 토큰 확인
+    object Splash       : Screen("splash")        // 재호-2: 시작 화면 (로그인/회원가입)
     object Login        : Screen("login")
     object SignUp       : Screen("signup")
     object Home         : Screen("home")
@@ -192,12 +199,37 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
 
 @Composable
 fun AppNavGraph(navController: NavHostController = rememberNavController()) {
+    val app = LocalContext.current.applicationContext as SiheungGagaeApp
+    LaunchedEffect(Unit) {
+        app.sessionExpiredChannel.receiveAsFlow().collect {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Splash.route,
+        startDestination = Screen.AutoSplash.route,
     ) {
+        // 재호-1: 로고 스플래시 + 토큰 확인 → 홈 or 시작 화면
+        composable(Screen.AutoSplash.route) {
+            AutoSplashScreen(
+                onHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onStartScreen = {
+                    navController.navigate(Screen.Splash.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
+        }
+
         composable(Screen.Splash.route) {
-            SplashScreen(
+            StartScreen(
                 onLogin = { navController.navigate(Screen.Login.route) },
                 onSignup = { navController.navigate(Screen.SignUp.route) },
             )
@@ -226,7 +258,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         composable(Screen.Login.route) {
             val context = LocalContext.current
             val authRepository = remember {
-                AuthRepository((context.applicationContext as SiheungGagaeApp).tokenManager)
+                val a = context.applicationContext as SiheungGagaeApp
+                AuthRepository(a.tokenManager, a.fcmTokenManager)
             }
             val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory(authRepository))
 
@@ -350,13 +383,19 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.My.route) {
+            val myContext = LocalContext.current
+            val myApp = myContext.applicationContext as SiheungGagaeApp
+            val myScope = rememberCoroutineScope()
+            val myAuthRepo = remember { AuthRepository(myApp.tokenManager, myApp.fcmTokenManager) }
+
             MyScreen(
                 onNavigate = { route -> navController.navigateTab(route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
-                    navController.navigate(Screen.Login.route) {
+                    myScope.launch { myAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                    navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -364,11 +403,17 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Settings.route) {
+            val settingsContext = LocalContext.current
+            val settingsApp = settingsContext.applicationContext as SiheungGagaeApp
+            val settingsScope = rememberCoroutineScope()
+            val settingsAuthRepo = remember { AuthRepository(settingsApp.tokenManager, settingsApp.fcmTokenManager) }
+
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onLogout = {
-                    navController.navigate(Screen.Login.route) {
+                    settingsScope.launch { settingsAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                    navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -405,98 +450,6 @@ private fun NavHostController.navigateTab(route: String) {
         launchSingleTop = true
         restoreState = true
         popUpTo(Screen.Home.route) { saveState = true }
-    }
-}
-
-// ─── SplashScreen ──────────────────────────────────────────────────────────────
-
-@Composable
-fun SplashScreen(onLogin: () -> Unit = {}, onSignup: () -> Unit = {}) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-    ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth()
-                .padding(horizontal = 36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(text = "🐾", fontSize = 56.sp)
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "시흥가개",
-                fontFamily = PretendardFamily,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 48.sp,
-                color = Color(0xFF8A6E58),
-            )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Gray40,
-            )
-            Spacer(Modifier.height(64.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF8A6E58))
-                    .clickable { onLogin() }
-                    .padding(vertical = 14.dp),
-            ) {
-                Text(
-                    text = "로그인하기",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 28.sp,
-                    color = Color.White,
-                )
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, Color(0xFFE8D3C2), RoundedCornerShape(16.dp))
-                    .background(Color(0xFFFEFEFE))
-                    .clickable { onSignup() }
-                    .padding(vertical = 14.dp),
-            ) {
-                Text(
-                    text = "회원가입하기",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 28.sp,
-                    color = Color(0xFF1E120A),
-                )
-            }
-        }
-
-        Text(
-            text = "v3.0.0",
-            fontFamily = PretendardFamily,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            color = Gray80,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
-        )
     }
 }
 
@@ -553,12 +506,6 @@ fun MyRequestsScreen(
 }
 
 // ─── Previews ──────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun SplashScreenPreview() {
-    SiheungGagaeTheme { SplashScreen() }
-}
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

@@ -15,9 +15,11 @@ private const val BASE_URL = "https://backend-production-f6c0.up.railway.app/"
 object RetrofitClient {
 
     private lateinit var tokenManager: TokenManager
+    private var onSessionExpired: () -> Unit = {}
 
-    fun init(tokenManager: TokenManager) {
+    fun init(tokenManager: TokenManager, onSessionExpired: () -> Unit = {}) {
         this.tokenManager = tokenManager
+        this.onSessionExpired = onSessionExpired
     }
 
     private val gson = GsonBuilder()
@@ -25,6 +27,7 @@ object RetrofitClient {
         .create()
 
     private val okHttpClient: OkHttpClient by lazy {
+        val authenticator = TokenAuthenticator(tokenManager) { onSessionExpired() }
         val authInterceptor = AuthInterceptor {
             if (::tokenManager.isInitialized) tokenManager.accessToken else null
         }
@@ -32,6 +35,7 @@ object RetrofitClient {
             level = HttpLoggingInterceptor.Level.BODY
         }
         OkHttpClient.Builder()
+            .authenticator(authenticator)
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)

@@ -46,8 +46,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.data.model.MatchStatus
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.bgColor
+import com.example.siheunggagae.ui.util.textColor
 
 // 스펙 컬러
 private val Brown900M     = Color(0xFF614B3A)
@@ -58,44 +61,23 @@ private val Orange500M    = Color(0xFFF7A35B)
 private val Pink500M      = Color(0xFFF04268)
 private val Green500M     = Color(0xFF00A63E)
 private val PinkSurfaceM  = Color(0xFFFEE7EC)
-private val TagPinkBg     = Color(0xFFFECDD3)
-private val TagYellowBg   = Color(0xFFFFEDD4)
-private val TagGreenBg    = Color(0xFFDCFCE7)
-private val TagGrayBg     = Color(0xFFF3F4F6)
-private val TagGrayText   = Color(0xFF6B7280)
-private val Green600      = Color(0xFF00A63E)
 private val Background95  = Color(0xFFFEFEFE)
 private val TextBlack     = Color(0xFF1E120A)
 private val FABBrown      = Color(0xFF9A7B5E)
 
 // ─── 데이터 ────────────────────────────────────────────────────────────────────
 
-enum class MatchingStatus(val label: String) {
-    OPEN("모집중"), REVIEWING("검토중"), IN_PROGRESS("진행중"), COMPLETED("완료")
-}
-
-private val MatchingStatus.textColor get() = when (this) {
-    MatchingStatus.OPEN        -> Pink500M
-    MatchingStatus.REVIEWING   -> Orange500M
-    MatchingStatus.IN_PROGRESS -> Green600
-    MatchingStatus.COMPLETED   -> TagGrayText
-}
-
-private val MatchingStatus.bgColor get() = when (this) {
-    MatchingStatus.OPEN        -> TagPinkBg
-    MatchingStatus.REVIEWING   -> TagYellowBg
-    MatchingStatus.IN_PROGRESS -> TagGreenBg
-    MatchingStatus.COMPLETED   -> TagGrayBg
-}
-
-enum class MatchingTab(val label: String, val count: Int?) {
-    ALL("전체", 8), OPEN("모집중", 5), REVIEWING("검토중", 2),
-    IN_PROGRESS("진행중", 1), COMPLETED("완료", null)
+enum class MatchingTab(val label: String, val count: Int?, val status: MatchStatus?) {
+    ALL("전체", 8, null),
+    WAITING("모집중", 5, MatchStatus.WAITING),
+    MATCHING("검토중", 2, MatchStatus.MATCHING),
+    PROGRESS("진행중", 1, MatchStatus.PROGRESS),
+    DONE("완료", null, MatchStatus.DONE),
 }
 
 data class MatchingRequest(
     val id: Int,
-    val status: MatchingStatus,
+    val status: MatchStatus,
     val dDay: String?,
     val title: String,
     val location: String? = null,
@@ -107,23 +89,23 @@ data class MatchingRequest(
 
 private val sampleRequests = listOf(
     MatchingRequest(
-        id = 1, status = MatchingStatus.OPEN, dDay = "D-2",
+        id = 1, status = MatchStatus.WAITING, dDay = "D-2",
         title = "정왕동 실외견 병원 이동 부탁드립니다",
         location = "정왕동", distance = "0.8km", date = "5월 10일",
         petTypes = listOf("강아지"), applicationCount = 2
     ),
     MatchingRequest(
-        id = 2, status = MatchingStatus.OPEN, dDay = "D-4",
+        id = 2, status = MatchStatus.WAITING, dDay = "D-4",
         title = "배곧 동물병원 중성화 수술 이동 도와주세요",
         location = "배곧신도시", distance = "2.3km", date = "5월 12일",
         petTypes = listOf("고양이"), applicationCount = 2
     ),
     MatchingRequest(
-        id = 3, status = MatchingStatus.REVIEWING, dDay = null,
+        id = 3, status = MatchStatus.MATCHING, dDay = null,
         title = "목감동 > 시흥시청 병원 이동 지원 요청"
     ),
     MatchingRequest(
-        id = 4, status = MatchingStatus.IN_PROGRESS, dDay = null,
+        id = 4, status = MatchStatus.PROGRESS, dDay = null,
         title = "정왕동 실외견 검진 이동",
         location = "정왕동", distance = "1.2km", date = "5월 6일",
         petTypes = listOf("강아지")
@@ -141,13 +123,9 @@ fun MatchingScreen(
 ) {
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
 
-    val filtered = when (selectedTab) {
-        MatchingTab.ALL         -> sampleRequests
-        MatchingTab.OPEN        -> sampleRequests.filter { it.status == MatchingStatus.OPEN }
-        MatchingTab.REVIEWING   -> sampleRequests.filter { it.status == MatchingStatus.REVIEWING }
-        MatchingTab.IN_PROGRESS -> sampleRequests.filter { it.status == MatchingStatus.IN_PROGRESS }
-        MatchingTab.COMPLETED   -> sampleRequests.filter { it.status == MatchingStatus.COMPLETED }
-    }
+    val filtered = selectedTab.status
+        ?.let { s -> sampleRequests.filter { it.status == s } }
+        ?: sampleRequests
 
     Scaffold(
         containerColor = Background95,
@@ -465,7 +443,7 @@ private fun MatchingRequestCard(request: MatchingRequest, onCardClick: () -> Uni
 }
 
 @Composable
-private fun StatusChipM(status: MatchingStatus) {
+private fun StatusChipM(status: MatchStatus) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))

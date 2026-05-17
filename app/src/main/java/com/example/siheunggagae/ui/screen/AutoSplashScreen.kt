@@ -1,0 +1,103 @@
+package com.example.siheunggagae.ui.screen
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.SiheungGagaeApp
+import com.example.siheunggagae.data.repository.AuthRepository
+import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+
+/**
+ * 재호-1 앱 시작 스플래시
+ *
+ * 최소 1.5초 로고를 표시하면서 동시에 토큰 상태를 확인한다.
+ *  - 토큰 없음              → onStartScreen (시작 화면)
+ *  - 토큰 있고 유효함        → onHome
+ *  - 토큰 만료 → 갱신 성공  → onHome
+ *  - 토큰 만료 → 갱신 실패  → onStartScreen
+ */
+@Composable
+fun AutoSplashScreen(
+    onHome: () -> Unit,
+    onStartScreen: () -> Unit,
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext as SiheungGagaeApp
+
+    LaunchedEffect(Unit) {
+        val authRepository = AuthRepository(app.tokenManager, app.fcmTokenManager)
+
+        // 토큰 확인과 1.5초 최소 표시 시간을 병렬로 실행
+        val goHomeDeferred = async {
+            val tokenManager = app.tokenManager
+            when {
+                tokenManager.accessToken == null          -> false   // 재호-1.4: 토큰 없음
+                !tokenManager.isAccessTokenExpired()      -> true    // 재호-1.2: 유효한 토큰
+                else                                      -> authRepository.refresh()  // 재호-1.3: 만료 → 갱신
+            }
+        }
+
+        delay(1_500L)                       // 최소 표시 시간
+        if (goHomeDeferred.await()) onHome() else onStartScreen()
+    }
+
+    SplashLogo()
+}
+
+@Composable
+private fun SplashLogo() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "🐾",
+                fontSize = 64.sp,
+            )
+            Text(
+                text = "시흥가개",
+                fontFamily = PretendardFamily,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 48.sp,
+                color = Color(0xFF8A6E58),
+            )
+            Text(
+                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
+                color = Color(0xFFC4A882),
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun AutoSplashScreenPreview() {
+    SiheungGagaeTheme { SplashLogo() }
+}
