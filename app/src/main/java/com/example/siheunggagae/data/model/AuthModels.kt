@@ -35,3 +35,13 @@ data class TokenRefreshResponse(
 data class LogoutRequest(
     val refreshToken: String,
 )
+
+data class PydanticErrorDetail(
+    val loc: List<String>,
+    val msg: String,
+    val type: String,
+)
+
+data class PydanticErrorResponse(
+    val detail: List<PydanticErrorDetail>,
+)

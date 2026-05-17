@@ -236,15 +236,23 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.SignUp.route) {
+            val signUpContext = LocalContext.current
+            val signUpRepo = remember {
+                val a = signUpContext.applicationContext as SiheungGagaeApp
+                AuthRepository(a.tokenManager, a.fcmTokenManager)
+            }
+            val signUpViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory(signUpRepo))
+
             SignUpScreen(
+                viewModel = signUpViewModel,
                 onBack = {
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onSignUpClick = {
+                onSignUpSuccess = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onNavigateToLogin = {
