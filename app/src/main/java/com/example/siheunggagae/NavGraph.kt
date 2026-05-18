@@ -31,7 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.repository.AuthRepository
+import com.example.siheunggagae.data.repository.UserRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
+import com.example.siheunggagae.ui.viewmodel.MyViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -395,14 +397,17 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val myApp = myContext.applicationContext as SiheungGagaeApp
             val myScope = rememberCoroutineScope()
             val myAuthRepo = remember { AuthRepository(myApp.tokenManager, myApp.fcmTokenManager) }
+            val myViewModel: MyViewModel = viewModel(factory = MyViewModel.Factory(UserRepository()))
 
             MyScreen(
+                viewModel = myViewModel,
                 onNavigate = { route -> navController.navigateTab(route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onBadgeListClick = { /* 재호-10 */ },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
-                    myScope.launch { myAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                    myScope.launch { myAuthRepo.logout() }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }

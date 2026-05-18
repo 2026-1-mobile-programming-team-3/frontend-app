@@ -49,3 +49,18 @@ data class PasswordChangeRequest(
 data class MessageResponse(
     val message: String,
 )
+
+data class VolunteerBadgeInfo(
+    val tier: VolunteerBadgeTier,
+    val count: Int,
+    val nextTier: VolunteerBadgeTier?,
+    val nextThreshold: Int?,
+    val progressPct: Int,
+)
+
+data class ActivityStatsResponse(
+    val myMatchCount: Int,
+    val volunteerCompletedCount: Int,
+    val favoriteCount: Int,
+    val badge: VolunteerBadgeInfo,
+)

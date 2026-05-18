@@ -26,6 +26,7 @@ import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.TokenRefreshRequest
 import com.example.siheunggagae.data.model.TokenRefreshResponse
+import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
@@ -59,6 +60,9 @@ interface AuthApiService {
 
     @GET("api/v1/users/me")
     suspend fun getMe(): Response<UserMeResponse>
+
+    @GET("api/v1/users/me/activity-stats")
+    suspend fun getActivityStats(): Response<ActivityStatsResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
