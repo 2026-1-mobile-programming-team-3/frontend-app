@@ -64,3 +64,27 @@ data class ActivityStatsResponse(
     val favoriteCount: Int,
     val badge: VolunteerBadgeInfo,
 )
+
+data class VolunteerStatsResponse(
+    val totalCount: Int,
+    val totalHours: Int,
+    val avgRating: Double?,
+)
+
+data class MyMatchResponse(
+    val id: Int,
+    val title: String,
+    val status: MatchStatus,
+    val scheduledAt: String?,
+    val regionDong: String?,
+    val petTypes: List<String> = emptyList(),
+    val myRating: Double?,
+)
+
+data class MyMatchListResponse(
+    val content: List<MyMatchResponse>,
+    val totalElements: Int,
+    val totalPages: Int,
+    val page: Int,
+    val size: Int,
+)

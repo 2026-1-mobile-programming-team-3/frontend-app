@@ -130,6 +130,7 @@ fun MyScreen(
     onSettingsClick: () -> Unit = {},
     onPetListClick: () -> Unit = {},
     onBadgeListClick: () -> Unit = {},
+    onVolunteerHistoryClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -223,7 +224,7 @@ fun MyScreen(
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("내 기록")
                     Spacer(Modifier.height(6.dp))
-                    MyRecordsSection()
+                    MyRecordsSection(onVolunteerHistoryClick = onVolunteerHistoryClick)
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("설정")
                     Spacer(Modifier.height(6.dp))
@@ -755,13 +756,14 @@ private fun BadgeItem(
 // ─── 내 기록 ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyRecordsSection() {
+private fun MyRecordsSection(onVolunteerHistoryClick: () -> Unit = {}) {
     SectionCard {
         RecordItem(
             iconRes = R.drawable.ic_volunteer_activism,
             iconTint = Green500My,
             title = "봉사 활동 이력",
             showDivider = true,
+            onClick = onVolunteerHistoryClick,
         )
         RecordItem(
             iconRes = R.drawable.ic_favorite,
@@ -773,11 +775,17 @@ private fun MyRecordsSection() {
 }
 
 @Composable
-private fun RecordItem(iconRes: Int, iconTint: Color, title: String, showDivider: Boolean) {
+private fun RecordItem(
+    iconRes: Int,
+    iconTint: Color,
+    title: String,
+    showDivider: Boolean,
+    onClick: () -> Unit = {},
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

@@ -1,6 +1,8 @@
 package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.model.ActivityStatsResponse
+import com.example.siheunggagae.data.model.MyMatchListResponse
+import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.model.MessageResponse
 import com.example.siheunggagae.data.model.PetCreate
 import com.example.siheunggagae.data.model.PetResponse
@@ -16,6 +18,11 @@ class UserRepository {
     suspend fun getMe(): Response<UserMeResponse> = api.getMe()
 
     suspend fun getActivityStats(): Response<ActivityStatsResponse> = api.getActivityStats()
+
+    suspend fun getVolunteerStats(): Response<VolunteerStatsResponse> = api.getVolunteerStats()
+
+    suspend fun getMyMatches(page: Int = 1, size: Int = 20): Response<MyMatchListResponse> =
+        api.getMyMatches(role = "applicant", status = "DONE", page = page, size = size)
 
     suspend fun updateMe(request: UserUpdateRequest): Response<UserMeResponse> =
         api.updateMe(request)

@@ -27,6 +27,8 @@ import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.TokenRefreshRequest
 import com.example.siheunggagae.data.model.TokenRefreshResponse
 import com.example.siheunggagae.data.model.ActivityStatsResponse
+import com.example.siheunggagae.data.model.MyMatchListResponse
+import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
@@ -63,6 +65,17 @@ interface AuthApiService {
 
     @GET("api/v1/users/me/activity-stats")
     suspend fun getActivityStats(): Response<ActivityStatsResponse>
+
+    @GET("api/v1/users/me/volunteer-stats")
+    suspend fun getVolunteerStats(): Response<VolunteerStatsResponse>
+
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatches(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String = "DONE",
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MyMatchListResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>

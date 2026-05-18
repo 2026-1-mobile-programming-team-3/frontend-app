@@ -85,7 +85,9 @@ import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
+import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
+import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
 import com.example.siheunggagae.ui.theme.Brown40
 import com.example.siheunggagae.ui.theme.Gray10
 import com.example.siheunggagae.ui.theme.Gray40
@@ -119,6 +121,7 @@ sealed class Screen(val route: String) {
     }
     object VolunteerApply      : Screen("volunteer_apply")
     object VolunteerBadgeList  : Screen("volunteer_badge_list")
+    object VolunteerHistory    : Screen("volunteer_history")
     object ProfileEdit     : Screen("profile_edit")
     object MatchingDetail       : Screen("matching_detail/{requestId}") {
         fun createRoute(requestId: Int) = "matching_detail/$requestId"
@@ -465,6 +468,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
+                onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
@@ -558,6 +562,20 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             VolunteerBadgeListScreen(
                 viewModel = badgeViewModel,
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.VolunteerHistory.route) {
+            val historyViewModel: VolunteerHistoryViewModel = viewModel(
+                factory = VolunteerHistoryViewModel.Factory(UserRepository())
+            )
+            VolunteerHistoryScreen(
+                viewModel = historyViewModel,
+                onBack = { navController.popBackStack() },
+                onMatchClick = { matchId ->
+                    navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
+                },
+                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
             )
         }
 
