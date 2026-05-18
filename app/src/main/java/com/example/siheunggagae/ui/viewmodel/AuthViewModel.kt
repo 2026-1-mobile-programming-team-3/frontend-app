@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.model.LoginRequest
+import com.example.siheunggagae.data.model.ConflictResponse
 import com.example.siheunggagae.data.model.PydanticErrorResponse
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.repository.AuthRepository
@@ -71,7 +72,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                         _uiState.value = if (loginResp.isSuccessful) AuthUiState.Success
                         else AuthUiState.Error("자동 로그인에 실패했습니다")
                     }
-                    409 -> _uiState.value = AuthUiState.EmailConflict
+                    409 -> _uiState.value = parse409(response.errorBody()?.string())
                     422 -> _uiState.value = AuthUiState.FieldErrors(
                         parseFieldErrors(response.errorBody()?.string())
                     )
@@ -93,6 +94,17 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun resetState() {
         _uiState.value = AuthUiState.Idle
+    }
+
+    private fun parse409(errorBody: String?): AuthUiState {
+        val detail = runCatching {
+            Gson().fromJson(errorBody, ConflictResponse::class.java).detail
+        }.getOrDefault("")
+        return if (detail.contains("닉네임")) {
+            AuthUiState.FieldErrors(mapOf("nickname" to detail))
+        } else {
+            AuthUiState.EmailConflict
+        }
     }
 
     private fun parseFieldErrors(errorBody: String?): Map<String, String> {

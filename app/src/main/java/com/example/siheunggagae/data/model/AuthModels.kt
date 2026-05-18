@@ -45,3 +45,7 @@ data class PydanticErrorDetail(
 data class PydanticErrorResponse(
     val detail: List<PydanticErrorDetail>,
 )
+
+data class ConflictResponse(
+    val detail: String,
+)
