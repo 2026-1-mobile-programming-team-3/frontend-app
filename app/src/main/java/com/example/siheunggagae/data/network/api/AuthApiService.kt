@@ -105,6 +105,21 @@ interface AuthApiService {
         @Body body: ChatMessageCreateRequest,
     ): Response<ChatMessageCreatedResponse>
 
+    // ── Home ─────────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/home/dashboard")
+    suspend fun getDashboard(): Response<com.example.siheunggagae.data.model.DashboardResponse>
+
+    @POST("api/v1/users/me/favorites/stores/{storeId}")
+    suspend fun addFavoriteStore(
+        @Path("storeId") storeId: Int,
+    ): Response<MessageResponse>
+
+    @DELETE("api/v1/users/me/favorites/stores/{storeId}")
+    suspend fun removeFavoriteStore(
+        @Path("storeId") storeId: Int,
+    ): Response<MessageResponse>
+
     // ── Maps ──────────────────────────────────────────────────────────────────────
 
     @GET("api/v1/maps/stores")
