@@ -355,8 +355,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
-        composable(Screen.Map.route) {
-            MapScreen(onNavigate = { route -> navController.navigateTab(route) })
+        composable(
+            route = "${Screen.Map.route}?volunteerMode={volunteerMode}",
+            arguments = listOf(navArgument("volunteerMode") {
+                type = NavType.BoolType
+                defaultValue = false
+            }),
+        ) { backStackEntry ->
+            val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
+            MapScreen(
+                onNavigate = { route -> navController.navigateTab(route) },
+                startVolunteerMode = volunteerMode,
+            )
         }
 
         composable(Screen.News.route) {

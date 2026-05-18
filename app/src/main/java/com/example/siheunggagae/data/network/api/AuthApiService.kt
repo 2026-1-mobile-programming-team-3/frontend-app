@@ -105,6 +105,26 @@ interface AuthApiService {
         @Body body: ChatMessageCreateRequest,
     ): Response<ChatMessageCreatedResponse>
 
+    // ── Maps ──────────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/maps/stores")
+    suspend fun getNearbyStores(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radius") radius: Int = 2000,
+    ): Response<com.example.siheunggagae.data.model.StoreListResponse>
+
+    @GET("api/v1/maps/stores/filter")
+    suspend fun getFilteredStores(
+        @Query("category") category: String,
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radius") radius: Int = 2000,
+    ): Response<com.example.siheunggagae.data.model.StoreListResponse>
+
+    @GET("api/v1/maps/volunteers")
+    suspend fun getVolunteerMarkers(): Response<List<com.example.siheunggagae.data.model.VolunteerMarkerDto>>
+
     // ── Geo ───────────────────────────────────────────────────────────────────────
 
     @GET("api/v1/geo/reverse")
