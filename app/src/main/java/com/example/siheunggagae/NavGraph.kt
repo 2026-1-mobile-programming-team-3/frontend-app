@@ -39,6 +39,7 @@ import com.example.siheunggagae.data.repository.AuthRepository
 import com.example.siheunggagae.data.repository.UserRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import com.example.siheunggagae.ui.viewmodel.MyViewModel
+import com.example.siheunggagae.ui.viewmodel.PetListViewModel
 import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -465,9 +466,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.PetList.route) {
+            val petListViewModel: PetListViewModel = viewModel(
+                factory = PetListViewModel.Factory(UserRepository())
+            )
             PetListScreen(
+                viewModel = petListViewModel,
                 onBack = { navController.popBackStack() },
                 onAddPet = { navController.navigate(Screen.PetAdd.route) },
+                onEditPet = { petId -> navController.navigate(Screen.PetAdd.route) },
             )
         }
 
