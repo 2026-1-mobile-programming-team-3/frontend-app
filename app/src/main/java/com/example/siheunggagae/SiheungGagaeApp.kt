@@ -2,6 +2,7 @@ package com.example.siheunggagae
 
 import android.app.Application
 import com.example.siheunggagae.data.local.TokenManager
+import com.kakao.vectormap.KakaoMapSdk
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.network.FcmTokenManager
 import com.example.siheunggagae.data.network.RetrofitClient
@@ -29,6 +30,7 @@ class SiheungGagaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        KakaoMapSdk.init(this, BuildConfig.KAKAO_APP_KEY)
         tokenManager = TokenManager(applicationContext)
         RetrofitClient.init(tokenManager) {
             sessionExpiredChannel.trySend(Unit)
