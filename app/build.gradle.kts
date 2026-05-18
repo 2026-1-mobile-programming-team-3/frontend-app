@@ -1,5 +1,16 @@
+import java.util.Properties
+
+val localProps = Properties().also { props ->
+    rootProject.file("local.properties")
+        .takeIf { it.exists() }
+        ?.inputStream()
+        ?.use { props.load(it) }
+}
+
 plugins {
     alias(libs.plugins.android.application)
+
+
 }
 
 android {
@@ -16,6 +27,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "KAKAO_APP_KEY", "\"${localProps["kakao.app.key"]}\"")
+        manifestPlaceholders["kakaoAppKey"] = localProps["kakao.app.key"] ?: ""
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -33,6 +46,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 dependencies {
@@ -41,6 +57,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
+    implementation("com.kakao.maps.open:android:2.12.8")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
