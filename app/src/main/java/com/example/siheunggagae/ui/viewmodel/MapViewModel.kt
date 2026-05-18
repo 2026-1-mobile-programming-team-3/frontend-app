@@ -108,7 +108,7 @@ class MapViewModel(
             if (category == StoreCategory.ALL || category.apiValue == null) {
                 api.getNearbyStores(lat, lng)
             } else {
-                api.getFilteredStores(category.apiValue, lat, lng)
+                api.getFilteredStores(category = category.apiValue)
             }
         }.getOrNull()
         val body = response?.body()

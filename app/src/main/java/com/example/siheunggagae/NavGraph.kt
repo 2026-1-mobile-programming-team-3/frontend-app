@@ -110,7 +110,7 @@ sealed class Screen(val route: String) {
         fun createRoute(userId: Int) = "chat/$userId"
     }
     object NewsDetail      : Screen("news_detail/{newsId}") {
-        fun createRoute(newsId: Int) = "news_detail/$newsId"
+        fun createRoute(newsId: String) = "news_detail/$newsId"
     }
 }
 
@@ -448,9 +448,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(
             route = Screen.NewsDetail.route,
-            arguments = listOf(navArgument("newsId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("newsId") { type = NavType.StringType }),
         ) { backStackEntry ->
-            val newsId = backStackEntry.arguments?.getInt("newsId") ?: 1
+            val newsId = backStackEntry.arguments?.getString("newsId") ?: ""
             NewsDetailScreen(newsId = newsId, onBack = { navController.popBackStack() })
         }
     }

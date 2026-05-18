@@ -145,10 +145,10 @@ fun MapScreen(
         if (!locationPermission.hasPermission) locationPermission.request()
     }
 
-    // 위치 확인 시 카메라 이동
-    LaunchedEffect(mapReady, uiState.location) {
-        val loc = uiState.location ?: return@LaunchedEffect
-        if (mapReady) mapWrapper.moveCamera(loc.latitude, loc.longitude)
+    // 맵 준비되면 무조건 시흥시로 시작 (에뮬레이터 GPS 위치 무시)
+    LaunchedEffect(mapReady) {
+        if (!mapReady) return@LaunchedEffect
+        mapWrapper.moveCamera(37.3795, 126.8025)
     }
 
     // 매장 마커 동기화
@@ -158,9 +158,9 @@ fun MapScreen(
         uiState.stores.forEach { store ->
             val color = categoryColors[store.category] ?: defaultMarkerColor
             mapWrapper.addMarker(
-                id = "store_${store.id}",
-                lat = store.lat,
-                lng = store.lng,
+                id = "store_${store.storeId}",
+                lat = store.latitude,
+                lng = store.longitude,
                 markerColor = color,
                 onTap = { viewModel.selectStore(store) },
             )
@@ -174,11 +174,11 @@ fun MapScreen(
         if (uiState.isVolunteerMode) {
             uiState.volunteerMarkers.forEach { vol ->
                 mapWrapper.addMarker(
-                    id = "vol_${vol.id}",
-                    lat = vol.lat,
-                    lng = vol.lng,
+                    id = "vol_${vol.requestId}",
+                    lat = vol.latitude,
+                    lng = vol.longitude,
                     markerColor = volunteerMarkerColor,
-                    onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(vol.id)) },
+                    onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(vol.requestId)) },
                 )
             }
         }
@@ -218,7 +218,7 @@ fun MapScreen(
                     stores = uiState.stores,
                     totalCount = uiState.totalCount,
                     isExpanded = isExpanded,
-                    onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.id)) },
+                    onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.storeId)) },
                     onClearSelection = { viewModel.selectStore(null) },
                 )
             },
@@ -496,7 +496,7 @@ private fun MapBottomSheetContent(
             if (isExpanded) {
                 // 풀스크린 모드: 전체 리스트
                 LazyColumn {
-                    items(stores, key = { it.id }) { store ->
+                    items(stores, key = { it.storeId }) { store ->
                         MapPlaceItem(place = store, onClick = { onStoreClick(store) })
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
@@ -575,7 +575,7 @@ private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
                     lineHeight = 20.sp,
                     color = Brown700Mp,
                 )
-                if (place.rating != null) {
+                if (place.ratingAvg != null) {
                     Text("·", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700Mp)
                     Icon(
                         painter = painterResource(R.drawable.ic_star),
@@ -584,7 +584,7 @@ private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
                         modifier = Modifier.size(12.dp),
                     )
                     Text(
-                        text = "%.1f".format(place.rating),
+                        text = "%.1f".format(place.ratingAvg),
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
@@ -598,7 +598,7 @@ private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
-                tint = if (place.isFavorite) Pink500Mp else BrownBorderP,
+                tint = if (place.isFavorited) Pink500Mp else BrownBorderP,
                 modifier = Modifier.size(20.dp),
             )
         }

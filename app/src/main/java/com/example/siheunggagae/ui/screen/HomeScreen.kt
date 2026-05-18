@@ -108,7 +108,7 @@ fun HomeScreen(
     onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
-    onNewsDetailClick: (Int) -> Unit = {},
+    onNewsDetailClick: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val viewModel: HomeViewModel = viewModel(
@@ -144,9 +144,9 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) { miniMapWrapper.init { miniMapReady = true } }
 
-    LaunchedEffect(miniMapReady, uiState.location) {
-        val loc = uiState.location ?: return@LaunchedEffect
-        if (miniMapReady) miniMapWrapper.moveCamera(loc.latitude, loc.longitude, 14)
+    LaunchedEffect(miniMapReady) {
+        if (!miniMapReady) return@LaunchedEffect
+        miniMapWrapper.moveCamera(37.3795, 126.8025, 14)
     }
 
     LaunchedEffect(miniMapReady, uiState.allStores) {
@@ -154,7 +154,7 @@ fun HomeScreen(
         miniMapWrapper.clearMarkersWithPrefix("mini_")
         uiState.allStores.take(4).forEach { store ->
             val color = miniMarkerColors[store.category] ?: 0xFF614B3A.toInt()
-            miniMapWrapper.addMarker("mini_${store.id}", store.lat, store.lng, color)
+            miniMapWrapper.addMarker("mini_${store.storeId}", store.latitude, store.longitude, color)
         }
     }
 
@@ -517,7 +517,7 @@ private fun HomeStoreItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onPlaceDetailClick(store.id) }
+            .clickable { onPlaceDetailClick(store.storeId) }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -535,7 +535,7 @@ private fun HomeStoreItem(
                 text = buildString {
                     append(store.category)
                     if (distanceText.isNotEmpty()) append(" · $distanceText")
-                    if (store.rating != null) append(" · ⭐ ${"%.1f".format(store.rating)}")
+                    if (store.ratingAvg != null) append(" · ⭐ ${"%.1f".format(store.ratingAvg)}")
                 },
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
@@ -548,7 +548,7 @@ private fun HomeStoreItem(
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
-                tint = if (store.isFavorite) Pink500H else BrownBorderH,
+                tint = if (store.isFavorited) Pink500H else BrownBorderH,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -561,7 +561,7 @@ private fun HomeStoreItem(
 fun PetNewsSection(
     news: List<NewsItem> = emptyList(),
     onAllClick: () -> Unit = {},
-    onNewsClick: (Int) -> Unit = {},
+    onNewsClick: (String) -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
 ) {
     Column(
@@ -598,7 +598,7 @@ fun PetNewsSection(
                 .padding(horizontal = 20.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFFF9F9F9))
-                .clickable { mainNews?.let { onNewsClick(it.id) } }
+                .clickable { mainNews?.let { onNewsClick(it.newsId ?: "") } }
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -610,15 +610,15 @@ fun PetNewsSection(
             )
             Column(modifier = Modifier.weight(1f)) {
                 if (mainNews != null) {
-                    val (tColor, tBg) = newsTagColors(mainNews.category)
-                    HomeTagChip(text = mainNews.category, textColor = tColor, bgColor = tBg)
+                    val (tColor, tBg) = newsTagColors(mainNews.category ?: "")
+                    HomeTagChip(text = mainNews.category ?: "", textColor = tColor, bgColor = tBg)
                     Spacer(Modifier.height(5.dp))
-                    Text(mainNews.title, fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 28.sp, color = TextBlackH, maxLines = 2)
+                    Text(mainNews.title ?: "", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 28.sp, color = TextBlackH, maxLines = 2)
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = buildString {
-                            append(mainNews.publishedAt)
-                            if (!mainNews.source.isNullOrEmpty()) append(" · ${mainNews.source}")
+                            if (!mainNews.publishedDate.isNullOrEmpty()) append(mainNews.publishedDate)
+                            if (!mainNews.publisher.isNullOrEmpty()) append(" · ${mainNews.publisher}")
                         },
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
@@ -638,18 +638,18 @@ fun PetNewsSection(
 
         // 서브 뉴스 리스트
         subNews.forEach { item ->
-            val (tColor, tBg) = newsTagColors(item.category)
+            val (tColor, tBg) = newsTagColors(item.category ?: "")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNewsClick(item.id) }
+                    .clickable { onNewsClick(item.newsId ?: "") }
                     .padding(horizontal = 20.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                HomeTagChip(item.category, tColor, tBg)
-                Text(item.title, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH, modifier = Modifier.weight(1f))
-                Text(item.publishedAt, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = GrayTextH)
+                HomeTagChip(item.category ?: "", tColor, tBg)
+                Text(item.title ?: "", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH, modifier = Modifier.weight(1f))
+                Text(item.publishedDate ?: "", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = GrayTextH)
             }
             HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
         }
