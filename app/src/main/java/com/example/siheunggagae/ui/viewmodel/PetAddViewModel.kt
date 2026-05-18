@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.local.LocalNotificationStore
+import com.example.siheunggagae.data.model.NotificationCategory
 import com.example.siheunggagae.data.model.PetCreate
 import com.example.siheunggagae.data.model.PetGender
 import com.example.siheunggagae.data.model.PetResponse
@@ -28,6 +30,7 @@ class PetAddViewModel(
     application: Application,
     private val repository: UserRepository,
     val petId: Int?,
+    private val localNotificationStore: LocalNotificationStore? = null,
 ) : AndroidViewModel(application) {
 
     val isEditMode get() = petId != null
@@ -35,9 +38,22 @@ class PetAddViewModel(
     private val notePrefs =
         application.getSharedPreferences("pet_notes", Context.MODE_PRIVATE)
 
-    // 수정 모드일 때 저장된 note를 동기로 읽어둠
+    private val photoPrefs =
+        application.getSharedPreferences("pet_photos", Context.MODE_PRIVATE)
+
+    // 수정 모드일 때 저장된 값을 동기로 읽어둠
     val savedNote: String =
         if (petId != null) notePrefs.getString("note_$petId", "") ?: "" else ""
+
+    val savedPhotoUri: String? =
+        if (petId != null) photoPrefs.getString("photo_$petId", null) else null
+
+    private val _localPhotoUri = MutableStateFlow(savedPhotoUri)
+    val localPhotoUri: StateFlow<String?> = _localPhotoUri
+
+    fun setLocalPhotoUri(uri: String?) {
+        _localPhotoUri.value = uri
+    }
 
     private val _uiState = MutableStateFlow<PetAddUiState>(
         if (petId != null) PetAddUiState.Loading else PetAddUiState.Idle
@@ -114,7 +130,18 @@ class PetAddViewModel(
                         } else {
                             notePrefs.edit().remove("note_$id").apply()
                         }
+                        val photoUri = _localPhotoUri.value
+                        if (!photoUri.isNullOrBlank()) {
+                            photoPrefs.edit().putString("photo_$id", photoUri).apply()
+                        } else {
+                            photoPrefs.edit().remove("photo_$id").apply()
+                        }
                     }
+                    // 알림함에 시스템 알림 추가
+                    val notifTitle = if (petId == null) "반려동물 등록됨" else "반려동물 수정됨"
+                    val notifBody  = if (petId == null) "${name}이(가) 등록되었습니다."
+                                     else "${name} 정보가 수정되었습니다."
+                    localNotificationStore?.add(NotificationCategory.SYSTEM, notifTitle, notifBody)
                     _uiState.value = PetAddUiState.SaveSuccess
                 } else {
                     _uiState.value = PetAddUiState.Error("저장에 실패했습니다")
@@ -133,9 +160,10 @@ class PetAddViewModel(
         private val application: Application,
         private val repository: UserRepository,
         private val petId: Int?,
+        private val localNotificationStore: LocalNotificationStore? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PetAddViewModel(application, repository, petId) as T
+            PetAddViewModel(application, repository, petId, localNotificationStore) as T
     }
 }

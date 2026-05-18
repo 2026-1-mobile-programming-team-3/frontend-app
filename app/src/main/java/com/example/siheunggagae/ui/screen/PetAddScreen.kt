@@ -1,12 +1,19 @@
 ﻿package com.example.siheunggagae.ui.screen
 
+import android.content.Intent
+import android.graphics.ImageDecoder
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetGender
 import com.example.siheunggagae.data.model.PetSpecies
 import com.example.siheunggagae.ui.viewmodel.PetAddUiState
 import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -62,6 +70,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -116,6 +130,33 @@ fun PetAddScreen(
     val initialPet by remember(viewModel) {
         viewModel?.initialPet ?: kotlinx.coroutines.flow.MutableStateFlow(null)
     }.collectAsState()
+    val localPhotoUri by remember(viewModel) {
+        viewModel?.localPhotoUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
+
+    // URI → 비트맵 (IO 스레드)
+    var photoBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(localPhotoUri) {
+        photoBitmap = if (localPhotoUri != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val uri = Uri.parse(localPhotoUri)
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source).asImageBitmap()
+                }.getOrNull()
+            }
+        } else null
+    }
+
+    // 갤러리 피커
+    val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel?.setLocalPhotoUri(uri.toString())
+        }
+    }
 
     val isEditMode = viewModel?.isEditMode == true
     var formInitialized by rememberSaveable { mutableStateOf(!isEditMode) }
@@ -239,6 +280,10 @@ fun PetAddScreen(
                     age = age,
                     ageUnit = ageUnit,
                     gender = gender,
+                    photoBitmap = photoBitmap,
+                    onPickPhoto = {
+                        imagePicker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                    },
                 )
 
                 PetSectionLabelPA("기본 정보")
@@ -325,6 +370,8 @@ private fun PetPreviewCard(
     age: Int,
     ageUnit: String,
     gender: String,
+    photoBitmap: ImageBitmap? = null,
+    onPickPhoto: () -> Unit = {},
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -339,19 +386,48 @@ private fun PetPreviewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_pets),
-                    contentDescription = null,
-                    tint = Orange500PA,
-                    modifier = Modifier.size(32.dp),
-                )
+            // 사진 영역 — 탭 시 갤러리 열림
+            Box {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .clickable { onPickPhoto() },
+                ) {
+                    if (photoBitmap != null) {
+                        Image(
+                            bitmap = photoBitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_pets),
+                            contentDescription = null,
+                            tint = Orange500PA,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                }
+                // 카메라 뱃지
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Brown900PA),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = "사진 변경",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(

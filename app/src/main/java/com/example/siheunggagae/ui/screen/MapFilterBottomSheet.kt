@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -225,7 +227,7 @@ private fun FilterCheckboxMf(checked: Boolean) {
     ) {
         if (checked) {
             Icon(
-                painter = painterResource(R.drawable.ic_check),
+                imageVector = Icons.Default.Check,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(16.dp),

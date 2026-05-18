@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.PriorityHigh
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -355,7 +356,7 @@ private fun RelatedNewsCard(news: RelatedNews) {
                     .clip(CircleShape)
                     .background(OrangeSandND),
             ) {
-                Icon(painter = painterResource(R.drawable.ic_priority_high), null, tint = Orange500ND, modifier = Modifier.size(18.dp))
+                Icon(imageVector = Icons.Default.PriorityHigh, contentDescription = null, tint = Orange500ND, modifier = Modifier.size(18.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(

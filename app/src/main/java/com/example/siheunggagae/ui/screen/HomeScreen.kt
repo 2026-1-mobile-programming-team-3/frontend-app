@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Notifications
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -70,6 +71,7 @@ private val StarYellow    = Color(0xFFFDC700)
 
 @Composable
 fun HomeScreen(
+    unreadCount: Int = 0,
     onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
@@ -85,7 +87,7 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            HomeTopBar(onNotificationClick = onNotificationClick)
+            HomeTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
             Spacer(Modifier.height(8.dp))
             WalkIndexSection()
             Spacer(Modifier.height(8.dp))
@@ -104,7 +106,7 @@ fun HomeScreen(
 // ─── TopBar ──────────────────────────────────────────────────────────────────
 
 @Composable
-fun HomeTopBar(onNotificationClick: () -> Unit = {}) {
+fun HomeTopBar(unreadCount: Int = 0, onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -159,8 +161,34 @@ fun HomeTopBar(onNotificationClick: () -> Unit = {}) {
                     color = Brown700,
                 )
             }
-            IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
-                Icon(painter = painterResource(R.drawable.ic_notifications), contentDescription = "알림", tint = Brown700, modifier = Modifier.size(22.dp))
+            Box {
+                IconButton(onClick = onNotificationClick, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "알림",
+                        tint = Brown700,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                if (unreadCount > 0) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Pink500)
+                            .align(Alignment.TopEnd),
+                    ) {
+                        Text(
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                            fontFamily = PretendardFamily,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            lineHeight = 8.sp,
+                        )
+                    }
+                }
             }
         }
     }

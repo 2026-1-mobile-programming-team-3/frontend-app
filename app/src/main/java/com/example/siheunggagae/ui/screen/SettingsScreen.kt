@@ -47,6 +47,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -120,7 +124,7 @@ fun SettingsScreen(
             SettingsSectionLabel("알림")
             SettingsSectionCard {
                 SettingsSwitchItem(
-                    iconRes = R.drawable.ic_notifications,
+                    imageVector = Icons.Default.Notifications,
                     label = "매칭 알림",
                     checked = matchingNotif,
                     onCheckedChange = { matchingNotif = it },
@@ -168,7 +172,7 @@ fun SettingsScreen(
                 )
                 SettingsDivider()
                 SettingsNavItem(
-                    iconRes = R.drawable.ic_mobile,
+                    imageVector = Icons.Default.PhoneAndroid,
                     label = "버전",
                     rightContent = {
                         Text(
@@ -190,7 +194,7 @@ fun SettingsScreen(
             SettingsSectionCard {
                 SettingsNavItem(iconRes = R.drawable.ic_help, label = "도움말", onClick = {})
                 SettingsDivider()
-                SettingsNavItem(iconRes = R.drawable.ic_lock, label = "개인정보 처리 방침", onClick = {})
+                SettingsNavItem(imageVector = Icons.Default.Lock, label = "개인정보 처리 방침", onClick = {})
                 SettingsDivider()
                 Row(
                     modifier = Modifier
@@ -350,6 +354,7 @@ private fun SettingsDivider() {
 @Composable
 private fun SettingsNavItem(
     iconRes: Int? = null,
+    imageVector: ImageVector? = null,
     label: String,
     rightContent: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)?,
@@ -369,8 +374,9 @@ private fun SettingsNavItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(OrangeSandSt),
         ) {
-            if (iconRes != null) {
-                Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            when {
+                imageVector != null -> Icon(imageVector = imageVector, contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+                iconRes != null     -> Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
             }
         }
         Text(
@@ -392,7 +398,8 @@ private fun SettingsNavItem(
 
 @Composable
 private fun SettingsSwitchItem(
-    iconRes: Int,
+    iconRes: Int? = null,
+    imageVector: ImageVector? = null,
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -411,7 +418,10 @@ private fun SettingsSwitchItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(OrangeSandSt),
         ) {
-            Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            when {
+                imageVector != null -> Icon(imageVector = imageVector, contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+                iconRes != null     -> Icon(painter = painterResource(iconRes), contentDescription = null, tint = Orange500St, modifier = Modifier.size(20.dp))
+            }
         }
         Text(
             text = label,

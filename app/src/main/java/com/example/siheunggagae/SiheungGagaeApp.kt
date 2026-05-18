@@ -1,6 +1,7 @@
 package com.example.siheunggagae
 
 import android.app.Application
+import com.example.siheunggagae.data.local.LocalNotificationStore
 import com.example.siheunggagae.data.local.TokenManager
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.network.FcmTokenManager
@@ -23,6 +24,9 @@ class SiheungGagaeApp : Application() {
     lateinit var geoRepository: GeoRepository
         private set
 
+    lateinit var localNotificationStore: LocalNotificationStore
+        private set
+
     val sessionExpiredChannel = Channel<Unit>(Channel.CONFLATED)
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -30,6 +34,7 @@ class SiheungGagaeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         tokenManager = TokenManager(applicationContext)
+        localNotificationStore = LocalNotificationStore(applicationContext)
         RetrofitClient.init(tokenManager) {
             sessionExpiredChannel.trySend(Unit)
         }

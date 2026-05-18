@@ -1,6 +1,5 @@
 package com.example.siheunggagae.ui.screen
 
-import com.example.siheunggagae.R
 import com.example.siheunggagae.ui.viewmodel.AuthUiState
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 
@@ -29,6 +28,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,7 +51,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -603,9 +603,7 @@ private fun RegPasswordTextField(
             },
         )
         Icon(
-            painter = painterResource(
-                if (visible) R.drawable.ic_visibility else R.drawable.ic_visibility_off,
-            ),
+            imageVector = if (visible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
             contentDescription = if (visible) "비밀번호 숨기기" else "비밀번호 표시",
             tint = Brown700Reg,
             modifier = Modifier

@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -209,7 +211,7 @@ private fun NewsTopBar() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
+                NewsTopBarIcon { Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
                 // 알림 뱃지
                 Box(
                     modifier = Modifier

@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
@@ -37,8 +38,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.repository.AuthRepository
 import com.example.siheunggagae.data.repository.UserRepository
+import com.example.siheunggagae.data.repository.NotificationRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import com.example.siheunggagae.ui.viewmodel.MyViewModel
+import com.example.siheunggagae.ui.viewmodel.NotificationViewModel
 import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
 import com.example.siheunggagae.ui.viewmodel.PetListViewModel
 import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
@@ -306,7 +309,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Home.route) {
+            val homeNotifRepo = remember { NotificationRepository() }
+            val unreadCountState = remember { mutableStateOf(0) }
+            val homeLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(homeLifecycle) {
+                homeLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    runCatching { homeNotifRepo.getUnreadCount() }.onSuccess { resp ->
+                        if (resp.isSuccessful) unreadCountState.value = resp.body()?.unreadCount ?: 0
+                    }
+                }
+            }
             HomeScreen(
+                unreadCount = unreadCountState.value,
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
                 onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
@@ -314,7 +328,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Notification.route) {
-            NotificationScreen(onBack = { navController.popBackStack() })
+            val notifApp = LocalContext.current.applicationContext as SiheungGagaeApp
+            val notifViewModel: NotificationViewModel = viewModel(
+                factory = NotificationViewModel.Factory(
+                    NotificationRepository(notifApp.localNotificationStore)
+                )
+            )
+            NotificationScreen(
+                viewModel = notifViewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.Matching.route) {
@@ -500,6 +523,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     petAddContext.applicationContext as android.app.Application,
                     UserRepository(),
                     petId,
+                    (petAddContext.applicationContext as SiheungGagaeApp).localNotificationStore,
                 )
             )
             PetAddScreen(

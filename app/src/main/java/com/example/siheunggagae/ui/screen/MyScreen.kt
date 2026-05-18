@@ -61,6 +61,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.LocalFlorist
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,10 +92,13 @@ private val tierOrder = listOf(
 
 
 private val tierIconRes = mapOf(
-    VolunteerBadgeTier.SEED   to R.drawable.ic_psychiatry,
-    VolunteerBadgeTier.FLOWER to R.drawable.ic_deceased,
-    VolunteerBadgeTier.FRUIT  to R.drawable.ic_nutrition,
-    VolunteerBadgeTier.TREE   to R.drawable.ic_nature,
+    VolunteerBadgeTier.SEED to R.drawable.ic_psychiatry,
+    VolunteerBadgeTier.TREE to R.drawable.ic_nature,
+)
+
+private val tierIconVector = mapOf(
+    VolunteerBadgeTier.FLOWER to Icons.Default.LocalFlorist,
+    VolunteerBadgeTier.FRUIT  to Icons.Default.Eco,
 )
 
 private val tierBgColor = mapOf(
@@ -686,12 +692,13 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                         else          -> "달성"
                     }
                     BadgeItem(
-                        iconRes  = tierIconRes[tier]!!,
-                        bgColor  = if (achieved) tierBgColor[tier]!! else Color(0xFFE8E8E8),
-                        label    = tier.label,
-                        subLabel = subLabel,
-                        achieved = achieved,
-                        modifier = Modifier.weight(1f),
+                        iconRes    = tierIconRes[tier],
+                        iconVector = tierIconVector[tier],
+                        bgColor    = if (achieved) tierBgColor[tier]!! else Color(0xFFE8E8E8),
+                        label      = tier.label,
+                        subLabel   = subLabel,
+                        achieved   = achieved,
+                        modifier   = Modifier.weight(1f),
                     )
                 }
             }
@@ -701,7 +708,8 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
 
 @Composable
 private fun BadgeItem(
-    iconRes: Int,
+    iconRes: Int? = null,
+    iconVector: ImageVector? = null,
     bgColor: Color,
     label: String,
     subLabel: String,
@@ -719,12 +727,10 @@ private fun BadgeItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(bgColor),
         ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(24.dp),
-            )
+            when {
+                iconVector != null -> Icon(imageVector = iconVector, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
+                iconRes != null    -> Icon(painter = painterResource(iconRes), contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
         }
         Spacer(Modifier.height(6.dp))
         Text(
