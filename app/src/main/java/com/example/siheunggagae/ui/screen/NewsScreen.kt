@@ -113,8 +113,10 @@ private fun categoryImageBg(category: String) = when (category) {
 
 @Composable
 fun NewsScreen(
+    unreadCount: Int = 0,
     onNewsDetailClick: (Int) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
 ) {
     var selectedCategory by remember { mutableStateOf("전체") }
@@ -124,7 +126,7 @@ fun NewsScreen(
 
     Scaffold(
         containerColor = BackgroundNs,
-        topBar = { NewsTopBar() },
+        topBar = { NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.News.route, onNavigate = onNavigate) },
     ) { innerPadding ->
         LazyColumn(
@@ -190,7 +192,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar() {
+private fun NewsTopBar(unreadCount: Int = 0, onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,22 +213,34 @@ private fun NewsTopBar() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon { Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
-                // 알림 뱃지
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .align(Alignment.TopEnd)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Pink500Ns),
-                )
+                NewsTopBarIcon(onClick = onNotificationClick) {
+                    Icon(imageVector = Icons.Default.Notifications, contentDescription = "알림", tint = TextBlackNs, modifier = Modifier.size(18.dp))
+                }
+                if (unreadCount > 0) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .align(Alignment.TopEnd)
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Pink500Ns),
+                    ) {
+                        Text(
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                            fontFamily = PretendardFamily,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun NewsTopBarIcon(content: @Composable () -> Unit) {
+private fun NewsTopBarIcon(onClick: () -> Unit = {}, content: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -234,7 +248,7 @@ private fun NewsTopBarIcon(content: @Composable () -> Unit) {
             .shadow(elevation = 1.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
-            .clickable { },
+            .clickable { onClick() },
     ) { content() }
 }
 
