@@ -41,11 +41,13 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,10 +119,12 @@ private fun PetGender?.label() = when (this) {
 @Composable
 fun MyScreen(
     viewModel: MyViewModel? = null,
+    localImageUri: String? = null,
     onNavigate: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onPetListClick: () -> Unit = {},
     onBadgeListClick: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
@@ -187,6 +191,8 @@ fun MyScreen(
                     ProfileCard(
                         nickname = user?.nickname ?: "—",
                         regionDong = user?.regionDong ?: "—",
+                        localImageUri = localImageUri,
+                        onEditClick = onEditProfileClick,
                     )
                     Spacer(Modifier.height(12.dp))
                     MyPetSection(
@@ -312,7 +318,26 @@ private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
 // ─── 프로필 Card ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProfileCard(nickname: String, regionDong: String) {
+private fun ProfileCard(
+    nickname: String,
+    regionDong: String,
+    localImageUri: String? = null,
+    onEditClick: () -> Unit = {},
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var imageBitmap by remember(localImageUri) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    LaunchedEffect(localImageUri) {
+        imageBitmap = if (localImageUri != null) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val uri = android.net.Uri.parse(localImageUri)
+                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                    android.graphics.ImageDecoder.decodeBitmap(source).asImageBitmap()
+                }.getOrNull()
+            }
+        } else null
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,7 +348,7 @@ private fun ProfileCard(nickname: String, regionDong: String) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // 프로필 이미지: 이니셜 원형
+        // 프로필 이미지: 갤러리 선택 이미지 or 이니셜 원형
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -331,13 +356,22 @@ private fun ProfileCard(nickname: String, regionDong: String) {
                 .clip(CircleShape)
                 .background(Orange500My),
         ) {
-            Text(
-                text = nickname.take(1),
-                fontFamily = PretendardFamily,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
+            if (imageBitmap != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = imageBitmap!!,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                )
+            } else {
+                Text(
+                    text = nickname.take(1),
+                    fontFamily = PretendardFamily,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                )
+            }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -373,7 +407,7 @@ private fun ProfileCard(nickname: String, regionDong: String) {
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
                 .background(Color(0xFFFEFEFE))
-                .clickable { }
+                .clickable { onEditClick() }
                 .padding(horizontal = 13.dp, vertical = 6.dp),
         ) {
             Text(

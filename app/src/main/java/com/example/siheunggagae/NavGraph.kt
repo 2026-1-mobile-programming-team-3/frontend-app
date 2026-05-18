@@ -23,8 +23,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -34,6 +39,7 @@ import com.example.siheunggagae.data.repository.AuthRepository
 import com.example.siheunggagae.data.repository.UserRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import com.example.siheunggagae.ui.viewmodel.MyViewModel
+import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -62,6 +68,7 @@ import com.example.siheunggagae.ui.screen.MatchingDetailScreen
 import com.example.siheunggagae.ui.screen.MatchingPublicDetailScreen
 import com.example.siheunggagae.ui.screen.MatchingScreen
 import com.example.siheunggagae.ui.screen.MyScreen
+import com.example.siheunggagae.ui.screen.ProfileEditScreen
 import com.example.siheunggagae.ui.screen.NewsDetailScreen
 import com.example.siheunggagae.ui.screen.NewsScreen
 import com.example.siheunggagae.ui.screen.NotificationScreen
@@ -102,6 +109,7 @@ sealed class Screen(val route: String) {
     object PetList         : Screen("pet_list")
     object PetAdd          : Screen("pet_add")
     object VolunteerApply  : Screen("volunteer_apply")
+    object ProfileEdit     : Screen("profile_edit")
     object MatchingDetail       : Screen("matching_detail/{requestId}") {
         fun createRoute(requestId: Int) = "matching_detail/$requestId"
     }
@@ -398,13 +406,24 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val myScope = rememberCoroutineScope()
             val myAuthRepo = remember { AuthRepository(myApp.tokenManager, myApp.fcmTokenManager) }
             val myViewModel: MyViewModel = viewModel(factory = MyViewModel.Factory(UserRepository()))
+            val myLifecycle = LocalLifecycleOwner.current.lifecycle
+            val localImageUri by myApp.tokenManager.localProfileImageUri.collectAsState()
+
+            // 다른 화면에서 돌아올 때마다 데이터 새로고침
+            LaunchedEffect(myLifecycle) {
+                myLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    myViewModel.fetchData()
+                }
+            }
 
             MyScreen(
                 viewModel = myViewModel,
+                localImageUri = localImageUri,
                 onNavigate = { route -> navController.navigateTab(route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onBadgeListClick = { /* 재호-10 */ },
+                onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
                     myScope.launch { myAuthRepo.logout() }
@@ -412,6 +431,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(Screen.ProfileEdit.route) {
+            val peContext = LocalContext.current
+            val peApp = peContext.applicationContext as SiheungGagaeApp
+            val peViewModel: ProfileEditViewModel = viewModel(
+                factory = ProfileEditViewModel.Factory(UserRepository(), peApp.tokenManager)
+            )
+            ProfileEditScreen(
+                viewModel = peViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
 

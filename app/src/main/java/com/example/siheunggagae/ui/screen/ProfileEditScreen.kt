@@ -1,0 +1,453 @@
+package com.example.siheunggagae.ui.screen
+
+import android.content.Intent
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.viewmodel.ProfileEditUiState
+import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+private val BgPE         = Color(0xFFFEFEFE)
+private val TextBlackPE  = Color(0xFF1E120A)
+private val BorderPE     = Color(0xFFE8D3C2)
+private val PlaceholderPE = Color(0xFFC1AEA0)
+private val Orange500PE  = Color(0xFFF7A35B)
+private val Pink500PE    = Color(0xFFF04268)
+
+@Composable
+fun ProfileEditScreen(
+    viewModel: ProfileEditViewModel? = null,
+    onBack: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    val uiState by remember(viewModel) {
+        viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(ProfileEditUiState.Loading)
+    }.collectAsState()
+
+    val localImageUri by remember(viewModel) {
+        viewModel?.localImageUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
+
+    // 선택된 이미지 비트맵 (IO 스레드에서 로드)
+    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(localImageUri) {
+        imageBitmap = if (localImageUri != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val uri = Uri.parse(localImageUri)
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source).asImageBitmap()
+                }.getOrNull()
+            }
+        } else null
+    }
+
+    // 갤러리 피커
+    val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel?.setLocalImageUri(uri.toString())
+        }
+    }
+
+    // 폼 상태 — 초기값은 Loaded 상태에서 한 번만 세팅
+    var nickname        by rememberSaveable { mutableStateOf("") }
+    var phone           by rememberSaveable { mutableStateOf("") }
+    var city            by rememberSaveable { mutableStateOf("") }
+    var dong            by rememberSaveable { mutableStateOf("") }
+    var formInitialized by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(uiState) {
+        val loaded = uiState as? ProfileEditUiState.Loaded
+        if (loaded != null && !formInitialized) {
+            nickname = loaded.user.nickname
+            phone    = loaded.user.phone ?: ""
+            city     = loaded.user.regionSi ?: ""
+            dong     = loaded.user.regionDong ?: ""
+            formInitialized = true
+        }
+        when (uiState) {
+            is ProfileEditUiState.SaveSuccess -> {
+                Toast.makeText(context, "프로필이 저장됐어요", Toast.LENGTH_SHORT).show()
+                onBack()
+            }
+            is ProfileEditUiState.Error -> {
+                Toast.makeText(context, (uiState as ProfileEditUiState.Error).message, Toast.LENGTH_SHORT).show()
+                viewModel?.clearSaveResult()
+            }
+            else -> {}
+        }
+    }
+
+    val fieldErrors = (uiState as? ProfileEditUiState.FieldErrors)?.errors ?: emptyMap()
+    val nicknameConflict = (uiState as? ProfileEditUiState.NicknameConflict)?.message
+
+    val isSaving = uiState is ProfileEditUiState.Saving || uiState is ProfileEditUiState.Loading
+    val canSave  = nickname.isNotBlank() && !isSaving
+
+    fun clearErrors() {
+        if (uiState is ProfileEditUiState.FieldErrors ||
+            uiState is ProfileEditUiState.NicknameConflict
+        ) viewModel?.clearSaveResult()
+    }
+
+    Scaffold(
+        containerColor = BgPE,
+        topBar = { ProfileEditTopBar(onBack = onBack) },
+        bottomBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (canSave) Orange500PE else Orange500PE.copy(alpha = 0.4f)
+                        )
+                        .then(
+                            if (canSave) Modifier.clickable {
+                                viewModel?.save(
+                                    nickname = nickname,
+                                    phone = phone.takeIf { it.isNotBlank() },
+                                    regionSi = city.takeIf { it.isNotBlank() },
+                                    regionDong = dong.takeIf { it.isNotBlank() },
+                                )
+                            } else Modifier
+                        ),
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    } else {
+                        Text(
+                            text = "저장하기",
+                            fontFamily = PretendardFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                        )
+                    }
+                }
+            }
+        },
+    ) { innerPadding ->
+        when {
+            uiState is ProfileEditUiState.Loading && !formInitialized -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Orange500PE)
+                }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp),
+                ) {
+                    Spacer(Modifier.height(24.dp))
+
+                    // 프로필 아바타 — 탭하면 갤러리 열림
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(CircleShape)
+                                .background(Orange500PE)
+                                .clickable {
+                                    imagePicker.launch(
+                                        PickVisualMediaRequest(PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                        ) {
+                            if (imageBitmap != null) {
+                                Image(
+                                    bitmap = imageBitmap!!,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                Text(
+                                    text = nickname.take(1).ifEmpty { "?" },
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                        // 카메라 아이콘 뱃지
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF614B3A)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CameraAlt,
+                                contentDescription = "사진 변경",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(28.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+
+                        // 닉네임 (필수)
+                        PEInputSection(label = "닉네임 *") {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                PETextField(
+                                    value = nickname,
+                                    onValueChange = { nickname = it; clearErrors() },
+                                    placeholder = "닉네임을 입력하세요",
+                                )
+                                nicknameConflict?.let { PEFieldError(it) }
+                                fieldErrors["nickname"]?.let { PEFieldError(it) }
+                            }
+                        }
+
+                        // 전화번호 (선택)
+                        PEInputSection(label = "전화번호") {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                PETextField(
+                                    value = phone,
+                                    onValueChange = { phone = it; clearErrors() },
+                                    placeholder = "예: 010-1234-5678",
+                                    keyboardType = KeyboardType.Phone,
+                                )
+                                fieldErrors["phone"]?.let { PEFieldError(it) }
+                            }
+                        }
+
+                        // 거주 시 (선택)
+                        PEInputSection(label = "거주 시") {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                PETextField(
+                                    value = city,
+                                    onValueChange = { city = it; clearErrors() },
+                                    placeholder = "예: 시흥시",
+                                )
+                                fieldErrors["region_si"]?.let { PEFieldError(it) }
+                            }
+                        }
+
+                        // 거주 동 (선택)
+                        PEInputSection(label = "거주 동") {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                PETextField(
+                                    value = dong,
+                                    onValueChange = { dong = it; clearErrors() },
+                                    placeholder = "예: 정왕동",
+                                )
+                                fieldErrors["region_dong"]?.let { PEFieldError(it) }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                }
+            }
+        }
+    }
+}
+
+// ─── TopBar ────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ProfileEditTopBar(onBack: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(40.dp)
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White)
+                .clickable { onBack() },
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                contentDescription = "뒤로",
+                tint = TextBlackPE,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Text(
+            text = "프로필 편집",
+            fontFamily = PretendardFamily,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextBlackPE,
+            modifier = Modifier.align(Alignment.Center),
+        )
+    }
+}
+
+// ─── 입력 섹션 래퍼 ────────────────────────────────────────────────────────────
+
+@Composable
+private fun PEInputSection(label: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            fontFamily = PretendardFamily,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 20.sp,
+            color = TextBlackPE,
+        )
+        content()
+    }
+}
+
+// ─── 텍스트 입력 ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun PETextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        textStyle = TextStyle(
+            fontFamily = PretendardFamily,
+            fontSize = 16.sp,
+            lineHeight = 24.sp,
+            color = TextBlackPE,
+        ),
+        cursorBrush = SolidColor(Orange500PE),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, BorderPE, RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        decorationBox = { inner ->
+            if (value.isEmpty()) {
+                Text(
+                    text = placeholder,
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp,
+                    color = PlaceholderPE,
+                )
+            }
+            inner()
+        },
+    )
+}
+
+// ─── 필드 오류 텍스트 ──────────────────────────────────────────────────────────
+
+@Composable
+private fun PEFieldError(message: String) {
+    Text(
+        text = message,
+        fontFamily = PretendardFamily,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        color = Pink500PE,
+    )
+}
+
+// ─── Preview ───────────────────────────────────────────────────────────────────
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ProfileEditScreenPreview() {
+    SiheungGagaeTheme { ProfileEditScreen() }
+}
