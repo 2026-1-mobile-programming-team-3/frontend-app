@@ -1,5 +1,6 @@
 *.iml
 .gradle
+.claude/
 /local.properties
 /.idea/caches
 /.idea/libraries
@@ -13,3 +14,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+figma_response.json
+figma_*.json
