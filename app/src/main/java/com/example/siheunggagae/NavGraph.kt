@@ -84,6 +84,8 @@ import com.example.siheunggagae.ui.screen.RequestFlowScreen
 import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
+import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
+import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
 import com.example.siheunggagae.ui.theme.Brown40
 import com.example.siheunggagae.ui.theme.Gray10
 import com.example.siheunggagae.ui.theme.Gray40
@@ -115,7 +117,8 @@ sealed class Screen(val route: String) {
     object PetAdd          : Screen("pet_add?petId={petId}") {
         fun editRoute(petId: Int) = "pet_add?petId=$petId"
     }
-    object VolunteerApply  : Screen("volunteer_apply")
+    object VolunteerApply      : Screen("volunteer_apply")
+    object VolunteerBadgeList  : Screen("volunteer_badge_list")
     object ProfileEdit     : Screen("profile_edit")
     object MatchingDetail       : Screen("matching_detail/{requestId}") {
         fun createRoute(requestId: Int) = "matching_detail/$requestId"
@@ -461,7 +464,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onNavigate = { route -> navController.navigateTab(route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
-                onBadgeListClick = { /* 재호-10 */ },
+                onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
@@ -546,6 +549,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.VolunteerApply.route) {
             VolunteerApplyScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.VolunteerBadgeList.route) {
+            val badgeViewModel: VolunteerBadgeViewModel = viewModel(
+                factory = VolunteerBadgeViewModel.Factory(UserRepository())
+            )
+            VolunteerBadgeListScreen(
+                viewModel = badgeViewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(
