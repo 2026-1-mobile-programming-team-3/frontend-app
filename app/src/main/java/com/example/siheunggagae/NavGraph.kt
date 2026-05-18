@@ -39,6 +39,7 @@ import com.example.siheunggagae.data.repository.AuthRepository
 import com.example.siheunggagae.data.repository.UserRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import com.example.siheunggagae.ui.viewmodel.MyViewModel
+import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
 import com.example.siheunggagae.ui.viewmodel.PetListViewModel
 import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
@@ -108,7 +109,9 @@ sealed class Screen(val route: String) {
     object My              : Screen("my")
     object Settings        : Screen("settings")
     object PetList         : Screen("pet_list")
-    object PetAdd          : Screen("pet_add")
+    object PetAdd          : Screen("pet_add?petId={petId}") {
+        fun editRoute(petId: Int) = "pet_add?petId=$petId"
+    }
     object VolunteerApply  : Screen("volunteer_apply")
     object ProfileEdit     : Screen("profile_edit")
     object MatchingDetail       : Screen("matching_detail/{requestId}") {
@@ -469,16 +472,40 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val petListViewModel: PetListViewModel = viewModel(
                 factory = PetListViewModel.Factory(UserRepository())
             )
+            val petListLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(petListLifecycle) {
+                petListLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    petListViewModel.fetchPets()
+                }
+            }
             PetListScreen(
                 viewModel = petListViewModel,
                 onBack = { navController.popBackStack() },
                 onAddPet = { navController.navigate(Screen.PetAdd.route) },
-                onEditPet = { petId -> navController.navigate(Screen.PetAdd.route) },
+                onEditPet = { petId -> navController.navigate(Screen.PetAdd.editRoute(petId)) },
             )
         }
 
-        composable(Screen.PetAdd.route) {
-            PetAddScreen(onBack = { navController.popBackStack() })
+        composable(
+            route = Screen.PetAdd.route,
+            arguments = listOf(navArgument("petId") {
+                type = NavType.IntType
+                defaultValue = -1
+            }),
+        ) { backStackEntry ->
+            val petId = backStackEntry.arguments?.getInt("petId")?.takeIf { it != -1 }
+            val petAddContext = LocalContext.current
+            val petAddViewModel: PetAddViewModel = viewModel(
+                factory = PetAddViewModel.Factory(
+                    petAddContext.applicationContext as android.app.Application,
+                    UserRepository(),
+                    petId,
+                )
+            )
+            PetAddScreen(
+                viewModel = petAddViewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.VolunteerApply.route) {

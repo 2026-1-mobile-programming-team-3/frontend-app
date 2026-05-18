@@ -2,6 +2,9 @@ package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.MessageResponse
+import com.example.siheunggagae.data.model.PetCreate
+import com.example.siheunggagae.data.model.PetResponse
+import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
@@ -16,6 +19,11 @@ class UserRepository {
 
     suspend fun updateMe(request: UserUpdateRequest): Response<UserMeResponse> =
         api.updateMe(request)
+
+    suspend fun addPet(body: PetCreate): Response<PetResponse> = api.addPet(body)
+
+    suspend fun updatePet(petId: Int, body: PetUpdate): Response<PetResponse> =
+        api.updatePet(petId, body)
 
     suspend fun deletePet(petId: Int): Response<MessageResponse> = api.deletePet(petId)
 }

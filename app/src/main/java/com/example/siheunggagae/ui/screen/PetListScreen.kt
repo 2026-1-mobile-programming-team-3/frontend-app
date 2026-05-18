@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.MoreVert
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -371,7 +372,7 @@ private fun PetRow(
 
         Box(contentAlignment = Alignment.TopEnd) {
             Icon(
-                painter = painterResource(R.drawable.ic_more_vert),
+                imageVector = Icons.Default.MoreVert,
                 contentDescription = "옵션",
                 tint = Brown700PL,
                 modifier = Modifier

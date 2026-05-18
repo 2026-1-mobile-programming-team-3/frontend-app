@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -221,14 +223,14 @@ private fun MatchingDetailTopBar(onBack: () -> Unit) {
             modifier = Modifier.align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TopBarIconD(iconRes = R.drawable.ic_more_vert, desc = "더보기")
+            TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
             TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
         }
     }
 }
 
 @Composable
-private fun TopBarIconD(iconRes: Int, desc: String) {
+private fun TopBarIconD(iconRes: Int? = null, imageVector: ImageVector? = null, desc: String) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -238,7 +240,11 @@ private fun TopBarIconD(iconRes: Int, desc: String) {
             .background(Color.White)
             .clickable { },
     ) {
-        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackD, modifier = Modifier.size(20.dp))
+        if (imageVector != null) {
+            Icon(imageVector = imageVector, contentDescription = desc, tint = TextBlackD, modifier = Modifier.size(20.dp))
+        } else if (iconRes != null) {
+            Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackD, modifier = Modifier.size(20.dp))
+        }
     }
 }
 
