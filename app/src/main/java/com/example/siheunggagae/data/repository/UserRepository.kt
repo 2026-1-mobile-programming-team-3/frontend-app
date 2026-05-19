@@ -1,5 +1,6 @@
 package com.example.siheunggagae.data.repository
 
+import com.example.siheunggagae.data.model.AccountDeleteRequest
 import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.BlockCreateRequest
 import com.example.siheunggagae.data.model.BlockCreatedResponse
@@ -8,6 +9,8 @@ import com.example.siheunggagae.data.model.ReportCreateRequest
 import com.example.siheunggagae.data.model.ReportCreatedResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
+import com.example.siheunggagae.data.model.NotificationSettingsResponse
+import com.example.siheunggagae.data.model.NotificationSettingsUpdateRequest
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
@@ -15,6 +18,7 @@ import com.example.siheunggagae.data.model.MessageResponse
 import com.example.siheunggagae.data.model.PetCreate
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.data.model.PetUpdate
+import com.example.siheunggagae.data.model.PasswordChangeRequest
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
@@ -62,4 +66,16 @@ class UserRepository {
 
     suspend fun createReport(targetUserId: Int, reason: String): Response<ReportCreatedResponse> =
         api.createReport(ReportCreateRequest(targetUserId, reason))
+
+    suspend fun getNotificationSettings(): Response<NotificationSettingsResponse> =
+        api.getNotificationSettings()
+
+    suspend fun updateNotificationSettings(settings: Map<String, Boolean>): Response<NotificationSettingsResponse> =
+        api.updateNotificationSettings(NotificationSettingsUpdateRequest(settings))
+
+    suspend fun deleteMe(password: String, reason: String? = null): Response<MessageResponse> =
+        api.deleteMe(AccountDeleteRequest(password, reason))
+
+    suspend fun changePassword(currentPassword: String, newPassword: String): Response<MessageResponse> =
+        api.changePassword(PasswordChangeRequest(currentPassword, newPassword))
 }

@@ -22,7 +22,7 @@ class SiheungGagaeApp : Application() {
     lateinit var fcmTokenManager: FcmTokenManager
         private set
 
-    lateinit var geoRepository: GeoRepository
+    var geoRepository: GeoRepository? = null
         private set
 
     lateinit var localNotificationStore: LocalNotificationStore
@@ -41,9 +41,11 @@ class SiheungGagaeApp : Application() {
             sessionExpiredChannel.trySend(Unit)
         }
         fcmTokenManager = FcmTokenManager(RetrofitClient.api, tokenManager)
-        geoRepository = GeoRepository(RetrofitClient.api, LocationProvider(applicationContext))
+        runCatching {
+            geoRepository = GeoRepository(RetrofitClient.api, LocationProvider(applicationContext))
+        }
         appScope.launch {
-            fcmTokenManager.registerCurrentDevice()
+            runCatching { fcmTokenManager.registerCurrentDevice() }
         }
     }
 }

@@ -85,11 +85,16 @@ import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
 import com.example.siheunggagae.ui.screen.BlockManageScreen
 import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
+import com.example.siheunggagae.ui.screen.HelpScreen
+import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
+import com.example.siheunggagae.ui.viewmodel.AccountSettingsViewModel
+import com.example.siheunggagae.ui.viewmodel.LocationSettingsViewModel
+import com.example.siheunggagae.ui.viewmodel.NotificationSettingsViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
 import com.example.siheunggagae.ui.theme.Brown40
@@ -141,6 +146,8 @@ sealed class Screen(val route: String) {
     }
     object FavoriteStores  : Screen("favorite_stores")
     object BlockManage     : Screen("block_manage")
+    object Help            : Screen("help")
+    object Privacy         : Screen("privacy")
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -504,17 +511,32 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val settingsApp = settingsContext.applicationContext as SiheungGagaeApp
             val settingsScope = rememberCoroutineScope()
             val settingsAuthRepo = remember { AuthRepository(settingsApp.tokenManager, settingsApp.fcmTokenManager) }
+            val notifViewModel: NotificationSettingsViewModel = viewModel(
+                factory = NotificationSettingsViewModel.Factory(UserRepository()),
+            )
+            val locationViewModel: LocationSettingsViewModel = viewModel(
+                factory = LocationSettingsViewModel.Factory(UserRepository()),
+            )
+            val accountViewModel: AccountSettingsViewModel = viewModel(
+                factory = AccountSettingsViewModel.Factory(UserRepository()),
+            )
 
             SettingsScreen(
                 onBack = { navController.popBackStack() },
+                onProfileEditClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
                 onBlockManageClick = { navController.navigate(Screen.BlockManage.route) },
-                onLogout = {
-                    settingsScope.launch { settingsAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                onHelpClick = { navController.navigate(Screen.Help.route) },
+                onAccountDeleted = {
+                    settingsScope.launch { settingsAuthRepo.logout() }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                notifViewModel = notifViewModel,
+                locationViewModel = locationViewModel,
+                accountViewModel = accountViewModel,
             )
         }
 
@@ -622,6 +644,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 viewModel = blockViewModel,
                 onBack = { navController.popBackStack() },
             )
+        }
+
+        composable(Screen.Help.route) {
+            HelpScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.Privacy.route) {
+            PrivacyPolicyScreen(onBack = { navController.popBackStack() })
         }
     }
 }
