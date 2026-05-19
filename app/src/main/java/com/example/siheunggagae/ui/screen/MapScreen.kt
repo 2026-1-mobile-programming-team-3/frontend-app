@@ -107,6 +107,8 @@ private val volunteerMarkerColor = 0xFF2196F3.toInt()
 fun MapScreen(
     onNavigate: (String) -> Unit = {},
     startVolunteerMode: Boolean = false,
+    focusLat: Double = 0.0,
+    focusLng: Double = 0.0,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as SiheungGagaeApp
@@ -155,10 +157,14 @@ fun MapScreen(
         if (!locationPermission.hasPermission) locationPermission.request()
     }
 
-    // 맵 준비되면 무조건 시흥시로 시작 (에뮬레이터 GPS 위치 무시)
+    // 맵 준비되면 기본 위치로 이동 (포커스 좌표가 있으면 거기로, 없으면 시흥시 중심)
     LaunchedEffect(mapReady) {
         if (!mapReady) return@LaunchedEffect
-        mapWrapper.moveCamera(37.3795, 126.8025)
+        if (focusLat != 0.0 && focusLng != 0.0) {
+            mapWrapper.moveCamera(focusLat, focusLng, 17)
+        } else {
+            mapWrapper.moveCamera(37.3795, 126.8025)
+        }
     }
 
     // 내 위치 버튼 → cameraSerial이 바뀔 때마다 항상 이동 (같은 좌표여도 재실행)

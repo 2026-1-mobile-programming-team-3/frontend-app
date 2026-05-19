@@ -49,6 +49,8 @@ data class StoreDetailResponse(
     val reviewPetAllowedRate: Double? = null,
     @SerializedName(value = "is_favorited", alternate = ["isFavorited"])
     val isFavorited: Boolean? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 data class StoreReview(

@@ -97,6 +97,7 @@ private val MapSkyPL     = Color(0xFFE0F7FA)
 fun PlaceDetailScreen(
     placeId: Int = 0,
     onBack: () -> Unit = {},
+    onNavigateToMap: (lat: Double, lng: Double) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -358,7 +359,12 @@ fun PlaceDetailScreen(
                                 .fillMaxWidth()
                                 .height(140.dp)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
+                                .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL)))
+                                .clickable {
+                                    val lat = s.latitude
+                                    val lng = s.longitude
+                                    if (lat != null && lng != null) onNavigateToMap(lat, lng)
+                                },
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_location_on),

@@ -117,7 +117,10 @@ sealed class Screen(val route: String) {
     object Matching     : Screen("matching")
     object RequestFlow  : Screen("request_flow")
     object MyRequests   : Screen("my_requests")
-    object Map          : Screen("map")
+    object Map          : Screen("map") {
+        fun createRoute(focusLat: Double, focusLng: Double) =
+            "map?focusLat=$focusLat&focusLng=$focusLng"
+    }
     object News         : Screen("news")
     object PlaceDetail  : Screen("place_detail/{placeId}") {
         fun createRoute(placeId: Int) = "place_detail/$placeId"
@@ -421,13 +424,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(
-            route = "${Screen.Map.route}?volunteerMode={volunteerMode}",
-            arguments = listOf(navArgument("volunteerMode") {
-                type = NavType.BoolType
-                defaultValue = false
-            }),
+            route = "${Screen.Map.route}?volunteerMode={volunteerMode}&focusLat={focusLat}&focusLng={focusLng}",
+            arguments = listOf(
+                navArgument("volunteerMode") { type = NavType.BoolType; defaultValue = false },
+                navArgument("focusLat") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("focusLng") { type = NavType.StringType; defaultValue = "0.0" },
+            ),
         ) { backStackEntry ->
             val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
+            val focusLat = backStackEntry.arguments?.getString("focusLat")?.toDoubleOrNull() ?: 0.0
+            val focusLng = backStackEntry.arguments?.getString("focusLng")?.toDoubleOrNull() ?: 0.0
             MapScreen(
                 onNavigate = { route ->
                     if (route == Screen.Home.route || route == Screen.Matching.route ||
@@ -437,6 +443,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     else navController.navigate(route)
                 },
                 startVolunteerMode = volunteerMode,
+                focusLat = focusLat,
+                focusLng = focusLng,
             )
         }
 
@@ -472,6 +480,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             PlaceDetailScreen(
                 placeId = placeId,
                 onBack = { navController.popBackStack() },
+                onNavigateToMap = { lat, lng ->
+                    navController.navigate(Screen.Map.createRoute(lat, lng)) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(Screen.Home.route) { saveState = true }
+                    }
+                },
             )
         }
 
