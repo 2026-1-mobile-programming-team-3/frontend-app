@@ -297,7 +297,17 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Matching.route) {
+            // 뷰모델 생성 및 주입
+            val context = LocalContext.current
+            val app = context.applicationContext as SiheungGagaeApp
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api // Retrofit 설정에 맞게 수정 필요
+            val repository = remember { com.example.siheunggagae.data.repository.MatchRepository(api) }
+            val viewModel: com.example.siheunggagae.ui.viewmodel.MatchingViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(repository)
+            )
+
             MatchingScreen(
+                viewModel = viewModel, // 추가된 부분!
                 onMyRequests = { navController.navigate(Screen.MyRequests.route) },
                 onRequestFlowClick = { navController.navigate(Screen.RequestFlow.route) },
                 onCardClick = { requestId -> navController.navigate(Screen.MatchingPublicDetail.createRoute(requestId)) },
@@ -342,10 +352,20 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.RequestFlow.route) {
+            val context = LocalContext.current
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api // 기존 설정 맞게 수정!
+            val requestViewModel: com.example.siheunggagae.ui.viewmodel.RequestViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.RequestViewModel.Factory(api)
+            )
+
             RequestFlowScreen(
+                viewModel = requestViewModel,
                 onBack = { navController.popBackStack() },
-                onComplete = { navController.popBackStack() },
-                onAddPet = { navController.navigate(Screen.PetAdd.route) },
+                onComplete = {
+                    navController.popBackStack()
+                    // 필요 시 홈 탭으로 이동: navController.navigateTab(Screen.Matching.route)
+                },
+                onAddPet = { navController.navigate(Screen.PetAdd.route) }
             )
         }
 

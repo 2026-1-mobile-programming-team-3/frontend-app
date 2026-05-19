@@ -1,5 +1,7 @@
 package com.example.siheunggagae.data.model
 
+import com.google.gson.annotations.SerializedName
+
 // ── 매칭 요청 (Match Requests) ─────────────────────────────────────────────────
 
 data class MatchCreateRequest(
@@ -29,20 +31,20 @@ data class MatchUpdateRequest(
 )
 
 data class MatchListItem(
-    val matchId: Int? = null,
+    @SerializedName("match_id") val matchId: Int? = null,
     val title: String? = null,
     val address: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val desiredDate: String? = null,
+    @SerializedName("desired_date") val desiredDate: String? = null,
     val status: String? = null,
-    val authorNickname: String? = null,
-    val createdAt: String? = null,
-    val applicationsCount: Int? = null,
-    val matchedApplicantNickname: String? = null,
-    val unreadMessageCount: Int = 0,
-    val myApplicationStatus: String? = null,
-    val receivedRating: Int? = null,
+    @SerializedName("author_nickname") val authorNickname: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("applications_count") val applicationsCount: Int? = null,
+    @SerializedName("matched_applicant_nickname") val matchedApplicantNickname: String? = null,
+    @SerializedName("unread_message_count") val unreadMessageCount: Int = 0,
+    @SerializedName("my_application_status") val myApplicationStatus: String? = null,
+    @SerializedName("received_rating") val receivedRating: Int? = null,
 )
 
 data class MatchListResponse(

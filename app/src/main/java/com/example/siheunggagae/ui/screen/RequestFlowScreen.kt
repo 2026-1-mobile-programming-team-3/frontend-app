@@ -1,7 +1,6 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import com.example.siheunggagae.R
-
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,12 +17,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +30,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,21 +45,24 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import com.example.siheunggagae.R
+import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.ui.theme.PretendardFamily
-import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.viewmodel.RequestUiState
+import com.example.siheunggagae.ui.viewmodel.RequestViewModel
 import java.time.DayOfWeek
 import java.time.YearMonth
 
@@ -76,21 +80,6 @@ private val GrayText     = Color(0xFF6B7280)
 private val TextBlack    = Color(0xFF1E120A)
 private val OrangeSand   = Color(0xFFFFEDD4)
 
-// ─── 데이터 ────────────────────────────────────────────────────────────────────
-
-data class Pet(
-    val id: Int,
-    val name: String,
-    val species: String,
-    val age: String,
-    val weight: String,
-)
-
-private val samplePets = listOf(
-    Pet(1, "초코", "강아지", "3세", "8kg"),
-    Pet(2, "나비", "고양이", "2세", "4kg"),
-)
-
 private val quickTimes = listOf(
     "09:00", "10:00", "11:00", "12:00",
     "13:00", "14:00", "15:00", "16:00",
@@ -102,24 +91,50 @@ private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}, onAddPet: () -> Unit = {}) {
+fun RequestFlowScreen(
+    viewModel: RequestViewModel, // 🔥 뷰모델 추가
+    onBack: () -> Unit = {},
+    onComplete: () -> Unit = {},
+    onAddPet: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+
     var currentStep by remember { mutableStateOf(1) }
+    var selectedPetId by remember { mutableStateOf<Int?>(viewModel.selectedPetId) }
 
-    var selectedPetId by remember { mutableStateOf<Int?>(null) }
-
-    var currentMonth by remember { mutableStateOf(YearMonth.of(2026, 10)) }
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDay by remember { mutableStateOf<Int?>(null) }
     var timeInput by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf<String?>(null) }
 
-    var titleInput by remember { mutableStateOf("") }
-    var destination by remember { mutableStateOf("") }
-    var memo by remember { mutableStateOf("") }
+    var titleInput by remember { mutableStateOf(viewModel.title) }
+    var destination by remember { mutableStateOf(viewModel.address) }
+    var memo by remember { mutableStateOf(viewModel.content) }
+
+    // 서버 통신 성공/실패 토스트 메시지 띄우기
+    LaunchedEffect(uiState) {
+        if (uiState is RequestUiState.Success) {
+            Toast.makeText(context, "도움 요청이 성공적으로 등록되었습니다!", Toast.LENGTH_SHORT).show()
+            viewModel.resetState()
+            onComplete()
+        } else if (uiState is RequestUiState.Error) {
+            Toast.makeText(context, (uiState as RequestUiState.Error).message, Toast.LENGTH_SHORT).show()
+            viewModel.resetState()
+        }
+    }
 
     val buttonText = when (currentStep) {
         1    -> "→ 일정 선택"
         2    -> "→ 요청 내용 작성"
         else -> "요청 등록하기"
+    }
+
+    // 다음 버튼 활성화 조건
+    val isNextEnabled = when (currentStep) {
+        1 -> selectedPetId != null
+        2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
+        else -> titleInput.isNotBlank() && destination.isNotBlank() && memo.isNotBlank()
     }
 
     Scaffold(
@@ -131,8 +146,28 @@ fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}, onAd
             )
         },
         bottomBar = {
-            FlowBottomButton(text = buttonText) {
-                if (currentStep < 3) currentStep++ else onComplete()
+            FlowBottomButton(
+                text = buttonText,
+                enabled = isNextEnabled,
+                isLoading = uiState is RequestUiState.Loading && currentStep == 3
+            ) {
+                if (currentStep < 3) {
+                    // 데이터 뷰모델에 임시 저장
+                    viewModel.selectedPetId = selectedPetId
+                    if (currentStep == 2) {
+                        val time = selectedTime ?: timeInput
+                        val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
+                        val dayStr = selectedDay.toString().padStart(2, '0')
+                        viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr $time:00"
+                    }
+                    currentStep++
+                } else {
+                    // 3단계 완료 시 서버 전송
+                    viewModel.title = titleInput
+                    viewModel.address = destination
+                    viewModel.content = memo
+                    viewModel.submitRequest()
+                }
             }
         }
     ) { innerPadding ->
@@ -145,7 +180,12 @@ fun RequestFlowScreen(onBack: () -> Unit = {}, onComplete: () -> Unit = {}, onAd
             StepIndicator(currentStep = currentStep)
 
             when (currentStep) {
-                1 -> Step1Content(selectedPetId = selectedPetId, onSelectPet = { selectedPetId = it }, onAddPet = onAddPet)
+                1 -> Step1Content(
+                    uiState = uiState,
+                    selectedPetId = selectedPetId,
+                    onSelectPet = { selectedPetId = it },
+                    onAddPet = onAddPet
+                )
                 2 -> Step2Content(
                     currentMonth = currentMonth, onMonthChange = { currentMonth = it },
                     selectedDay = selectedDay, onSelectDay = { selectedDay = it },
@@ -232,7 +272,7 @@ private fun StepIndicator(currentStep: Int) {
             repeat(3) { idx ->
                 val segStep = idx + 1
                 val color = if (segStep <= currentStep) Orange500F
-                            else Brown900F.copy(alpha = 0.3f)
+                else Brown900F.copy(alpha = 0.3f)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -261,10 +301,15 @@ private fun StepIndicator(currentStep: Int) {
     }
 }
 
-// ─── Step 1: 반려동물 선택 ──────────────────────────────────────────────────────
+// ─── Step 1: 반려동물 선택 (서버 데이터) ────────────────────────────────────────
 
 @Composable
-private fun Step1Content(selectedPetId: Int?, onSelectPet: (Int) -> Unit, onAddPet: () -> Unit = {}) {
+private fun Step1Content(
+    uiState: RequestUiState,
+    selectedPetId: Int?,
+    onSelectPet: (Int) -> Unit,
+    onAddPet: () -> Unit = {}
+) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
         QuestionText("어떤 반려동물과\n함께 이동하나요?")
@@ -272,51 +317,53 @@ private fun Step1Content(selectedPetId: Int?, onSelectPet: (Int) -> Unit, onAddP
         SubText("도움이 필요한 반려동물을 선택해 주세요.")
         Spacer(Modifier.height(24.dp))
 
-        val totalItems = samplePets.size + 1
-        val rowCount = (totalItems + 1) / 2
-
-        repeat(rowCount) { rowIdx ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                repeat(2) { colIdx ->
-                    val itemIdx = rowIdx * 2 + colIdx
-                    Box(modifier = Modifier.weight(1f)) {
-                        when {
-                            itemIdx < samplePets.size -> {
-                                val pet = samplePets[itemIdx]
-                                PetCard(
-                                    pet = pet,
-                                    isSelected = pet.id == selectedPetId,
-                                    onClick = { onSelectPet(pet.id) }
-                                )
-                            }
-                            itemIdx == samplePets.size -> AddPetCard(onAddPet)
-                            else -> Spacer(Modifier.fillMaxWidth())
-                        }
-                    }
+        when (uiState) {
+            is RequestUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Orange500F)
                 }
             }
-            if (rowIdx < rowCount - 1) Spacer(Modifier.height(12.dp))
+            is RequestUiState.PetsLoaded -> {
+                val myPets = uiState.pets
+                val totalItems = myPets.size + 1
+                val rowCount = (totalItems + 1) / 2
+
+                repeat(rowCount) { rowIdx ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        repeat(2) { colIdx ->
+                            val itemIdx = rowIdx * 2 + colIdx
+                            Box(modifier = Modifier.weight(1f)) {
+                                when {
+                                    itemIdx < myPets.size -> {
+                                        val pet = myPets[itemIdx]
+                                        PetCard(
+                                            pet = pet,
+                                            isSelected = pet.id == selectedPetId,
+                                            onClick = { pet.id?.let { onSelectPet(it) } }
+                                        )
+                                    }
+                                    itemIdx == myPets.size -> AddPetCard(onAddPet)
+                                    else -> Spacer(Modifier.fillMaxWidth())
+                                }
+                            }
+                        }
+                    }
+                    if (rowIdx < rowCount - 1) Spacer(Modifier.height(12.dp))
+                }
+            }
+            is RequestUiState.Error -> {
+                Text(uiState.message, color = Pink500F, fontFamily = PretendardFamily)
+            }
+            else -> {}
         }
     }
 }
 
-private fun petIconBg(species: String) = when (species) {
-    "강아지" -> OrangeSand
-    "고양이" -> Color(0xFFFFE4E6)
-    else     -> GrayBg
-}
-
-private fun petIconTint(species: String) = when (species) {
-    "강아지" -> Orange500F
-    "고양이" -> Pink500F
-    else     -> GrayText
-}
-
 @Composable
-private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
+private fun PetCard(pet: PetResponse, isSelected: Boolean, onClick: () -> Unit) {
+    val speciesName = pet.species?.name ?: "알수없음"
+    val isDog = speciesName == "DOG"
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -330,59 +377,27 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
             .clickable { onClick() }
             .padding(16.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(76.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(petIconBg(pet.species))
+                modifier = Modifier.size(76.dp).clip(RoundedCornerShape(18.dp)).background(if (isDog) OrangeSand else Color(0xFFFFE4E6))
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_pets),
-                    contentDescription = null,
-                    tint = petIconTint(pet.species),
-                    modifier = Modifier.size(34.dp)
-                )
+                Icon(painter = painterResource(R.drawable.ic_pets), contentDescription = null, tint = if (isDog) Orange500F else Pink500F, modifier = Modifier.size(34.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(
-                text = pet.name,
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 24.sp,
-                color = TextBlack
-            )
+            Text(pet.name, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlack)
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "${pet.species} · ${pet.age} · ${pet.weight}",
-                fontFamily = PretendardFamily,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                color = Brown700F,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = "${if (isDog) "강아지" else "고양이"} · ${pet.age ?: "?"}세",
+                fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700F
             )
         }
         if (isSelected) {
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Orange500F)
+                modifier = Modifier.align(Alignment.TopEnd).size(24.dp).clip(CircleShape).background(Orange500F)
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = "선택됨",
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
-                )
+                Icon(painter = painterResource(R.drawable.ic_check), contentDescription = "선택됨", tint = Color.White, modifier = Modifier.size(14.dp))
             }
         }
     }
@@ -597,7 +612,7 @@ private fun CalendarSection(
                 repeat(7) { col ->
                     val cellIndex = row * 7 + col
                     val day = if (cellIndex < startOffset || cellIndex >= startOffset + daysInMonth) null
-                              else cellIndex - startOffset + 1
+                    else cellIndex - startOffset + 1
                     Box(
                         modifier = Modifier.weight(1f).height(40.dp),
                         contentAlignment = Alignment.Center
@@ -778,7 +793,7 @@ private fun SubText(text: String) {
 }
 
 @Composable
-private fun FlowBottomButton(text: String, onClick: () -> Unit) {
+private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean = false, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -791,18 +806,22 @@ private fun FlowBottomButton(text: String, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Brown700F)
-                .clickable { onClick() },
+                .background(if (enabled) Brown700F else Color(0xFFE5E7EB))
+                .clickable(enabled = enabled && !isLoading) { onClick() },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = text,
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 24.sp,
-                color = Color.White
-            )
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text(
+                    text = text,
+                    fontFamily = PretendardFamily,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp,
+                    color = if (enabled) Color.White else Brown400F
+                )
+            }
         }
     }
 }
@@ -817,11 +836,3 @@ private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, stroke
             style = Stroke(width = strokeWidth.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
         )
     }
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun RequestFlowScreenPreview() {
-    SiheungGagaeTheme { RequestFlowScreen() }
-}

@@ -30,7 +30,7 @@ class SiheungGagaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        KakaoMapSdk.init(this, BuildConfig.KAKAO_APP_KEY)
+        runCatching{KakaoMapSdk.init(this, BuildConfig.KAKAO_APP_KEY)}
         tokenManager = TokenManager(applicationContext)
         RetrofitClient.init(tokenManager) {
             sessionExpiredChannel.trySend(Unit)
