@@ -110,7 +110,11 @@ class MapViewModel(
                 val resp = if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId))
                            else api.removeFavoriteStore(storeId)
                 Log.d("MapFavorite", "${if (newFavorited) "ADD" else "REMOVE"} storeId=$storeId → HTTP ${resp.code()} ${resp.message()}")
+                // 409: 이미 즐겨찾기됨 → ADD 목표 달성으로 간주
+                // 404: 즐겨찾기 없음  → REMOVE 목표 달성으로 간주
                 resp.isSuccessful
+                    || (newFavorited && resp.code() == 409)
+                    || (!newFavorited && resp.code() == 404)
             }.getOrElse { e ->
                 Log.e("MapFavorite", "exception storeId=$storeId", e)
                 false
