@@ -29,6 +29,7 @@ import com.example.siheunggagae.data.model.TokenRefreshResponse
 import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
+import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
@@ -163,4 +164,17 @@ interface AuthApiService {
     suspend fun updateNotificationSettings(
         @Body body: NotificationSettingsUpdateRequest,
     ): Response<NotificationSettingsResponse>
+
+    // ── Favorites ─────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/users/me/favorites/stores")
+    suspend fun getFavoriteStores(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<FavoriteStoreListResponse>
+
+    @DELETE("api/v1/users/me/favorites/stores/{storeId}")
+    suspend fun deleteFavoriteStore(
+        @Path("storeId") storeId: Int,
+    ): Response<Unit>
 }

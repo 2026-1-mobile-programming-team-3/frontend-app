@@ -131,6 +131,7 @@ fun MyScreen(
     onPetListClick: () -> Unit = {},
     onBadgeListClick: () -> Unit = {},
     onVolunteerHistoryClick: () -> Unit = {},
+    onFavoriteStoresClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -224,7 +225,10 @@ fun MyScreen(
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("내 기록")
                     Spacer(Modifier.height(6.dp))
-                    MyRecordsSection(onVolunteerHistoryClick = onVolunteerHistoryClick)
+                    MyRecordsSection(
+                        onVolunteerHistoryClick = onVolunteerHistoryClick,
+                        onFavoriteStoresClick = onFavoriteStoresClick,
+                    )
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("설정")
                     Spacer(Modifier.height(6.dp))
@@ -756,7 +760,10 @@ private fun BadgeItem(
 // ─── 내 기록 ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyRecordsSection(onVolunteerHistoryClick: () -> Unit = {}) {
+private fun MyRecordsSection(
+    onVolunteerHistoryClick: () -> Unit = {},
+    onFavoriteStoresClick: () -> Unit = {},
+) {
     SectionCard {
         RecordItem(
             iconRes = R.drawable.ic_volunteer_activism,
@@ -770,6 +777,7 @@ private fun MyRecordsSection(onVolunteerHistoryClick: () -> Unit = {}) {
             iconTint = Pink500My,
             title = "즐겨찾기 매장",
             showDivider = false,
+            onClick = onFavoriteStoresClick,
         )
     }
 }

@@ -88,3 +88,20 @@ data class MyMatchListResponse(
     val page: Int,
     val size: Int,
 )
+
+data class FavoriteStoreItem(
+    val favoriteId: Int,
+    val storeId: Int,
+    val name: String,
+    val category: StoreCategory,
+    val thumbnailUrl: String?,
+    val ratingAvg: String,
+    val createdAt: String,
+)
+
+data class FavoriteStoreListResponse(
+    val items: List<FavoriteStoreItem>,
+    val total: Int,
+    val page: Int,
+    val size: Int,
+)

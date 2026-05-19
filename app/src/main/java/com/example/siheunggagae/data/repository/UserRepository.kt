@@ -1,6 +1,7 @@
 package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.model.ActivityStatsResponse
+import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.model.MessageResponse
@@ -33,4 +34,10 @@ class UserRepository {
         api.updatePet(petId, body)
 
     suspend fun deletePet(petId: Int): Response<MessageResponse> = api.deletePet(petId)
+
+    suspend fun getFavoriteStores(page: Int = 1, size: Int = 20): Response<FavoriteStoreListResponse> =
+        api.getFavoriteStores(page, size)
+
+    suspend fun deleteFavoriteStore(storeId: Int): Response<Unit> =
+        api.deleteFavoriteStore(storeId)
 }

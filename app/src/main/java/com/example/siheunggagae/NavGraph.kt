@@ -83,9 +83,11 @@ import com.example.siheunggagae.ui.screen.PlaceDetailScreen
 import com.example.siheunggagae.ui.screen.RequestFlowScreen
 import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
+import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
+import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
 import com.example.siheunggagae.ui.theme.Brown40
@@ -135,6 +137,7 @@ sealed class Screen(val route: String) {
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: Int) = "news_detail/$newsId"
     }
+    object FavoriteStores  : Screen("favorite_stores")
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -469,6 +472,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
                 onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
+                onFavoriteStoresClick = { navController.navigate(Screen.FavoriteStores.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
@@ -585,6 +589,19 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         ) { backStackEntry ->
             val newsId = backStackEntry.arguments?.getInt("newsId") ?: 1
             NewsDetailScreen(newsId = newsId, onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.FavoriteStores.route) {
+            val favViewModel: FavoriteStoresViewModel = viewModel(
+                factory = FavoriteStoresViewModel.Factory(UserRepository())
+            )
+            FavoriteStoresScreen(
+                viewModel = favViewModel,
+                onBack = { navController.popBackStack() },
+                onPlaceDetailClick = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
+                },
+            )
         }
     }
 }
