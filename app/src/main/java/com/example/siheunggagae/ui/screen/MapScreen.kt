@@ -241,6 +241,7 @@ fun MapScreen(
                     totalCount = uiState.totalCount,
                     isExpanded = isExpanded,
                     onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.resolvedId)) },
+                    onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
                     onClearSelection = { viewModel.selectStore(null) },
                 )
             },
@@ -462,6 +463,7 @@ private fun MapBottomSheetContent(
     totalCount: Int,
     isExpanded: Boolean,
     onStoreClick: (StoreResponse) -> Unit,
+    onFavoriteToggle: (StoreResponse) -> Unit,
     onClearSelection: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -492,7 +494,11 @@ private fun MapBottomSheetContent(
                 }
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            MapPlaceItem(place = selectedStore, onClick = { onStoreClick(selectedStore) })
+            MapPlaceItem(
+                place = selectedStore,
+                onClick = { onStoreClick(selectedStore) },
+                onFavoriteToggle = { onFavoriteToggle(selectedStore) },
+            )
         } else {
             // 기본 상태: 주변 매장 목록
             Row(
@@ -535,7 +541,11 @@ private fun MapBottomSheetContent(
                 // 풀스크린 모드: 전체 리스트
                 LazyColumn {
                     items(stores, key = { it.resolvedId }) { store ->
-                        MapPlaceItem(place = store, onClick = { onStoreClick(store) })
+                        MapPlaceItem(
+                            place = store,
+                            onClick = { onStoreClick(store) },
+                            onFavoriteToggle = { onFavoriteToggle(store) },
+                        )
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
                             color = Color(0xFFF3F4F6),
@@ -546,7 +556,11 @@ private fun MapBottomSheetContent(
             } else {
                 // 기본 모드: 첫 번째 카드만
                 stores.firstOrNull()?.let { store ->
-                    MapPlaceItem(place = store, onClick = { onStoreClick(store) })
+                    MapPlaceItem(
+                        place = store,
+                        onClick = { onStoreClick(store) },
+                        onFavoriteToggle = { onFavoriteToggle(store) },
+                    )
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         color = Color(0xFFF3F4F6),
@@ -560,7 +574,11 @@ private fun MapBottomSheetContent(
 // ─── 매장 카드 아이템 ─────────────────────────────────────────────────────────
 
 @Composable
-private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
+private fun MapPlaceItem(
+    place: StoreResponse,
+    onClick: () -> Unit = {},
+    onFavoriteToggle: () -> Unit = {},
+) {
     val distanceText = place.distanceM?.let {
         if (it < 1000) "${"%.0f".format(it)}m" else "${"%.1f".format(it / 1000)}km"
     } ?: ""
@@ -632,7 +650,7 @@ private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
                 }
             }
         }
-        IconButton(onClick = {}, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = { onFavoriteToggle() }, modifier = Modifier.size(36.dp)) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",

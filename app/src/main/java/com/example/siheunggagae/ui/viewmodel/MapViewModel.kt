@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
+import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.model.UserRole
@@ -89,6 +90,38 @@ class MapViewModel(
 
     fun selectStore(store: StoreResponse?) {
         _uiState.update { it.copy(selectedStore = store) }
+    }
+
+    fun toggleFavorite(store: StoreResponse) {
+        val storeId = store.resolvedId
+        val newFavorited = !store.isFavorited
+        val update: (List<StoreResponse>) -> List<StoreResponse> = { list ->
+            list.map { if (it.resolvedId == storeId) it.copy(isFavorited = newFavorited) else it }
+        }
+        _uiState.update { it.copy(
+            stores = update(it.stores),
+            selectedStore = it.selectedStore?.let { s ->
+                if (s.resolvedId == storeId) s.copy(isFavorited = newFavorited) else s
+            },
+        )}
+        viewModelScope.launch {
+            val ok = runCatching {
+                if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId)).isSuccessful
+                else api.removeFavoriteStore(storeId).isSuccessful
+            }.getOrDefault(false)
+            if (!ok) {
+                // 실패 시 원복
+                val revert: (List<StoreResponse>) -> List<StoreResponse> = { list ->
+                    list.map { if (it.resolvedId == storeId) it.copy(isFavorited = !newFavorited) else it }
+                }
+                _uiState.update { it.copy(
+                    stores = revert(it.stores),
+                    selectedStore = it.selectedStore?.let { s ->
+                        if (s.resolvedId == storeId) s.copy(isFavorited = !newFavorited) else s
+                    },
+                )}
+            }
+        }
     }
 
     fun moveToCurrentLocation() {
