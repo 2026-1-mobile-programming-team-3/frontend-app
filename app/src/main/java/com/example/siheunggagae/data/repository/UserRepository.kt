@@ -1,6 +1,11 @@
 package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.model.ActivityStatsResponse
+import com.example.siheunggagae.data.model.BlockCreateRequest
+import com.example.siheunggagae.data.model.BlockCreatedResponse
+import com.example.siheunggagae.data.model.BlockListResponse
+import com.example.siheunggagae.data.model.ReportCreateRequest
+import com.example.siheunggagae.data.model.ReportCreatedResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
@@ -45,4 +50,16 @@ class UserRepository {
 
     suspend fun submitVolunteerRequest(body: VolunteerRequestCreate): Response<VolunteerRequestResponse> =
         api.submitVolunteerRequest(body)
+
+    suspend fun getBlocks(page: Int = 1, size: Int = 50): Response<BlockListResponse> =
+        api.getBlocks(page, size)
+
+    suspend fun createBlock(targetUserId: Int): Response<BlockCreatedResponse> =
+        api.createBlock(BlockCreateRequest(targetUserId))
+
+    suspend fun deleteBlock(blockId: Int): Response<Unit> =
+        api.deleteBlock(blockId)
+
+    suspend fun createReport(targetUserId: Int, reason: String): Response<ReportCreatedResponse> =
+        api.createReport(ReportCreateRequest(targetUserId, reason))
 }

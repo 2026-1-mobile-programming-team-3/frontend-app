@@ -4,9 +4,11 @@ import com.example.siheunggagae.AppBottomBar
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,13 +27,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -114,6 +128,7 @@ private val sampleRequests = listOf(
 
 // ─── 화면 ──────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchingScreen(
     onMyRequests: () -> Unit = {},
@@ -122,6 +137,9 @@ fun MatchingScreen(
     onNavigate: (String) -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
+    var showActionsSheet by remember { mutableStateOf(false) }
+    var longPressedRequest by remember { mutableStateOf<MatchingRequest?>(null) }
+    val actionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val filtered = selectedTab.status
         ?.let { s -> sampleRequests.filter { it.status == s } }
@@ -154,9 +172,30 @@ fun MatchingScreen(
             item { RequestListHeader() }
             item { Spacer(Modifier.height(12.dp)) }
             items(filtered, key = { it.id }) { request ->
-                MatchingRequestCard(request = request, onCardClick = { onCardClick(request.id) })
+                MatchingRequestCard(
+                    request = request,
+                    onCardClick = { onCardClick(request.id) },
+                    onCardLongClick = {
+                        longPressedRequest = request
+                        showActionsSheet = true
+                    },
+                )
                 Spacer(Modifier.height(12.dp))
             }
+        }
+    }
+
+    if (showActionsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showActionsSheet = false },
+            sheetState = actionsSheetState,
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        ) {
+            CardActionsSheetContent(
+                request = longPressedRequest,
+                onDismiss = { showActionsSheet = false },
+            )
         }
     }
 }
@@ -363,13 +402,21 @@ private fun RequestListHeader() {
 
 // ─── 요청 카드 ─────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MatchingRequestCard(request: MatchingRequest, onCardClick: () -> Unit = {}) {
+private fun MatchingRequestCard(
+    request: MatchingRequest,
+    onCardClick: () -> Unit = {},
+    onCardLongClick: () -> Unit = {},
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clickable { onCardClick() },
+            .combinedClickable(
+                onClick = { onCardClick() },
+                onLongClick = { onCardLongClick() },
+            ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -475,6 +522,132 @@ private fun PetTypeChipM(label: String) {
             fontSize = 12.sp,
             lineHeight = 16.sp,
             color = Brown700M
+        )
+    }
+}
+
+// ─── 카드 액션 시트 ────────────────────────────────────────────────────────────
+
+@Composable
+private fun CardActionsSheetContent(
+    request: MatchingRequest?,
+    onDismiss: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(bottom = 16.dp),
+    ) {
+        if (request != null) {
+            Text(
+                text = request.title,
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
+                color = Brown700M,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+            )
+        }
+        HorizontalDivider(color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.BookmarkBorder,
+            iconBg = Color(0xFFFFF3E0),
+            iconTint = Orange500M,
+            label = "북마크 추가",
+            labelColor = TextBlack,
+            onClick = onDismiss,
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.Share,
+            iconBg = Color(0xFFEFF6FF),
+            iconTint = Color(0xFF388AF5),
+            label = "공유하기",
+            labelColor = TextBlack,
+            onClick = onDismiss,
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.Flag,
+            iconBg = Color(0xFFFEE7EC),
+            iconTint = Pink500M,
+            label = "신고하기",
+            labelColor = Pink500M,
+            onClick = onDismiss,
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.VisibilityOff,
+            iconBg = Color(0xFFF3F4F6),
+            iconTint = Color(0xFF6B7280),
+            label = "게시글 숨기기",
+            labelColor = TextBlack,
+            onClick = onDismiss,
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.Block,
+            iconBg = Color(0xFFFEE7EC),
+            iconTint = Pink500M,
+            label = "작성자 차단",
+            labelColor = Pink500M,
+            onClick = onDismiss,
+        )
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
+
+        CardActionRow(
+            icon = Icons.Default.Block,
+            iconBg = Color(0xFFFEE7EC),
+            iconTint = Pink500M,
+            label = "게시글 숨기기 + 작성자 차단",
+            labelColor = Pink500M,
+            onClick = onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun CardActionRow(
+    icon: ImageVector,
+    iconBg: Color,
+    iconTint: Color,
+    label: String,
+    labelColor: Color,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(iconBg),
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+        }
+        Text(
+            text = label,
+            fontFamily = PretendardFamily,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 24.sp,
+            color = labelColor,
         )
     }
 }

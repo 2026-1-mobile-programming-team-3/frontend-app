@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -71,6 +72,7 @@ private val TextBlackSt   = Color(0xFF1E120A)
 fun SettingsScreen(
     onBack: () -> Unit = {},
     onPetListClick: () -> Unit = {},
+    onBlockManageClick: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     var matchingNotif      by remember { mutableStateOf(true) }
@@ -195,6 +197,8 @@ fun SettingsScreen(
                 SettingsNavItem(iconRes = R.drawable.ic_help, label = "도움말", onClick = {})
                 SettingsDivider()
                 SettingsNavItem(imageVector = Icons.Default.Lock, label = "개인정보 처리 방침", onClick = {})
+                SettingsDivider()
+                SettingsNavItem(imageVector = Icons.Default.Block, label = "차단 관리", onClick = onBlockManageClick)
                 SettingsDivider()
                 Row(
                     modifier = Modifier

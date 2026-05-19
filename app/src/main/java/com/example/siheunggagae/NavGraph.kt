@@ -83,10 +83,12 @@ import com.example.siheunggagae.ui.screen.PlaceDetailScreen
 import com.example.siheunggagae.ui.screen.RequestFlowScreen
 import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
+import com.example.siheunggagae.ui.screen.BlockManageScreen
 import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
+import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
@@ -138,6 +140,7 @@ sealed class Screen(val route: String) {
         fun createRoute(newsId: Int) = "news_detail/$newsId"
     }
     object FavoriteStores  : Screen("favorite_stores")
+    object BlockManage     : Screen("block_manage")
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -505,6 +508,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onBlockManageClick = { navController.navigate(Screen.BlockManage.route) },
                 onLogout = {
                     settingsScope.launch { settingsAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
                     navController.navigate(Screen.Splash.route) {
@@ -607,6 +611,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onPlaceDetailClick = { storeId ->
                     navController.navigate(Screen.PlaceDetail.createRoute(storeId))
                 },
+            )
+        }
+
+        composable(Screen.BlockManage.route) {
+            val blockViewModel: BlockManageViewModel = viewModel(
+                factory = BlockManageViewModel.Factory(UserRepository())
+            )
+            BlockManageScreen(
+                viewModel = blockViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
     }

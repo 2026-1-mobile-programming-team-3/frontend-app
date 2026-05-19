@@ -29,6 +29,11 @@ import com.example.siheunggagae.data.model.TokenRefreshResponse
 import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
+import com.example.siheunggagae.data.model.BlockCreateRequest
+import com.example.siheunggagae.data.model.BlockCreatedResponse
+import com.example.siheunggagae.data.model.BlockListResponse
+import com.example.siheunggagae.data.model.ReportCreateRequest
+import com.example.siheunggagae.data.model.ReportCreatedResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
@@ -179,6 +184,31 @@ interface AuthApiService {
     suspend fun deleteFavoriteStore(
         @Path("storeId") storeId: Int,
     ): Response<Unit>
+
+    // ── Blocks ────────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/users/me/blocks")
+    suspend fun getBlocks(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 50,
+    ): Response<BlockListResponse>
+
+    @POST("api/v1/users/me/blocks")
+    suspend fun createBlock(
+        @Body body: BlockCreateRequest,
+    ): Response<BlockCreatedResponse>
+
+    @DELETE("api/v1/users/me/blocks/{blockId}")
+    suspend fun deleteBlock(
+        @Path("blockId") blockId: Int,
+    ): Response<Unit>
+
+    // ── Reports ───────────────────────────────────────────────────────────────────
+
+    @POST("api/v1/reports")
+    suspend fun createReport(
+        @Body body: ReportCreateRequest,
+    ): Response<ReportCreatedResponse>
 
     // ── Volunteer Request ─────────────────────────────────────────────────────────
 

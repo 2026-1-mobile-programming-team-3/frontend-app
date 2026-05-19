@@ -106,6 +106,40 @@ data class FavoriteStoreListResponse(
     val size: Int,
 )
 
+data class BlockCreateRequest(val targetUserId: Int)
+
+data class BlockCreatedResponse(
+    val blockId: Int,
+    val targetUserId: Int,
+    val createdAt: String,
+)
+
+data class ReportCreateRequest(
+    val targetUserId: Int,
+    val reason: String,
+)
+
+data class ReportCreatedResponse(
+    val id: Int,
+    val targetUserId: Int,
+    val reason: String,
+    val createdAt: String,
+)
+
+data class BlockListItem(
+    val blockId: Int,
+    val targetUserId: Int,
+    val targetNickname: String?,
+    val createdAt: String,
+)
+
+data class BlockListResponse(
+    val items: List<BlockListItem>,
+    val total: Int,
+    val page: Int,
+    val size: Int,
+)
+
 data class VolunteerRequestCreate(val message: String)
 
 data class VolunteerRequestResponse(
