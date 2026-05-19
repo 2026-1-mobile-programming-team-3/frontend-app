@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.data.local.FavoritesCache
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreReview
@@ -116,16 +117,15 @@ fun PlaceDetailScreen(
             reviews = runCatching {
                 RetrofitClient.api.getStoreReviews(placeId).body()?.reviews ?: emptyList()
             }.getOrDefault(emptyList())
-            // store.isFavorited를 신뢰하지 않고 즐겨찾기 목록에서 직접 확인
-            val favResp = runCatching {
-                RetrofitClient.api.getFavoriteStores()
-            }.getOrNull()
-            val rawItems = favResp?.body()?.items
-            android.util.Log.d("PlaceFav", "HTTP=${favResp?.code()} items=$rawItems placeId=$placeId")
-            val favoriteIds = rawItems?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
-            android.util.Log.d("PlaceFav", "favoriteIds=$favoriteIds → match=${placeId in favoriteIds}")
-            isFavorited = if (favoriteIds.isNotEmpty()) placeId in favoriteIds
-                          else store?.isFavorited == true
+            // FavoritesCache 공유 상태로 즐겨찾기 여부 확인
+            if (!FavoritesCache.isLoaded) {
+                val items = runCatching {
+                    RetrofitClient.api.getFavoriteStores().body()?.items
+                }.getOrNull()
+                val ids = items?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+                FavoritesCache.init(ids)
+            }
+            isFavorited = FavoritesCache.contains(placeId)
         }
         isLoading = false
     }
@@ -157,6 +157,7 @@ fun PlaceDetailScreen(
     fun toggleFavorite() {
         val newFavorited = !isFavorited
         isFavorited = newFavorited
+        if (newFavorited) FavoritesCache.add(placeId) else FavoritesCache.remove(placeId)
         scope.launch {
             val ok = runCatching {
                 val resp = if (newFavorited) RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId))
@@ -165,7 +166,10 @@ fun PlaceDetailScreen(
                     || (newFavorited && resp.code() == 409)
                     || (!newFavorited && resp.code() == 404)
             }.getOrDefault(false)
-            if (!ok) isFavorited = !newFavorited
+            if (!ok) {
+                isFavorited = !newFavorited
+                if (!newFavorited) FavoritesCache.add(placeId) else FavoritesCache.remove(placeId)
+            }
         }
     }
 

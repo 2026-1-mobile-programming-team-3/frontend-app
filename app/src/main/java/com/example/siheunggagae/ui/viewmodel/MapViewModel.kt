@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.local.FavoritesCache
 import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
@@ -47,28 +48,33 @@ class MapViewModel(
 
     init {
         loadInitial()
-        loadFavoriteIds()
+        viewModelScope.launch {
+            // FavoritesCache 변경 시 stores/selectedStore 자동 동기화
+            FavoritesCache.ids.collect { ids ->
+                _uiState.update { state ->
+                    state.copy(
+                        favoriteStoreIds = ids,
+                        stores = state.stores.map { it.copy(isFavorited = it.resolvedId in ids) },
+                        selectedStore = state.selectedStore?.let {
+                            it.copy(isFavorited = it.resolvedId in ids)
+                        },
+                    )
+                }
+            }
+        }
         viewModelScope.launch {
             filterStore.visibleCategories.collect { cats ->
                 _uiState.update { it.copy(visibleCategories = cats) }
             }
         }
-    }
-
-    private fun loadFavoriteIds() {
-        viewModelScope.launch {
-            val ids = runCatching {
-                api.getFavoriteStores().body()?.items
-                    ?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
-            }.getOrDefault(emptySet())
-            _uiState.update { state ->
-                state.copy(
-                    favoriteStoreIds = ids,
-                    stores = state.stores.map { it.copy(isFavorited = it.resolvedId in ids) },
-                    selectedStore = state.selectedStore?.let {
-                        it.copy(isFavorited = it.resolvedId in ids)
-                    },
-                )
+        // 캐시 미로드 시에만 API 호출
+        if (!FavoritesCache.isLoaded) {
+            viewModelScope.launch {
+                val ids = runCatching {
+                    api.getFavoriteStores().body()?.items
+                        ?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+                }.getOrDefault(emptySet())
+                FavoritesCache.init(ids)
             }
         }
     }
@@ -116,24 +122,13 @@ class MapViewModel(
     fun toggleFavorite(store: StoreResponse) {
         val storeId = store.resolvedId
         val newFavorited = !store.isFavorited
-        val update: (List<StoreResponse>) -> List<StoreResponse> = { list ->
-            list.map { if (it.resolvedId == storeId) it.copy(isFavorited = newFavorited) else it }
-        }
-        _uiState.update { it.copy(
-            stores = update(it.stores),
-            selectedStore = it.selectedStore?.let { s ->
-                if (s.resolvedId == storeId) s.copy(isFavorited = newFavorited) else s
-            },
-            favoriteStoreIds = if (newFavorited) it.favoriteStoreIds + storeId
-                               else it.favoriteStoreIds - storeId,
-        )}
+        // FavoritesCache 업데이트 → collect 블록이 자동으로 stores/selectedStore 반영
+        if (newFavorited) FavoritesCache.add(storeId) else FavoritesCache.remove(storeId)
         viewModelScope.launch {
             val ok = runCatching {
                 val resp = if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId))
                            else api.deleteFavoriteStore(storeId)
                 Log.d("MapFavorite", "${if (newFavorited) "ADD" else "REMOVE"} storeId=$storeId → HTTP ${resp.code()} ${resp.message()}")
-                // 409: 이미 즐겨찾기됨 → ADD 목표 달성으로 간주
-                // 404: 즐겨찾기 없음  → REMOVE 목표 달성으로 간주
                 resp.isSuccessful
                     || (newFavorited && resp.code() == 409)
                     || (!newFavorited && resp.code() == 404)
@@ -142,18 +137,8 @@ class MapViewModel(
                 false
             }
             if (!ok) {
-                // 실패 시 원복
-                val revert: (List<StoreResponse>) -> List<StoreResponse> = { list ->
-                    list.map { if (it.resolvedId == storeId) it.copy(isFavorited = !newFavorited) else it }
-                }
-                _uiState.update { it.copy(
-                    stores = revert(it.stores),
-                    selectedStore = it.selectedStore?.let { s ->
-                        if (s.resolvedId == storeId) s.copy(isFavorited = !newFavorited) else s
-                    },
-                    favoriteStoreIds = if (!newFavorited) it.favoriteStoreIds + storeId
-                                       else it.favoriteStoreIds - storeId,
-                )}
+                // 실패 시 cache 원복 → collect 블록이 자동으로 UI 반영
+                if (newFavorited) FavoritesCache.remove(storeId) else FavoritesCache.add(storeId)
             }
         }
     }
@@ -200,7 +185,7 @@ class MapViewModel(
             }
         }.getOrNull()
         val body = response?.body()
-        val favoriteIds = _uiState.value.favoriteStoreIds
+        val favoriteIds = FavoritesCache.ids.value
         _uiState.update { it.copy(
             stores = (body?.stores ?: emptyList()).map { s ->
                 s.copy(isFavorited = s.resolvedId in favoriteIds)
