@@ -117,10 +117,13 @@ fun PlaceDetailScreen(
                 RetrofitClient.api.getStoreReviews(placeId).body()?.reviews ?: emptyList()
             }.getOrDefault(emptyList())
             // store.isFavorited를 신뢰하지 않고 즐겨찾기 목록에서 직접 확인
-            val favoriteIds = runCatching {
-                RetrofitClient.api.getFavoriteStores(size = 200).body()
-                    ?.items?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
-            }.getOrDefault(emptySet())
+            val favResp = runCatching {
+                RetrofitClient.api.getFavoriteStores(size = 200)
+            }.getOrNull()
+            val rawItems = favResp?.body()?.items
+            android.util.Log.d("PlaceFav", "HTTP=${favResp?.code()} items=$rawItems placeId=$placeId")
+            val favoriteIds = rawItems?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+            android.util.Log.d("PlaceFav", "favoriteIds=$favoriteIds → match=${placeId in favoriteIds}")
             isFavorited = if (favoriteIds.isNotEmpty()) placeId in favoriteIds
                           else store?.isFavorited == true
         }
