@@ -145,14 +145,17 @@ fun PlaceDetailScreen(
     }
 
     fun toggleFavorite() {
+        val newFavorited = !isFavorited
+        isFavorited = newFavorited
         scope.launch {
-            if (isFavorited) {
-                runCatching { RetrofitClient.api.deleteFavoriteStore(placeId) }
-                isFavorited = false
-            } else {
-                runCatching { RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId)) }
-                isFavorited = true
-            }
+            val ok = runCatching {
+                val resp = if (newFavorited) RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId))
+                           else RetrofitClient.api.removeFavoriteStore(placeId)
+                resp.isSuccessful
+                    || (newFavorited && resp.code() == 409)
+                    || (!newFavorited && resp.code() == 404)
+            }.getOrDefault(false)
+            if (!ok) isFavorited = !newFavorited
         }
     }
 
@@ -577,9 +580,9 @@ private fun PlaceDetailTopBar(
                     .clickable { onFavoriteToggle() },
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_bookmark),
+                    painter = painterResource(R.drawable.ic_favorite),
                     contentDescription = "즐겨찾기",
-                    tint = if (isFavorited) Pink500PL else TextBlackPL,
+                    tint = if (isFavorited) Pink500PL else BrownBorderPL,
                     modifier = Modifier.size(16.dp),
                 )
             }
