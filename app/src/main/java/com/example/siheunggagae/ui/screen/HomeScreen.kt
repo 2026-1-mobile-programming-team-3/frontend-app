@@ -547,7 +547,7 @@ private fun HomeStoreItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onPlaceDetailClick(store.storeId) }
+            .clickable { onPlaceDetailClick(store.resolvedId) }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

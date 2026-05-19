@@ -146,7 +146,7 @@ class HomeViewModel(
     fun toggleFavorite(store: StoreResponse) {
         viewModelScope.launch {
             if (store.isFavorited) {
-                runCatching { api.deleteFavoriteStore(store.storeId) }
+                runCatching { api.removeFavoriteStore(store.storeId) }
             } else {
                 runCatching { api.addFavoriteStore(FavoriteStoreCreateRequest(store.storeId)) }
             }
