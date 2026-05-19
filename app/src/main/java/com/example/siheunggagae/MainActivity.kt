@@ -10,6 +10,15 @@ class   MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        display?.supportedModes
+            ?.maxByOrNull { it.refreshRate }
+            ?.let { mode ->
+                window.attributes = window.attributes.apply {
+                    preferredDisplayModeId = mode.modeId
+                }
+            }
+
         setContent {
             SiheungGagaeTheme {
                 AppNavGraph()
