@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 
@@ -55,16 +56,17 @@ data class MapFilterEntry(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapFilterBottomSheet(
+    initialCategories: Set<String> = MapFilterStore.DEFAULT_CATEGORIES,
     onDismiss: () -> Unit = {},
     onApply: (List<MapFilterEntry>) -> Unit = {},
 ) {
-    val entries = remember {
+    val entries = remember(initialCategories) {
         mutableStateListOf(
-            MapFilterEntry("카페",     iconRes = R.drawable.ic_local_cafe,           isSelected = true),
-            MapFilterEntry("식당",     iconRes = R.drawable.ic_fork_spoon,           isSelected = false),
-            MapFilterEntry("공원",     iconRes = R.drawable.ic_forest,               isSelected = true),
-            MapFilterEntry("동물병원", iconRes = R.drawable.ic_health_cross,         isSelected = false),
-            MapFilterEntry("미용",     iconRes = R.drawable.ic_content_cut,          isSelected = false),
+            MapFilterEntry("카페",     iconRes = R.drawable.ic_local_cafe,   isSelected = "CAFE"       in initialCategories),
+            MapFilterEntry("식당",     iconRes = R.drawable.ic_fork_spoon,   isSelected = "RESTAURANT" in initialCategories),
+            MapFilterEntry("공원",     iconRes = R.drawable.ic_forest,       isSelected = "PARK"       in initialCategories),
+            MapFilterEntry("동물병원", iconRes = R.drawable.ic_health_cross, isSelected = "HOSPITAL"   in initialCategories),
+            MapFilterEntry("미용",     iconRes = R.drawable.ic_content_cut,  isSelected = "GROOMING"   in initialCategories),
         )
     }
 
@@ -149,7 +151,7 @@ fun MapFilterBottomSheet(
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Brown700Mf)
+                        .background(Color(0xFF614B3A))
                         .clickable { onApply(entries.toList()) },
                 ) {
                     Text(

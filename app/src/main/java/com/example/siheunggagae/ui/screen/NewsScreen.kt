@@ -1,8 +1,10 @@
-﻿package com.example.siheunggagae.ui.screen
+package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.AppBottomBar
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
+import com.example.siheunggagae.data.model.NewsItem
+import com.example.siheunggagae.data.network.RetrofitClient
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,22 +26,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.Image
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,46 +63,16 @@ private val PinkSurfaceNs  = Color(0xFFFEE8ED)
 private val BackgroundNs   = Color(0xFFFEFEFE)
 private val PlaceholderNs  = Color(0xFFC1AFA0)
 
-// ─── 데이터 ────────────────────────────────────────────────────────────────────
-
-internal data class NewsItem(
-    val id: Int,
-    val category: String,
-    val title: String,
-    val date: String,
-    val source: String? = null,
-    val imageRes: Int? = null,
-)
-
 private val newsCategories = listOf("전체", "정책", "행사", "봉사", "지원")
 
-private val featuredNews = NewsItem(1, "지원",
-    "2026년 실외 사육견\n중성화 수술비 지원", "4월 10일", "네이버 뉴스",
-    imageRes = R.drawable.img_news_banner)
-
-private val gridNews = listOf(
-    NewsItem(2, "행사", "반려동물 등록 무료 캠페인 5월 13일",          "4.5",  imageRes = R.drawable.img_news_thumb_1),
-    NewsItem(3, "봉사", "정왕동 유기견 산책 봉사자 10명 모집",          "4.12", imageRes = R.drawable.img_news_thumb_2),
-    NewsItem(4, "행사", "봄맞이 펫 사진 공모전",                       "4.5",  imageRes = R.drawable.img_news_thumb_3),
-    NewsItem(5, "봉사", "노령견 의료비 지원 봉사 모집",                 "4.12", imageRes = R.drawable.img_news_thumb_4),
-)
-
-private val listNews = listOf(
-    NewsItem(6, "행사", "반려동물 등록 무료 캠페인",         "4.5"),
-    NewsItem(7, "봉사", "정왕동 유기견 산책 봉사자 모집",    "4.12"),
-    NewsItem(8, "정책", "반려동물 보호법 개정사항",           "4.5"),
-)
-
-private val allNews = gridNews + listNews
-
-private fun categoryColor(category: String) = when (category) {
+private fun categoryColor(category: String?) = when (category) {
     "행사" -> Green500Ns
     "봉사" -> Pink500Ns
     "지원" -> Orange500Ns
     else   -> Brown700Ns
 }
 
-private fun categoryImageBg(category: String) = when (category) {
+private fun categoryImageBg(category: String?) = when (category) {
     "행사" -> MintNs
     "봉사" -> PinkSurfaceNs
     "지원" -> Color(0xFFFFF3E0)
@@ -111,74 +83,106 @@ private fun categoryImageBg(category: String) = when (category) {
 
 @Composable
 fun NewsScreen(
-    onNewsDetailClick: (Int) -> Unit = {},
+    onNewsDetailClick: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
     onNavigate: (String) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
 ) {
+    var isLoading by remember { mutableStateOf(true) }
+    var newsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf("전체") }
 
-    val filteredList = if (selectedCategory == "전체") allNews
-                       else allNews.filter { it.category == selectedCategory }
+    LaunchedEffect(Unit) {
+        newsList = runCatching {
+            RetrofitClient.api.getNews().body()?.news ?: emptyList()
+        }.getOrDefault(emptyList())
+        isLoading = false
+    }
+
+    val filteredList = if (selectedCategory == "전체") newsList
+                       else newsList.filter { (it.category ?: "") == selectedCategory }
 
     Scaffold(
         containerColor = BackgroundNs,
-        topBar = { NewsTopBar() },
+        topBar = { NewsTopBar(onNotificationClick = onNotificationClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.News.route, onNavigate = onNavigate) },
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
-            contentPadding = PaddingValues(bottom = 16.dp),
-        ) {
-            // 검색 + 카테고리 필터 (흰 배경)
-            item {
-                Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
-                    NewsSearchBar()
-                    NewsCategoryFilter(
-                        selected = selectedCategory,
-                        onSelect = { selectedCategory = it },
-                    )
-                }
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Orange500Ns)
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentPadding = PaddingValues(bottom = 16.dp),
+            ) {
+                item {
+                    Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
+                        NewsSearchBar()
+                        NewsCategoryFilter(
+                            selected = selectedCategory,
+                            onSelect = { selectedCategory = it },
+                        )
+                    }
+                }
 
-            if (selectedCategory == "전체") {
-                // 피처드 카드
-                item {
-                    Spacer(Modifier.height(16.dp))
-                    FeaturedNewsCard(
-                        item = featuredNews,
-                        onClick = { onNewsDetailClick(featuredNews.id) },
-                    )
-                    Spacer(Modifier.height(12.dp))
-                }
-                // 그리드 2열 1행
-                item {
-                    NewsGridRow(
-                        left = gridNews[0],
-                        right = gridNews[1],
-                        onItemClick = onNewsDetailClick,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                }
-                // 그리드 2열 2행
-                item {
-                    NewsGridRow(
-                        left = gridNews[2],
-                        right = gridNews[3],
-                        onItemClick = onNewsDetailClick,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                }
-                // 리스트 아이템들
-                items(listNews, key = { it.id }) { item ->
-                    NewsListRow(item = item, onClick = { onNewsDetailClick(item.id) })
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            } else {
-                // 필터된 리스트
-                item { Spacer(Modifier.height(16.dp)) }
-                items(filteredList, key = { it.id }) { item ->
-                    NewsListRow(item = item, onClick = { onNewsDetailClick(item.id) })
-                    Spacer(modifier = Modifier.height(8.dp))
+                if (filteredList.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "소식이 없습니다",
+                                fontFamily = PretendardFamily,
+                                fontSize = 16.sp,
+                                color = Brown700Ns,
+                            )
+                        }
+                    }
+                } else {
+                    val featuredItem = filteredList[0]
+                    val gridItems = filteredList.drop(1).take(4)
+                    val listItems = filteredList.drop(5)
+
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        FeaturedNewsCard(
+                            item = featuredItem,
+                            onClick = { onNewsDetailClick(featuredItem.newsId ?: "") },
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    if (gridItems.size >= 2) {
+                        item {
+                            NewsGridRow(
+                                left = gridItems[0],
+                                right = gridItems[1],
+                                onItemClick = onNewsDetailClick,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+
+                    if (gridItems.size >= 4) {
+                        item {
+                            NewsGridRow(
+                                left = gridItems[2],
+                                right = gridItems[3],
+                                onItemClick = onNewsDetailClick,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+
+                    items(listItems, key = { it.newsId ?: it.hashCode().toString() }) { item ->
+                        NewsListRow(item = item, onClick = { onNewsDetailClick(item.newsId ?: "") })
+                        Spacer(Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -188,7 +192,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar() {
+private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -209,8 +213,7 @@ private fun NewsTopBar() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
-                // 알림 뱃지
+                NewsTopBarIcon(onClick = onNotificationClick) { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -224,7 +227,7 @@ private fun NewsTopBar() {
 }
 
 @Composable
-private fun NewsTopBarIcon(content: @Composable () -> Unit) {
+private fun NewsTopBarIcon(onClick: () -> Unit = {}, content: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -232,7 +235,7 @@ private fun NewsTopBarIcon(content: @Composable () -> Unit) {
             .shadow(elevation = 1.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
-            .clickable { },
+            .clickable { onClick() },
     ) { content() }
 }
 
@@ -300,21 +303,15 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,
     ) {
-        if (item.imageRes != null) {
-            Image(
-                painter = painterResource(item.imageRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        } else {
-            Box(modifier = Modifier.matchParentSize().background(Brush.linearGradient(listOf(Brown900Ns, Color(0xFFBF8A63)))))
-        }
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(Brush.linearGradient(listOf(Brown900Ns, Color(0xFFBF8A63)))),
+        )
         Column(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // 태그 칩
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
@@ -322,7 +319,7 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = item.category,
+                    text = item.category ?: "소식",
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -330,16 +327,17 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
                 )
             }
             Text(
-                text = item.title,
+                text = item.title ?: "",
                 fontFamily = PretendardFamily,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = 28.sp,
                 color = Color.White,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = listOfNotNull(item.date, item.source).joinToString(" · "),
+                text = listOfNotNull(item.publishedDate, item.publisher).joinToString(" · "),
                 fontFamily = PretendardFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
@@ -355,7 +353,7 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
 private fun NewsGridRow(
     left: NewsItem,
     right: NewsItem,
-    onItemClick: (Int) -> Unit = {},
+    onItemClick: (String) -> Unit = {},
 ) {
     Row(
         modifier = Modifier
@@ -363,8 +361,8 @@ private fun NewsGridRow(
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        NewsGridCard(item = left,  modifier = Modifier.weight(1f), onClick = { onItemClick(left.id) })
-        NewsGridCard(item = right, modifier = Modifier.weight(1f), onClick = { onItemClick(right.id) })
+        NewsGridCard(item = left,  modifier = Modifier.weight(1f), onClick = { onItemClick(left.newsId ?: "") })
+        NewsGridCard(item = right, modifier = Modifier.weight(1f), onClick = { onItemClick(right.newsId ?: "") })
     }
 }
 
@@ -376,31 +374,25 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
             .background(Color.White)
             .clickable { onClick() },
     ) {
-        // 이미지
-        if (item.imageRes != null) {
-            Image(
-                painter = painterResource(item.imageRes),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().height(100.dp),
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxWidth().height(100.dp).background(categoryImageBg(item.category)))
-        }
-        // 정보 영역
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+                .background(categoryImageBg(item.category)),
+        )
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = item.category,
+                text = item.category ?: "소식",
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = categoryColor(item.category),
             )
             Text(
-                text = item.title,
+                text = item.title ?: "",
                 fontFamily = PretendardFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -410,7 +402,7 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = item.date,
+                text = item.publishedDate ?: "",
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
@@ -436,7 +428,7 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = item.category,
+            text = item.category ?: "소식",
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -444,7 +436,7 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
             modifier = Modifier.width(40.dp),
         )
         Text(
-            text = item.title,
+            text = item.title ?: "",
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
@@ -454,7 +446,7 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = item.date,
+            text = item.publishedDate ?: "",
             fontFamily = PretendardFamily,
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,

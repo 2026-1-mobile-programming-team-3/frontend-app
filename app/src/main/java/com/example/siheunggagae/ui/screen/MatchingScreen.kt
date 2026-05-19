@@ -151,7 +151,7 @@ fun MatchingScreen(
         ) {
             item { SummaryCards() }
             item { MatchingTabRow(selected = selectedTab, onSelect = { selectedTab = it }) }
-            item { RequestListHeader() }
+            item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
             item { Spacer(Modifier.height(12.dp)) }
             items(filtered, key = { it.id }) { request ->
                 MatchingRequestCard(request = request, onCardClick = { onCardClick(request.id) })
@@ -322,7 +322,7 @@ private fun MatchingTabRow(selected: MatchingTab, onSelect: (MatchingTab) -> Uni
 // ─── 리스트 헤더 ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun RequestListHeader() {
+private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -342,7 +342,7 @@ private fun RequestListHeader() {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.clickable { }
+            modifier = Modifier.clickable { onMapViewClick() }
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_map),
