@@ -151,7 +151,7 @@ fun MapFilterBottomSheet(
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Brown700Mf)
+                        .background(Color(0xFF614B3A))
                         .clickable { onApply(entries.toList()) },
                 ) {
                     Text(

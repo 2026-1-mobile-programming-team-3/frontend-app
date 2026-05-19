@@ -156,17 +156,8 @@ fun PlaceDetailScreen(
         }
     }
 
-    Scaffold(
-        containerColor = BgPL,
-        topBar = {
-            PlaceDetailTopBar(
-                onBack = onBack,
-                isFavorited = isFavorited,
-                onFavoriteToggle = { toggleFavorite() },
-                onShare = { shareStore() },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold(containerColor = BgPL) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -184,23 +175,30 @@ fun PlaceDetailScreen(
         } else {
             val s = store!!
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    bottom = innerPadding.calculateBottomPadding() + 16.dp,
+                ),
             ) {
-                // 상단 배너
+                // 상단 배너 — 상태바까지 연장된 그라디언트
                 item {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
-                            .background(Brush.linearGradient(listOf(MapMintPL, Color(0xFFA5D6A7), Color(0xFFC8E6C9)))),
-                        contentAlignment = Alignment.Center,
+                            .background(Brush.linearGradient(listOf(MapMintPL, Color(0xFFB2DFBF), Color(0xFFD8F2DC)))),
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_location_on),
-                            contentDescription = null,
-                            tint = Pink500PL,
-                            modifier = Modifier.size(48.dp),
-                        )
+                        Spacer(Modifier.statusBarsPadding())
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(150.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_location_on),
+                                contentDescription = null,
+                                tint = Pink500PL,
+                                modifier = Modifier.size(48.dp),
+                            )
+                        }
                     }
                 }
 
@@ -221,27 +219,6 @@ fun PlaceDetailScreen(
                             lineHeight = 36.sp,
                             color = TextBlackPL,
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            if (s.isPetAllowed == true) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(50.dp))
-                                        .background(GreenBgPL)
-                                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                                ) {
-                                    Text(
-                                        text = "반려동물 동반 가능",
-                                        fontFamily = PretendardFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Green500PL,
-                                    )
-                                }
-                            }
-                        }
                         if (s.ratingAvg != null) {
                             Spacer(Modifier.height(8.dp))
                             Row(
@@ -258,7 +235,7 @@ fun PlaceDetailScreen(
                                     color = TextBlackPL,
                                 )
                                 Text(
-                                    text = "(리뷰 ${reviews.size})",
+                                    text = "(후기 ${reviews.size})",
                                     fontFamily = PretendardFamily,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Normal,
@@ -530,7 +507,16 @@ fun PlaceDetailScreen(
                 item { Spacer(Modifier.height(60.dp)) }
             }
         }
-    }
+
+        // 투명 TopBar — 그라디언트 위에 떠있음
+        PlaceDetailTopBar(
+            onBack = onBack,
+            isFavorited = isFavorited,
+            onFavoriteToggle = { toggleFavorite() },
+            onShare = { shareStore() },
+        )
+        } // Box
+    } // Scaffold
 
     if (showReviewSheet) {
         ReviewWriteSheet(
@@ -560,8 +546,7 @@ private fun PlaceDetailTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

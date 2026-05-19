@@ -298,12 +298,12 @@ fun WalkIndexSection(
     onBannerClick: () -> Unit = {},
 ) {
     val scoreColor = when {
-        walkScore >= 90 -> Green500H
+        walkScore >= 80 -> Green500H
         walkScore >= 60 -> Blue400H
         else            -> Orange600H
     }
     val scoreComment = when {
-        walkScore >= 90 -> "좋아요"
+        walkScore >= 80 -> "좋아요"
         walkScore >= 60 -> "보통이에요"
         else            -> "나빠요"
     }
