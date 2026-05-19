@@ -28,8 +28,10 @@ class MapViewWrapper(private val mapView: MapView) {
         }, object : KakaoMapReadyCallback() {
             override fun onMapReady(map: KakaoMap) {
                 kakaoMap = map
+                // 기본 레이어 클릭 활성화 (레이어 + 라벨 둘 다 필요)
+                map.labelManager?.layer?.setClickable(true)
                 map.setOnLabelClickListener { _, _, clickedLabel ->
-                    val clickedId = markers.entries.find { it.value == clickedLabel }?.key
+                    val clickedId = clickedLabel.tag as? String
                     clickedId?.let { markerCallbacks[it]?.invoke() }
                     true
                 }
@@ -66,6 +68,8 @@ class MapViewWrapper(private val mapView: MapView) {
         val label = layer.addLabel(
             LabelOptions.from(LatLng.from(lat, lng)).setStyles(style)
         )
+        label.tag = id
+        label.setClickable(true)
         markers[id] = label
         if (onTap != null) markerCallbacks[id] = onTap
     }

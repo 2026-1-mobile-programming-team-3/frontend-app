@@ -4,6 +4,7 @@ package com.example.siheunggagae.data.model
 
 data class StoreResponse(
     val storeId: Int = 0,
+    val id: Int = 0,            // 서버가 "id" 필드명으로 내려줄 때 대비 fallback
     val name: String = "",
     val category: String = "",
     val latitude: Double = 0.0,
@@ -13,7 +14,9 @@ data class StoreResponse(
     val isFavorited: Boolean = false,
     val isPetAllowed: Boolean? = null,
     val thumbnailUrl: String? = null,
-)
+) {
+    val resolvedId: Int get() = if (storeId != 0) storeId else id
+}
 
 data class StoreListResponse(
     val stores: List<StoreResponse> = emptyList(),

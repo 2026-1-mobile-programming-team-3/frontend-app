@@ -176,8 +176,9 @@ fun MapScreen(
             .filter { it.category in uiState.visibleCategories }
             .forEach { store ->
                 val color = categoryColors[store.category] ?: defaultMarkerColor
+                val markerId = "store_${store.resolvedId}"
                 mapWrapper.addMarker(
-                    id = "store_${store.storeId}",
+                    id = markerId,
                     lat = store.latitude,
                     lng = store.longitude,
                     markerColor = color,
@@ -210,11 +211,13 @@ fun MapScreen(
         )
     )
 
-    // 마커 탭 시 시트 살짝 올리기
+    // 마커 탭 시 카메라 이동 + 시트 올리기
     LaunchedEffect(uiState.selectedStore) {
-        if (uiState.selectedStore != null) {
-            scope.launch { sheetState.bottomSheetState.partialExpand() }
+        val store = uiState.selectedStore ?: return@LaunchedEffect
+        if (mapReady) {
+            mapWrapper.moveCamera(store.latitude, store.longitude)
         }
+        scope.launch { sheetState.bottomSheetState.partialExpand() }
     }
 
     Scaffold(
@@ -237,7 +240,7 @@ fun MapScreen(
                     stores = uiState.stores,
                     totalCount = uiState.totalCount,
                     isExpanded = isExpanded,
-                    onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.storeId)) },
+                    onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.resolvedId)) },
                     onClearSelection = { viewModel.selectStore(null) },
                 )
             },
@@ -531,7 +534,7 @@ private fun MapBottomSheetContent(
             if (isExpanded) {
                 // 풀스크린 모드: 전체 리스트
                 LazyColumn {
-                    items(stores, key = { it.storeId }) { store ->
+                    items(stores, key = { it.resolvedId }) { store ->
                         MapPlaceItem(place = store, onClick = { onStoreClick(store) })
                         HorizontalDivider(
                             modifier = Modifier.padding(horizontal = 20.dp),
