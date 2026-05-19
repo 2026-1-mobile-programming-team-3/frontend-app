@@ -32,6 +32,7 @@ data class MapUiState(
     val userRole: UserRole = UserRole.USER,
     val totalCount: Int = 0,
     val visibleCategories: Set<String> = MapFilterStore.DEFAULT_CATEGORIES,
+    val favoriteStoreIds: Set<Int> = emptySet(),
 )
 
 class MapViewModel(
@@ -46,9 +47,28 @@ class MapViewModel(
 
     init {
         loadInitial()
+        loadFavoriteIds()
         viewModelScope.launch {
             filterStore.visibleCategories.collect { cats ->
                 _uiState.update { it.copy(visibleCategories = cats) }
+            }
+        }
+    }
+
+    private fun loadFavoriteIds() {
+        viewModelScope.launch {
+            val ids = runCatching {
+                api.getFavoriteStores(size = 200).body()?.items
+                    ?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+            }.getOrDefault(emptySet())
+            _uiState.update { state ->
+                state.copy(
+                    favoriteStoreIds = ids,
+                    stores = state.stores.map { it.copy(isFavorited = it.resolvedId in ids) },
+                    selectedStore = state.selectedStore?.let {
+                        it.copy(isFavorited = it.resolvedId in ids)
+                    },
+                )
             }
         }
     }
@@ -104,6 +124,8 @@ class MapViewModel(
             selectedStore = it.selectedStore?.let { s ->
                 if (s.resolvedId == storeId) s.copy(isFavorited = newFavorited) else s
             },
+            favoriteStoreIds = if (newFavorited) it.favoriteStoreIds + storeId
+                               else it.favoriteStoreIds - storeId,
         )}
         viewModelScope.launch {
             val ok = runCatching {
@@ -129,6 +151,8 @@ class MapViewModel(
                     selectedStore = it.selectedStore?.let { s ->
                         if (s.resolvedId == storeId) s.copy(isFavorited = !newFavorited) else s
                     },
+                    favoriteStoreIds = if (!newFavorited) it.favoriteStoreIds + storeId
+                                       else it.favoriteStoreIds - storeId,
                 )}
             }
         }
@@ -176,8 +200,11 @@ class MapViewModel(
             }
         }.getOrNull()
         val body = response?.body()
+        val favoriteIds = _uiState.value.favoriteStoreIds
         _uiState.update { it.copy(
-            stores = body?.stores ?: emptyList(),
+            stores = (body?.stores ?: emptyList()).map { s ->
+                s.copy(isFavorited = s.resolvedId in favoriteIds)
+            },
             totalCount = body?.total ?: 0,
         )}
     }
