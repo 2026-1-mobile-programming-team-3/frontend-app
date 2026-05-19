@@ -30,6 +30,8 @@ import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
+import com.example.siheunggagae.data.model.VolunteerRequestCreate
+import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserResponse
 import com.example.siheunggagae.data.model.UserUpdateRequest
@@ -177,4 +179,11 @@ interface AuthApiService {
     suspend fun deleteFavoriteStore(
         @Path("storeId") storeId: Int,
     ): Response<Unit>
+
+    // ── Volunteer Request ─────────────────────────────────────────────────────────
+
+    @POST("api/v1/users/me/volunteer-request")
+    suspend fun submitVolunteerRequest(
+        @Body body: VolunteerRequestCreate,
+    ): Response<VolunteerRequestResponse>
 }

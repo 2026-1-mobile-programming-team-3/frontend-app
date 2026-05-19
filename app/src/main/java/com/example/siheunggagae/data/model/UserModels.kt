@@ -105,3 +105,13 @@ data class FavoriteStoreListResponse(
     val page: Int,
     val size: Int,
 )
+
+data class VolunteerRequestCreate(val message: String)
+
+data class VolunteerRequestResponse(
+    val id: Int,
+    val userId: Int,
+    val message: String,
+    val status: String,
+    val createdAt: String,
+)

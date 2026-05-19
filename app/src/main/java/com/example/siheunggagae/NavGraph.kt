@@ -556,7 +556,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.VolunteerApply.route) {
-            VolunteerApplyScreen(onBack = { navController.popBackStack() })
+            val volunteerApplyViewModel: com.example.siheunggagae.ui.viewmodel.VolunteerApplyViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.VolunteerApplyViewModel.Factory(UserRepository())
+            )
+            VolunteerApplyScreen(
+                viewModel = volunteerApplyViewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.VolunteerBadgeList.route) {

@@ -3,6 +3,8 @@ package com.example.siheunggagae.data.repository
 import com.example.siheunggagae.data.model.ActivityStatsResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
+import com.example.siheunggagae.data.model.VolunteerRequestCreate
+import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.model.MessageResponse
 import com.example.siheunggagae.data.model.PetCreate
@@ -40,4 +42,7 @@ class UserRepository {
 
     suspend fun deleteFavoriteStore(storeId: Int): Response<Unit> =
         api.deleteFavoriteStore(storeId)
+
+    suspend fun submitVolunteerRequest(body: VolunteerRequestCreate): Response<VolunteerRequestResponse> =
+        api.submitVolunteerRequest(body)
 }
