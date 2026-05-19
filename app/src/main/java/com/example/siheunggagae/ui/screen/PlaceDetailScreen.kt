@@ -116,7 +116,13 @@ fun PlaceDetailScreen(
             reviews = runCatching {
                 RetrofitClient.api.getStoreReviews(placeId).body()?.reviews ?: emptyList()
             }.getOrDefault(emptyList())
-            isFavorited = store?.isFavorited == true
+            // store.isFavorited를 신뢰하지 않고 즐겨찾기 목록에서 직접 확인
+            val favoriteIds = runCatching {
+                RetrofitClient.api.getFavoriteStores(size = 200).body()
+                    ?.items?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+            }.getOrDefault(emptySet())
+            isFavorited = if (favoriteIds.isNotEmpty()) placeId in favoriteIds
+                          else store?.isFavorited == true
         }
         isLoading = false
     }
