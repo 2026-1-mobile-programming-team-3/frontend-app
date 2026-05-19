@@ -1,6 +1,7 @@
 package com.example.siheunggagae.ui.viewmodel
 
 import android.location.Location
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -106,9 +107,14 @@ class MapViewModel(
         )}
         viewModelScope.launch {
             val ok = runCatching {
-                if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId)).isSuccessful
-                else api.removeFavoriteStore(storeId).isSuccessful
-            }.getOrDefault(false)
+                val resp = if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId))
+                           else api.removeFavoriteStore(storeId)
+                Log.d("MapFavorite", "${if (newFavorited) "ADD" else "REMOVE"} storeId=$storeId → HTTP ${resp.code()} ${resp.message()}")
+                resp.isSuccessful
+            }.getOrElse { e ->
+                Log.e("MapFavorite", "exception storeId=$storeId", e)
+                false
+            }
             if (!ok) {
                 // 실패 시 원복
                 val revert: (List<StoreResponse>) -> List<StoreResponse> = { list ->
