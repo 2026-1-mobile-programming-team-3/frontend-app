@@ -58,7 +58,7 @@ class MapViewModel(
     private fun loadFavoriteIds() {
         viewModelScope.launch {
             val ids = runCatching {
-                api.getFavoriteStores(size = 200).body()?.items
+                api.getFavoriteStores().body()?.items
                     ?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
             }.getOrDefault(emptySet())
             _uiState.update { state ->

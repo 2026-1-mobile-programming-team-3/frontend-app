@@ -118,7 +118,7 @@ fun PlaceDetailScreen(
             }.getOrDefault(emptyList())
             // store.isFavorited를 신뢰하지 않고 즐겨찾기 목록에서 직접 확인
             val favResp = runCatching {
-                RetrofitClient.api.getFavoriteStores(size = 200)
+                RetrofitClient.api.getFavoriteStores()
             }.getOrNull()
             val rawItems = favResp?.body()?.items
             android.util.Log.d("PlaceFav", "HTTP=${favResp?.code()} items=$rawItems placeId=$placeId")
