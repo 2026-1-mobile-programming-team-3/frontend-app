@@ -62,10 +62,13 @@ data class StoreReviewCreateResponse(
 
 data class StoreSearchResult(
     val storeId: Int? = null,
+    val id: Int? = null,          // 서버 필드명 차이 대비 fallback
     val name: String? = null,
     val address: String? = null,
     val category: String? = null,
-)
+) {
+    val resolvedId: Int? get() = storeId ?: id
+}
 
 data class StoreSearchResponse(
     val results: List<StoreSearchResult>? = null,

@@ -4,6 +4,7 @@ import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
@@ -19,6 +20,8 @@ import kotlinx.coroutines.launch
 data class MapUiState(
     val isLoading: Boolean = false,
     val location: Location? = null,
+    val cameraTarget: Pair<Double, Double>? = null,
+    val cameraSerial: Int = 0,
     val stores: List<StoreResponse> = emptyList(),
     val selectedStore: StoreResponse? = null,
     val selectedCategory: StoreCategory = StoreCategory.ALL,
@@ -26,11 +29,13 @@ data class MapUiState(
     val volunteerMarkers: List<VolunteerMarkerDto> = emptyList(),
     val userRole: UserRole = UserRole.USER,
     val totalCount: Int = 0,
+    val visibleCategories: Set<String> = MapFilterStore.DEFAULT_CATEGORIES,
 )
 
 class MapViewModel(
     private val api: AuthApiService,
     private val locationProvider: LocationProvider,
+    private val filterStore: MapFilterStore,
     initialVolunteerMode: Boolean = false,
 ) : ViewModel() {
 
@@ -39,6 +44,11 @@ class MapViewModel(
 
     init {
         loadInitial()
+        viewModelScope.launch {
+            filterStore.visibleCategories.collect { cats ->
+                _uiState.update { it.copy(visibleCategories = cats) }
+            }
+        }
     }
 
     private fun loadInitial() {
@@ -51,7 +61,11 @@ class MapViewModel(
             _uiState.update { it.copy(userRole = userRole) }
 
             val location = locationProvider.getLocationOrNull()
-            _uiState.update { it.copy(location = location) }
+            _uiState.update { it.copy(
+                location = location,
+                cameraTarget = location?.let { loc -> loc.latitude to loc.longitude },
+                cameraSerial = it.cameraSerial + 1,
+            )}
 
             if (location != null) {
                 loadStores(location.latitude, location.longitude)
@@ -77,11 +91,14 @@ class MapViewModel(
         _uiState.update { it.copy(selectedStore = store) }
     }
 
-    fun moveToCurrentLocation(onMoved: (lat: Double, lng: Double) -> Unit) {
+    fun moveToCurrentLocation() {
         viewModelScope.launch {
             val location = locationProvider.getLocationOrNull() ?: return@launch
-            _uiState.update { it.copy(location = location) }
-            onMoved(location.latitude, location.longitude)
+            _uiState.update { it.copy(
+                location = location,
+                cameraTarget = location.latitude to location.longitude,
+                cameraSerial = it.cameraSerial + 1,
+            )}
         }
     }
 
@@ -89,6 +106,10 @@ class MapViewModel(
         viewModelScope.launch {
             loadStores(lat, lng, _uiState.value.selectedCategory)
         }
+    }
+
+    fun applyFilter(visibleApiCategories: Set<String>) {
+        viewModelScope.launch { filterStore.saveCategories(visibleApiCategories) }
     }
 
     fun toggleVolunteerMode() {
@@ -128,10 +149,11 @@ class MapViewModel(
     class Factory(
         private val api: AuthApiService,
         private val locationProvider: LocationProvider,
+        private val filterStore: MapFilterStore,
         private val initialVolunteerMode: Boolean = false,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MapViewModel(api, locationProvider, initialVolunteerMode) as T
+            MapViewModel(api, locationProvider, filterStore, initialVolunteerMode) as T
     }
 }

@@ -86,6 +86,7 @@ fun NewsScreen(
     onNewsDetailClick: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
     onNavigate: (String) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var newsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
@@ -103,7 +104,7 @@ fun NewsScreen(
 
     Scaffold(
         containerColor = BackgroundNs,
-        topBar = { NewsTopBar() },
+        topBar = { NewsTopBar(onNotificationClick = onNotificationClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.News.route, onNavigate = onNavigate) },
     ) { innerPadding ->
         if (isLoading) {
@@ -191,7 +192,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar() {
+private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -212,7 +213,7 @@ private fun NewsTopBar() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
+                NewsTopBarIcon(onClick = onNotificationClick) { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
                 Box(
                     modifier = Modifier
                         .size(8.dp)
@@ -226,7 +227,7 @@ private fun NewsTopBar() {
 }
 
 @Composable
-private fun NewsTopBarIcon(content: @Composable () -> Unit) {
+private fun NewsTopBarIcon(onClick: () -> Unit = {}, content: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -234,7 +235,7 @@ private fun NewsTopBarIcon(content: @Composable () -> Unit) {
             .shadow(elevation = 1.dp, shape = RoundedCornerShape(8.dp))
             .clip(RoundedCornerShape(8.dp))
             .background(Color.White)
-            .clickable { },
+            .clickable { onClick() },
     ) { content() }
 }
 

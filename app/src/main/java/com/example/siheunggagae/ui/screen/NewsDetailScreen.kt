@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -45,7 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
 import com.example.siheunggagae.data.model.NewsDetailResponse
+import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -62,20 +65,47 @@ private val TextBlackND   = Color(0xFF1E120A)
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun NewsDetailScreen(newsId: String = "", onBack: () -> Unit = {}) {
+fun NewsDetailScreen(
+    newsId: String = "",
+    onBack: () -> Unit = {},
+    onRelatedClick: (String) -> Unit = {},
+) {
+    val context = LocalContext.current
     var detail by remember { mutableStateOf<NewsDetailResponse?>(null) }
+    var relatedNews by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(newsId) {
         if (newsId.isNotEmpty()) {
             detail = runCatching { RetrofitClient.api.getNewsDetail(newsId).body() }.getOrNull()
+            val allNews = runCatching { RetrofitClient.api.getNews().body()?.news ?: emptyList() }.getOrDefault(emptyList())
+            val category = detail?.category
+            relatedNews = if (category != null) {
+                allNews.filter { it.newsId != newsId && it.category == category }.take(2)
+            } else {
+                allNews.filter { it.newsId != newsId }.take(2)
+            }
         }
         isLoading = false
     }
 
+    fun shareNews() {
+        val text = buildString {
+            detail?.title?.let { append(it).append("\n") }
+            detail?.officialLink?.let { append(it) }
+        }
+        if (text.isNotBlank()) {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            context.startActivity(Intent.createChooser(intent, "공유하기"))
+        }
+    }
+
     Scaffold(
         containerColor = BackgroundND,
-        topBar = { NewsDetailTopBar(onBack = onBack) },
+        topBar = { NewsDetailTopBar(onBack = onBack, onShare = ::shareNews) },
     ) { innerPadding ->
         if (isLoading) {
             Box(
@@ -134,7 +164,9 @@ fun NewsDetailScreen(newsId: String = "", onBack: () -> Unit = {}) {
                         }
                     }
 
-                    RelatedNewsSectionStatic()
+                    if (relatedNews.isNotEmpty()) {
+                        RelatedNewsSection(items = relatedNews, onItemClick = onRelatedClick)
+                    }
 
                     Spacer(Modifier.height(24.dp))
                 }
@@ -146,7 +178,7 @@ fun NewsDetailScreen(newsId: String = "", onBack: () -> Unit = {}) {
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsDetailTopBar(onBack: () -> Unit) {
+private fun NewsDetailTopBar(onBack: () -> Unit, onShare: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,13 +209,13 @@ private fun NewsDetailTopBar(onBack: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             TopBarIconBtnND { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
-            TopBarIconBtnND { Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
+            TopBarIconBtnND(onClick = onShare) { Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
         }
     }
 }
 
 @Composable
-private fun TopBarIconBtnND(icon: @Composable () -> Unit) {
+private fun TopBarIconBtnND(onClick: () -> Unit = {}, icon: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -191,7 +223,7 @@ private fun TopBarIconBtnND(icon: @Composable () -> Unit) {
             .shadow(2.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { },
+            .clickable { onClick() },
     ) { icon() }
 }
 
@@ -252,17 +284,10 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
     }
 }
 
-// ─── 관련 소식 (정적) ──────────────────────────────────────────────────────────
-
-private data class RelatedNewsStub(val category: String, val title: String)
-
-private val relatedStubs = listOf(
-    RelatedNewsStub("정책", "2026년 반려동물 등록 의무화 개정 안내"),
-    RelatedNewsStub("지원", "노령견 의료비 지원 사업 2차 접수 시작"),
-)
+// ─── 관련 소식 (동적) ──────────────────────────────────────────────────────────
 
 @Composable
-private fun RelatedNewsSectionStatic() {
+private fun RelatedNewsSection(items: List<NewsItem>, onItemClick: (String) -> Unit = {}) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "관련 소식",
@@ -272,12 +297,12 @@ private fun RelatedNewsSectionStatic() {
             lineHeight = 24.sp,
             color = Brown900ND,
         )
-        relatedStubs.forEach { news ->
+        items.forEach { news ->
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = PinkSurfaceND),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth().clickable { },
+                modifier = Modifier.fillMaxWidth().clickable { news.newsId?.let { onItemClick(it) } },
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
@@ -300,7 +325,7 @@ private fun RelatedNewsSectionStatic() {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = news.category,
+                            text = news.category ?: "소식",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
@@ -308,7 +333,7 @@ private fun RelatedNewsSectionStatic() {
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = news.title,
+                            text = news.title ?: "",
                             fontFamily = PretendardFamily,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,

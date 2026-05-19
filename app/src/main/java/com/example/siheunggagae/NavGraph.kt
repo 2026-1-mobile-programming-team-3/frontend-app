@@ -365,7 +365,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         ) { backStackEntry ->
             val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
             MapScreen(
-                onNavigate = { route -> navController.navigateTab(route) },
+                onNavigate = { route ->
+                    if (route == Screen.Home.route || route == Screen.Matching.route ||
+                        route.startsWith(Screen.Map.route) || route == Screen.News.route ||
+                        route == Screen.My.route
+                    ) navController.navigateTab(route)
+                    else navController.navigate(route)
+                },
                 startVolunteerMode = volunteerMode,
             )
         }
@@ -379,6 +385,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     navController.navigate(Screen.PlaceDetail.createRoute(placeId))
                 },
                 onNavigate = { route -> navController.navigateTab(route) },
+                onNotificationClick = { navController.navigate(Screen.Notification.route) },
             )
         }
 
@@ -451,7 +458,11 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("newsId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val newsId = backStackEntry.arguments?.getString("newsId") ?: ""
-            NewsDetailScreen(newsId = newsId, onBack = { navController.popBackStack() })
+            NewsDetailScreen(
+                newsId = newsId,
+                onBack = { navController.popBackStack() },
+                onRelatedClick = { id -> navController.navigate(Screen.NewsDetail.createRoute(id)) },
+            )
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,7 +26,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,9 +65,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
+import com.example.siheunggagae.data.model.StoreSearchResult
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.network.RetrofitClient
@@ -106,6 +114,7 @@ fun MapScreen(
         factory = MapViewModel.Factory(
             api = RetrofitClient.api,
             locationProvider = LocationProvider(context),
+            filterStore = MapFilterStore(context),
             initialVolunteerMode = startVolunteerMode,
         )
     )
@@ -113,10 +122,11 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
 
     val locationPermission = rememberLocationPermissionState { granted ->
-        if (granted) viewModel.moveToCurrentLocation { _, _ -> }
+        if (granted) viewModel.moveToCurrentLocation()
     }
 
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -151,20 +161,29 @@ fun MapScreen(
         mapWrapper.moveCamera(37.3795, 126.8025)
     }
 
-    // 매장 마커 동기화
-    LaunchedEffect(mapReady, uiState.stores) {
+    // 내 위치 버튼 → cameraSerial이 바뀔 때마다 항상 이동 (같은 좌표여도 재실행)
+    LaunchedEffect(mapReady, uiState.cameraSerial) {
+        if (!mapReady) return@LaunchedEffect
+        val (lat, lng) = uiState.cameraTarget ?: return@LaunchedEffect
+        mapWrapper.moveCamera(lat, lng)
+    }
+
+    // 매장 마커 동기화 (카테고리 필터 반영)
+    LaunchedEffect(mapReady, uiState.stores, uiState.visibleCategories) {
         if (!mapReady) return@LaunchedEffect
         mapWrapper.clearMarkersWithPrefix("store_")
-        uiState.stores.forEach { store ->
-            val color = categoryColors[store.category] ?: defaultMarkerColor
-            mapWrapper.addMarker(
-                id = "store_${store.storeId}",
-                lat = store.latitude,
-                lng = store.longitude,
-                markerColor = color,
-                onTap = { viewModel.selectStore(store) },
-            )
-        }
+        uiState.stores
+            .filter { it.category in uiState.visibleCategories }
+            .forEach { store ->
+                val color = categoryColors[store.category] ?: defaultMarkerColor
+                mapWrapper.addMarker(
+                    id = "store_${store.storeId}",
+                    lat = store.latitude,
+                    lng = store.longitude,
+                    markerColor = color,
+                    onTap = { viewModel.selectStore(store) },
+                )
+            }
     }
 
     // 봉사요청 마커 동기화
@@ -235,7 +254,7 @@ fun MapScreen(
                         .fillMaxWidth()
                         .padding(top = 16.dp, start = 16.dp, end = 16.dp),
                 ) {
-                    MapSearchCard(onClick = { /* 병화-4 검색 모드 진입 */ })
+                    MapSearchCard(onClick = { showSearch = true })
                     Spacer(Modifier.height(8.dp))
                     MapCategoryChipRow(
                         selected = uiState.selectedCategory,
@@ -251,9 +270,7 @@ fun MapScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MapIconFab(R.drawable.ic_my_location, "내 위치") {
-                        viewModel.moveToCurrentLocation { lat, lng ->
-                            mapWrapper.moveCamera(lat, lng)
-                        }
+                        viewModel.moveToCurrentLocation()
                     }
                     MapIconFab(R.drawable.ic_layers, "레이어") { showFilterSheet = true }
                     MapIconFab(R.drawable.ic_refresh, "새로고침") {
@@ -278,8 +295,26 @@ fun MapScreen(
 
     if (showFilterSheet) {
         MapFilterBottomSheet(
+            initialCategories = uiState.visibleCategories,
             onDismiss = { showFilterSheet = false },
-            onApply   = { showFilterSheet = false },
+            onApply = { entries ->
+                val apiCategories = entries
+                    .filter { it.isSelected }
+                    .mapNotNull { MapFilterStore.NAME_TO_API[it.name] }
+                    .toSet()
+                viewModel.applyFilter(apiCategories)
+                showFilterSheet = false
+            },
+        )
+    }
+
+    if (showSearch) {
+        MapSearchOverlay(
+            onDismiss = { showSearch = false },
+            onResultClick = { storeId ->
+                showSearch = false
+                onNavigate(Screen.PlaceDetail.createRoute(storeId))
+            },
         )
     }
 }
@@ -601,6 +636,177 @@ private fun MapPlaceItem(place: StoreResponse, onClick: () -> Unit = {}) {
                 tint = if (place.isFavorited) Pink500Mp else BrownBorderP,
                 modifier = Modifier.size(20.dp),
             )
+        }
+    }
+}
+
+// ─── 검색 오버레이 (병화-4) ───────────────────────────────────────────────────
+
+@Composable
+private fun MapSearchOverlay(
+    onDismiss: () -> Unit,
+    onResultClick: (storeId: Int) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<StoreSearchResult>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(query) {
+        if (query.isBlank()) {
+            results = emptyList()
+            return@LaunchedEffect
+        }
+        delay(300)
+        isLoading = true
+        results = runCatching {
+            RetrofitClient.api.searchStores(query).body()?.results ?: emptyList()
+        }.getOrDefault(emptyList())
+        isLoading = false
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+            // 검색 입력창
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF3F4F6))
+                        .clickable { onDismiss() },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "닫기",
+                        tint = Brown700Mp,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .shadow(2.dp, RoundedCornerShape(50.dp))
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "매장 · 병원 · 공원 검색",
+                            fontFamily = PretendardFamily,
+                            fontSize = 15.sp,
+                            color = Brown400Mp,
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontFamily = PretendardFamily,
+                            fontSize = 15.sp,
+                            color = TextBlack,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Orange500Mp, modifier = Modifier.size(32.dp))
+                }
+            } else if (results.isEmpty() && query.isNotBlank()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 60.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "검색 결과가 없습니다",
+                        fontFamily = PretendardFamily,
+                        fontSize = 15.sp,
+                        color = Brown700Mp,
+                    )
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(results) { result ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { result.resolvedId?.let { onResultClick(it) } }
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFF3F4F6)),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_location_on),
+                                    contentDescription = null,
+                                    tint = Brown700Mp,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = result.name ?: "",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 20.sp,
+                                    color = TextBlack,
+                                )
+                                if (!result.address.isNullOrEmpty()) {
+                                    Text(
+                                        text = result.address,
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 13.sp,
+                                        lineHeight = 18.sp,
+                                        color = Brown700Mp,
+                                    )
+                                }
+                            }
+                            if (!result.category.isNullOrEmpty()) {
+                                Text(
+                                    text = result.category,
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 12.sp,
+                                    color = Brown400Mp,
+                                )
+                            }
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = Color(0xFFF3F4F6),
+                        )
+                    }
+                }
+            }
         }
     }
 }
