@@ -59,6 +59,7 @@ import com.example.siheunggagae.ui.screen.MapScreen
 import com.example.siheunggagae.ui.screen.MatchingDetailScreen
 import com.example.siheunggagae.ui.screen.MatchingPublicDetailScreen
 import com.example.siheunggagae.ui.screen.MatchingScreen
+import com.example.siheunggagae.ui.screen.MyRequestsScreen
 import com.example.siheunggagae.ui.screen.MyScreen
 import com.example.siheunggagae.ui.screen.NewsDetailScreen
 import com.example.siheunggagae.ui.screen.NewsScreen
@@ -88,7 +89,9 @@ sealed class Screen(val route: String) {
     object Home         : Screen("home")
     object Notification : Screen("notification")
     object Matching     : Screen("matching")
-    object RequestFlow  : Screen("request_flow")
+    object RequestFlow : Screen("request_flow?requestId={requestId}") {
+        fun createRoute(requestId: Int) = "request_flow?requestId=$requestId"
+    }
     object MyRequests   : Screen("my_requests")
     object Map          : Screen("map")
     object News         : Screen("news")
@@ -320,8 +323,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+
+            //뷰모델 생성 부분 추가
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+            val detailViewModel: com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel.Factory(api)
+            )
+
             MatchingDetailScreen(
                 requestId = requestId,
+                viewModel = detailViewModel, //생성한 뷰모델을 화면에 주입.
                 onBack = { navController.popBackStack() },
                 onNavigate = { route -> navController.navigate(route) },
             )
@@ -351,27 +362,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
-        composable(Screen.RequestFlow.route) { backStackEntry -> // backStackEntry 추가
+
+        composable(
+            route = Screen.RequestFlow.route, // 이제 "request_flow?requestId={requestId}"가 됨
+            arguments = listOf(navArgument("requestId") {
+                type = NavType.IntType
+                defaultValue = 0
+            })
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
             val requestViewModel: com.example.siheunggagae.ui.viewmodel.RequestViewModel = viewModel(
-                viewModelStoreOwner = backStackEntry, //  단계 이동 시 데이터 유지
+                viewModelStoreOwner = backStackEntry,
                 factory = com.example.siheunggagae.ui.viewmodel.RequestViewModel.Factory(api)
             )
 
             RequestFlowScreen(
                 viewModel = requestViewModel,
+                matchId = requestId, // 여기서 추출한 ID를 넘겨줍니다!
                 onBack = { navController.popBackStack() },
-                onComplete = {
-                    navController.popBackStack()
-                },
+                onComplete = { navController.popBackStack() },
                 onAddPet = { navController.navigate(Screen.PetAdd.route) }
             )
         }
 
         composable(Screen.MyRequests.route) {
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+            val myRequestsViewModel: com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel.Factory(api)
+            )
+
             MyRequestsScreen(
+                viewModel = myRequestsViewModel,
                 onBack = { navController.popBackStack() },
-                onCardClick = { requestId -> navController.navigate(Screen.MatchingDetail.createRoute(requestId)) },
+                onCardClick = { requestId ->
+                    // 카드를 클릭하면 해당 요청의 상세 화면으로 이동합니다.
+                    navController.navigate(Screen.MatchingDetail.createRoute(requestId))
+                }
             )
         }
 

@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,15 +86,23 @@ enum class MatchingTab(val label: String, val status: MatchStatus?) {
 
 @Composable
 fun MatchingScreen(
-    viewModel: MatchingViewModel, // 🔥 뷰모델 추가 완료!
+    viewModel: MatchingViewModel, // 뷰모델 추가 완료!
     onMyRequests: () -> Unit = {},
     onRequestFlowClick: () -> Unit = {},
     onCardClick: (requestId: Int) -> Unit = {},
     onNavigate: (String) -> Unit = {},
 ) {
+
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
-
+    //추가된 부분: 화면이 다시 나타날 때마다 서버에서 최신 목록을 새로고침 합니다!
+    LaunchedEffect(Unit) {
+        viewModel.fetchMatches(selectedTab.status?.name)
+    }
+    // 요청 건수 계산 로직 추가
+    val requestCount = if (uiState is MatchingUiState.Success) {
+        (uiState as MatchingUiState.Success).matches.size
+    } else 0
     Scaffold(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
@@ -111,16 +120,13 @@ fun MatchingScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
         ) {
-            item { SummaryCards() }
+            item { SummaryCards(onMyRequests = onMyRequests, requestCount = requestCount) }
+            // Success 상태일 때 서버 데이터 건수를 전달하도록 수정
             item {
                 MatchingTabRow(selected = selectedTab, onSelect = { tab ->
                     selectedTab = tab
-                    // 탭을 누르면 뷰모델에 해당 상태(WAITING 등) 데이터 요청
                     viewModel.fetchMatches(tab.status?.name)
                 })
             }
@@ -190,13 +196,27 @@ private fun MatchingTopBar(onMyRequests: () -> Unit) {
 
 // ─── 요약 카드 2열 ─────────────────────────────────────────────────────────────
 @Composable
-private fun SummaryCards() {
+private fun SummaryCards(onMyRequests: () -> Unit, requestCount: Int) { // requestCount 파라미터 추가
     Row(
         modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        SummaryCard(Modifier.weight(1f), PinkSurfaceM, R.drawable.ic_assignment, Pink500M, "내 요청", "2건 검토 중")
-        SummaryCard(Modifier.weight(1f), Color(0xFFF0FDF4), R.drawable.ic_favorite, Green500M, "봉사 활동", "1건 진행 중")
+        SummaryCard(
+            modifier = Modifier.weight(1f).clickable { onMyRequests() },
+            bgColor = PinkSurfaceM,
+            iconRes = R.drawable.ic_assignment,
+            iconColor = Pink500M,
+            label = "내 요청",
+            value = "${requestCount}건 검토 중" // 파라미터로 받은 값 사용
+        )
+        SummaryCard(
+            modifier = Modifier.weight(1f),
+            bgColor = Color(0xFFF0FDF4),
+            iconRes = R.drawable.ic_favorite,
+            iconColor = Green500M,
+            label = "봉사 활동",
+            value = "1건 진행 중"
+        )
     }
 }
 
@@ -256,7 +276,7 @@ private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
 
 // ─── 요청 카드 ─────────────────────────────────────────────────────────────────
 @Composable
-private fun MatchingRequestCard(request: MatchListItem, onCardClick: () -> Unit = {}) { // 🔥 파라미터 타입 변경됨!
+private fun MatchingRequestCard(request: MatchListItem, onCardClick: () -> Unit = {}) { // 파라미터 타입 변경됨!
     // 서버에서 온 String 상태값을 앱 내 Enum 상태값으로 매핑
     val matchStatus = MatchStatus.entries.find { it.name == request.status } ?: MatchStatus.WAITING
 

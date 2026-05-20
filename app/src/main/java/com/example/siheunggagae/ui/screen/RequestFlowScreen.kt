@@ -91,19 +91,15 @@ private val quickTimes = listOf(
 
 private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 
-// ─── 메인 화면 ─────────────────────────────────────────────────────────────────
-
 @Composable
 fun RequestFlowScreen(
-    viewModel: RequestViewModel, // 🔥 뷰모델 추가
+    viewModel: RequestViewModel,
+    matchId: Int = 0, // 수정 시 전달할 ID (0은 신규 등록)
     onBack: () -> Unit = {},
     onComplete: () -> Unit = {},
     onAddPet: () -> Unit = {}
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-
-    // 🔥 스낵바 추가
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -119,10 +115,26 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
-    //  토스트 대신 스낵바 띄우기
+    // 수정 모드 시 데이터 로드
+    LaunchedEffect(matchId) {
+        if (matchId != 0) {
+            viewModel.loadMatchDetail(matchId)
+        }
+    }
+
+    // 데이터 로드 완료 후 로컬 상태 동기화
+    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId) {
+        if (matchId != 0) {
+            titleInput = viewModel.title
+            destination = viewModel.address
+            memo = viewModel.content
+            selectedPetId = viewModel.selectedPetId
+        }
+    }
+
     LaunchedEffect(uiState) {
         if (uiState is RequestUiState.Success) {
-            coroutineScope.launch { snackbarHostState.showSnackbar("도움 요청이 성공적으로 등록되었습니다!") }
+            coroutineScope.launch { snackbarHostState.showSnackbar("요청 처리가 완료되었습니다.") }
             viewModel.resetState()
             onComplete()
         } else if (uiState is RequestUiState.Error) {
@@ -134,10 +146,9 @@ fun RequestFlowScreen(
     val buttonText = when (currentStep) {
         1    -> "→ 일정 선택"
         2    -> "→ 요청 내용 작성"
-        else -> "요청 등록하기"
+        else -> if (matchId != 0) "수정 완료하기" else "요청 등록하기"
     }
 
-    // 다음 버튼 활성화 조건
     val isNextEnabled = when (currentStep) {
         1 -> selectedPetId != null
         2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
@@ -146,7 +157,7 @@ fun RequestFlowScreen(
 
     Scaffold(
         containerColor = Color.White,
-        snackbarHost = { SiheungSnackbarHost(snackbarHostState) }, //  스낵바 부착
+        snackbarHost = { SiheungSnackbarHost(snackbarHostState) },
         topBar = {
             RequestFlowTopBar(
                 step = currentStep,
@@ -160,22 +171,23 @@ fun RequestFlowScreen(
                 isLoading = uiState is RequestUiState.Loading && currentStep == 3
             ) {
                 if (currentStep < 3) {
-                    // 데이터 뷰모델에 임시 저장
                     viewModel.selectedPetId = selectedPetId
                     if (currentStep == 2) {
                         val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
                         val dayStr = selectedDay.toString().padStart(2, '0')
-
-                        // 🔥🔥🔥 422 에러 해결: 시간을 제외하고 날짜만 보냅니다.
                         viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
                     }
                     currentStep++
                 } else {
-                    // 3단계 완료 시 서버 전송
                     viewModel.title = titleInput
                     viewModel.address = destination
                     viewModel.content = memo
-                    viewModel.submitRequest()
+
+                    if (matchId != 0) {
+                        viewModel.updateRequest(matchId)
+                    } else {
+                        viewModel.submitRequest()
+                    }
                 }
             }
         }
