@@ -374,9 +374,7 @@ fun PlaceDetailScreen(
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL)))
                                 .clickable {
-                                    val lat = s.latitude
-                                    val lng = s.longitude
-                                    if (lat != null && lng != null) onNavigateToMap(lat, lng)
+                                    onNavigateToMap(s.latitude ?: 0.0, s.longitude ?: 0.0)
                                 },
                         ) {
                             Icon(

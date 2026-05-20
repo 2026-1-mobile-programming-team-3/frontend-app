@@ -97,9 +97,11 @@ private val miniMarkerColors = mapOf(
 )
 
 private val siheungDongs = listOf(
-    "정왕동", "배곧동", "목감동", "시화동", "신천동",
-    "연성동", "은행동", "장곡동", "능곡동", "조남동",
-    "군자동", "방산동", "월곶동",
+    "대야동", "신천동", "신현동", "은행동", "매화동",
+    "도창동", "목감동", "조남동", "포동", "군자동",
+    "정왕동",
+    "능곡동", "월곶동", "배곧동", "장현동", "장곡동",
+    "연성동", "과림동",
 )
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────────────
@@ -117,6 +119,7 @@ fun HomeScreen(
         factory = HomeViewModel.Factory(
             api = RetrofitClient.api,
             locationProvider = LocationProvider(context),
+            prefs = context.getSharedPreferences("home_prefs", android.content.Context.MODE_PRIVATE),
         )
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -146,9 +149,12 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) { miniMapWrapper.init { miniMapReady = true } }
 
-    LaunchedEffect(miniMapReady) {
+    LaunchedEffect(miniMapReady, uiState.location, uiState.mapCenter) {
         if (!miniMapReady) return@LaunchedEffect
-        miniMapWrapper.moveCamera(37.3795, 126.8025, 14)
+        val (lat, lng) = uiState.mapCenter
+            ?: uiState.location?.let { it.latitude to it.longitude }
+            ?: (37.3795 to 126.8025)
+        miniMapWrapper.moveCamera(lat, lng, 14)
     }
 
     LaunchedEffect(miniMapReady, uiState.allStores) {
@@ -212,9 +218,14 @@ fun HomeScreen(
     if (showDongModal) {
         DongChangeModal(
             currentDong = uiState.regionDong,
+            isManual = uiState.mapCenter != null,
             onDismiss = { showDongModal = false },
             onSelect = { dong ->
                 viewModel.updateRegionDong(dong)
+                showDongModal = false
+            },
+            onResetToCurrentLocation = {
+                viewModel.resetToCurrentLocation()
                 showDongModal = false
             },
         )
@@ -717,8 +728,10 @@ fun PetNewsSection(
 @Composable
 private fun DongChangeModal(
     currentDong: String,
+    isManual: Boolean,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
+    onResetToCurrentLocation: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -738,7 +751,37 @@ private fun DongChangeModal(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             )
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            LazyColumn(modifier = Modifier.height(320.dp)) {
+
+            // 현재 위치 기준으로 설정 버튼
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onResetToCurrentLocation() }
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(painterResource(R.drawable.ic_my_location), null, tint = Orange500H, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = "현재 위치 기준으로 설정",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 24.sp,
+                        color = Orange500H,
+                    )
+                }
+                if (!isManual) {
+                    Icon(painterResource(R.drawable.ic_check), null, tint = Orange500H, modifier = Modifier.size(20.dp))
+                }
+            }
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+
+            LazyColumn(modifier = Modifier.height(280.dp)) {
                 items(siheungDongs) { dong ->
                     Row(
                         modifier = Modifier
@@ -749,8 +792,8 @@ private fun DongChangeModal(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(dong, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackH)
-                        if (dong == currentDong) {
-                            Icon(painterResource(R.drawable.ic_location_on), null, tint = Pink500H, modifier = Modifier.size(16.dp))
+                        if (isManual && dong == currentDong) {
+                            Icon(painterResource(R.drawable.ic_check), null, tint = Pink500H, modifier = Modifier.size(20.dp))
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))

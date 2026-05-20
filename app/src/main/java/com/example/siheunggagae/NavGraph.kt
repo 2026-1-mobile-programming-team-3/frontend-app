@@ -483,7 +483,6 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onNavigateToMap = { lat, lng ->
                     navController.navigate(Screen.Map.createRoute(lat, lng)) {
                         launchSingleTop = true
-                        restoreState = true
                         popUpTo(Screen.Home.route) { saveState = true }
                     }
                 },

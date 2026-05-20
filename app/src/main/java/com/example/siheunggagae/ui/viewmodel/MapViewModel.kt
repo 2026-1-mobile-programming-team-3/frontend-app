@@ -10,6 +10,7 @@ import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreCategory
+import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
@@ -27,6 +28,8 @@ data class MapUiState(
     val cameraSerial: Int = 0,
     val stores: List<StoreResponse> = emptyList(),
     val selectedStore: StoreResponse? = null,
+    val selectedStoreDetail: StoreDetailResponse? = null,
+    val isDetailLoading: Boolean = false,
     val selectedCategory: StoreCategory = StoreCategory.ALL,
     val isVolunteerMode: Boolean = false,
     val volunteerMarkers: List<VolunteerMarkerDto> = emptyList(),
@@ -41,6 +44,8 @@ class MapViewModel(
     private val locationProvider: LocationProvider,
     private val filterStore: MapFilterStore,
     initialVolunteerMode: Boolean = false,
+    private val focusLat: Double = 0.0,
+    private val focusLng: Double = 0.0,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState(isVolunteerMode = initialVolunteerMode))
@@ -91,7 +96,11 @@ class MapViewModel(
             val location = locationProvider.getLocationOrNull()
             _uiState.update { it.copy(
                 location = location,
-                cameraTarget = location?.let { loc -> loc.latitude to loc.longitude },
+                cameraTarget = if (focusLat != 0.0 && focusLng != 0.0) {
+                    focusLat to focusLng
+                } else {
+                    location?.let { loc -> loc.latitude to loc.longitude }
+                },
                 cameraSerial = it.cameraSerial + 1,
             )}
 
@@ -116,7 +125,19 @@ class MapViewModel(
     }
 
     fun selectStore(store: StoreResponse?) {
-        _uiState.update { it.copy(selectedStore = store) }
+        _uiState.update { it.copy(
+            selectedStore = store,
+            selectedStoreDetail = null,
+            isDetailLoading = store != null,
+        )}
+        if (store != null) {
+            viewModelScope.launch {
+                val detail = runCatching {
+                    api.getStoreDetail(store.resolvedId).body()
+                }.getOrNull()
+                _uiState.update { it.copy(selectedStoreDetail = detail, isDetailLoading = false) }
+            }
+        }
     }
 
     fun toggleFavorite(store: StoreResponse) {
@@ -206,9 +227,11 @@ class MapViewModel(
         private val locationProvider: LocationProvider,
         private val filterStore: MapFilterStore,
         private val initialVolunteerMode: Boolean = false,
+        private val focusLat: Double = 0.0,
+        private val focusLng: Double = 0.0,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MapViewModel(api, locationProvider, filterStore, initialVolunteerMode) as T
+            MapViewModel(api, locationProvider, filterStore, initialVolunteerMode, focusLat, focusLng) as T
     }
 }
