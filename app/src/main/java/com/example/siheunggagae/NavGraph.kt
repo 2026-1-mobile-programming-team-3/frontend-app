@@ -351,10 +351,10 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
-        composable(Screen.RequestFlow.route) {
-            val context = LocalContext.current
-            val api = com.example.siheunggagae.data.network.RetrofitClient.api // 기존 설정 맞게 수정!
+        composable(Screen.RequestFlow.route) { backStackEntry -> // backStackEntry 추가
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
             val requestViewModel: com.example.siheunggagae.ui.viewmodel.RequestViewModel = viewModel(
+                viewModelStoreOwner = backStackEntry, //  단계 이동 시 데이터 유지
                 factory = com.example.siheunggagae.ui.viewmodel.RequestViewModel.Factory(api)
             )
 
@@ -363,7 +363,6 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onComplete = {
                     navController.popBackStack()
-                    // 필요 시 홈 탭으로 이동: navController.navigateTab(Screen.Matching.route)
                 },
                 onAddPet = { navController.navigate(Screen.PetAdd.route) }
             )
@@ -459,14 +458,28 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.PetList.route) {
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+            val requestViewModel: com.example.siheunggagae.ui.viewmodel.RequestViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.RequestViewModel.Factory(api)
+            )
+
             PetListScreen(
+                viewModel = requestViewModel, // 뷰모델 연결
                 onBack = { navController.popBackStack() },
-                onAddPet = { navController.navigate(Screen.PetAdd.route) },
+                onAddPet = { navController.navigate(Screen.PetAdd.route) }
             )
         }
 
         composable(Screen.PetAdd.route) {
-            PetAddScreen(onBack = { navController.popBackStack() })
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+            val petAddViewModel: com.example.siheunggagae.ui.viewmodel.PetAddViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.PetAddViewModel.Factory(api)
+            )
+
+            PetAddScreen(
+                viewModel = petAddViewModel, // 뷰모델 연결
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.VolunteerApply.route) {

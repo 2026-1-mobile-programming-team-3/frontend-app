@@ -1,7 +1,6 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import com.example.siheunggagae.R
-
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -33,6 +33,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,8 +55,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import com.example.siheunggagae.R
+import com.example.siheunggagae.data.model.PetGender
+import com.example.siheunggagae.data.model.PetSpecies
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.viewmodel.PetAddUiState
+import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
+import androidx.compose.material3.SnackbarHostState // 추가
+import androidx.compose.runtime.rememberCoroutineScope // 추가
+import kotlinx.coroutines.launch // 추가
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost // 추가
 
 // 스펙 컬러
 private val Brown900PA    = Color(0xFF614B3A)
@@ -73,7 +85,16 @@ private val ageUnitOptions = listOf("살", "개월")
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
-fun PetAddScreen(onBack: () -> Unit = {}) {
+fun PetAddScreen(
+    viewModel: PetAddViewModel, // 🔥 뷰모델 추가
+    onBack: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
+    // 스낵바 상태와 코루틴 스코프 생성
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     var nameInput       by remember { mutableStateOf("") }
     var selectedSpecies by remember { mutableStateOf("강아지") }
     var breedInput      by remember { mutableStateOf("") }
@@ -83,8 +104,27 @@ fun PetAddScreen(onBack: () -> Unit = {}) {
     var isNeutered      by remember { mutableStateOf(false) }
     var noteInput       by remember { mutableStateOf("") }
 
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is PetAddUiState.Success -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("반려동물이 성공적으로 등록되었습니다!")
+                }
+                viewModel.resetState()
+                onBack()
+            }
+            is PetAddUiState.Error -> {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar((uiState as PetAddUiState.Error).message)
+                }
+                viewModel.resetState()
+            }
+            else -> {}
+        }
+    }
     Scaffold(
         containerColor = BackgroundPA,
+        snackbarHost = { SiheungSnackbarHost(snackbarHostState) },
         topBar = { PetAddTopBar(onBack = onBack) },
         bottomBar = {
             Box(
@@ -94,23 +134,51 @@ fun PetAddScreen(onBack: () -> Unit = {}) {
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
+                // 한글 선택값을 서버 Enum 값으로 변환
+                val speciesEnum = when(selectedSpecies) {
+                    "강아지" -> PetSpecies.DOG
+                    "고양이" -> PetSpecies.CAT
+                    else -> PetSpecies.OTHER
+                }
+                val genderEnum = when(gender) {
+                    "수컷" -> PetGender.MALE
+                    "암컷" -> PetGender.FEMALE
+                    else -> PetGender.UNKNOWN
+                }
+                val isButtonEnabled = nameInput.isNotBlank() && uiState !is PetAddUiState.Loading
+
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Brown700PA)
-                        .clickable { },
+                        .background(if (isButtonEnabled) Brown700PA else Color(0xFFE5E7EB))
+                        .clickable(enabled = isButtonEnabled) {
+                            // 🔥 뷰모델로 데이터 전송
+                            viewModel.addPet(
+                                name = nameInput,
+                                species = speciesEnum,
+                                breed = breedInput,
+                                ageStr = age.toString(),
+                                weightStr = "", // UI에 몸무게가 없으므로 빈값 처리 (서버에서 null로 받음)
+                                isNeutered = isNeutered,
+                                gender = genderEnum
+                            )
+                        },
                 ) {
-                    Text(
-                        text = "저장하기",
-                        fontFamily = PretendardFamily,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 24.sp,
-                        color = Color.White,
-                    )
+                    if (uiState is PetAddUiState.Loading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text(
+                            text = "저장하기",
+                            fontFamily = PretendardFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 24.sp,
+                            color = if (isButtonEnabled) Color.White else Brown400PA,
+                        )
+                    }
                 }
             }
         },
@@ -545,7 +613,7 @@ private fun DetailInfoCard(
     }
 }
 
-// ─── 특징 및 주의사항 ───────────────────────────────────────────────────────────
+// ─── 특징 및 주의사항 (서버 전송 X, UI 유지용) ──────────────────────────────────
 
 @Composable
 private fun NoteSection(note: String, onNoteChange: (String) -> Unit) {
@@ -656,12 +724,4 @@ private fun AgeControlButton(icon: @Composable () -> Unit, onClick: () -> Unit) 
     ) {
         icon()
     }
-}
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun PetAddScreenPreview() {
-    SiheungGagaeTheme { PetAddScreen() }
 }

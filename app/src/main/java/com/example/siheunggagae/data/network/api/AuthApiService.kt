@@ -129,8 +129,10 @@ interface AuthApiService {
         @Body body: PetUpdate,
     ): Response<PetResponse>
 
+    // MessageResponse -> Unit 으로 변경  (204 No Content 처리)
     @DELETE("api/v1/users/me/pets/{petId}")
-    suspend fun deletePet(@Path("petId") petId: Int): Response<MessageResponse>
+
+    suspend fun deletePet(@Path("petId") petId: Int): Response<Unit>
 
     // ── Blocks ────────────────────────────────────────────────────────────────────
 

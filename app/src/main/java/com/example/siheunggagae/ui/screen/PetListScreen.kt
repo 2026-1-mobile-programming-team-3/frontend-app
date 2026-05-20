@@ -19,12 +19,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,8 +40,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import com.example.siheunggagae.data.model.PetResponse
+import com.example.siheunggagae.data.model.PetSpecies
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.viewmodel.RequestUiState
+import com.example.siheunggagae.ui.viewmodel.RequestViewModel
 
 // 스펙 컬러
 private val Brown900PL    = Color(0xFF614B3A)
@@ -52,33 +60,30 @@ private val TextBlackPL   = Color(0xFF1E120A)
 
 // ─── 데이터 ────────────────────────────────────────────────────────────────────
 
-private enum class PetKind { DOG, CAT }
-
-private data class PetEntry(
-    val id: Int,
-    val name: String,
-    val kind: PetKind,
-    val breed: String,
-    val age: Int,
-    val weightKg: Double,
-)
-
-private val samplePets = listOf(
-    PetEntry(1, "파댕이", PetKind.DOG, "말티즈", 3, 3.2),
-    PetEntry(2, "냥이",   PetKind.CAT, "코숏",   5, 4.1),
-)
-
-private val PetKind.iconBg   get() = if (this == PetKind.DOG) OrangeSandPL  else PinkSurfacePL
-private val PetKind.iconTint get() = if (this == PetKind.DOG) Orange500PL   else Pink500PL
-private val PetKind.label    get() = if (this == PetKind.DOG) "강아지"       else "고양이"
+// 더미 데이터 삭제 후, 서버 모델(PetSpecies) 확장 프로퍼티로 변경
+private val PetSpecies.iconBg   get() = if (this == PetSpecies.DOG) OrangeSandPL  else PinkSurfacePL
+private val PetSpecies.iconTint get() = if (this == PetSpecies.DOG) Orange500PL   else Pink500PL
+private val PetSpecies.label    get() = when(this) {
+    PetSpecies.DOG -> "강아지"
+    PetSpecies.CAT -> "고양이"
+    else -> "기타"
+}
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
 fun PetListScreen(
+    viewModel: RequestViewModel, // 🔥 뷰모델 추가
     onBack: () -> Unit = {},
     onAddPet: () -> Unit = {},
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    // 🔥 화면에 진입할 때마다 서버에서 내 펫 목록 최신화
+    LaunchedEffect(Unit) {
+        viewModel.fetchMyPets()
+    }
+
     Scaffold(
         containerColor = BackgroundPL,
         topBar = { PetListTopBar(onBack = onBack) },
@@ -94,42 +99,77 @@ fun PetListScreen(
             }
         },
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(Modifier.height(16.dp))
+            when (val state = uiState) {
+                is RequestUiState.Loading -> {
+                    CircularProgressIndicator(
+                        color = Orange500PL,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                is RequestUiState.Error -> {
+                    Text(
+                        text = state.message,
+                        color = Pink500PL,
+                        fontFamily = PretendardFamily,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                is RequestUiState.PetsLoaded -> {
+                    val myPets = state.pets
 
-            Text(
-                text = "내 반려동물 ${samplePets.size}마리",
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 16.sp,
-                color = Brown700PL,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Spacer(Modifier.height(16.dp))
 
-            Spacer(Modifier.height(10.dp))
-
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                samplePets.forEachIndexed { index, pet ->
-                    PetRow(pet = pet)
-                    if (index < samplePets.lastIndex) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            thickness = 1.dp,
-                            color = Gray300PL,
+                        Text(
+                            text = "내 반려동물 ${myPets.size}마리",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 16.sp,
+                            color = Brown700PL,
+                            modifier = Modifier.padding(horizontal = 4.dp),
                         )
+
+                        Spacer(Modifier.height(10.dp))
+
+                        if (myPets.isEmpty()) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "등록된 반려동물이 없습니다.\n우측 하단 버튼을 눌러 추가해주세요.",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    color = Brown700PL,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        } else {
+                            Card(
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                myPets.forEachIndexed { index, pet ->
+                                    PetRow(pet = pet)
+                                    if (index < myPets.lastIndex) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                            thickness = 1.dp,
+                                            color = Gray300PL,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                else -> {}
             }
         }
     }
@@ -194,10 +234,10 @@ private fun PetListTopBar(onBack: () -> Unit) {
     }
 }
 
-// ─── 동물 리스트 아이템 ─────────────────────────────────────────────────────────
+// ─── 동물 리스트 아이템 (서버 데이터 연동) ─────────────────────────────────────────
 
 @Composable
-private fun PetRow(pet: PetEntry) {
+private fun PetRow(pet: PetResponse) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -211,12 +251,12 @@ private fun PetRow(pet: PetEntry) {
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(pet.kind.iconBg),
+                .background(pet.species.iconBg),
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_pets),
                 contentDescription = null,
-                tint = pet.kind.iconTint,
+                tint = pet.species.iconTint,
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -231,8 +271,14 @@ private fun PetRow(pet: PetEntry) {
                 color = TextBlackPL,
             )
             Spacer(Modifier.height(2.dp))
+
+            // Null 값 처리 (품종 모름, 나이 모름 등)
+            val breedText = pet.breed?.ifBlank { null } ?: "품종 모름"
+            val ageText = pet.age?.let { "${it}살" } ?: "나이 모름"
+            val weightText = pet.weightKg?.let { "${it}kg" } ?: "몸무게 비공개"
+
             Text(
-                text = "${pet.kind.label} · ${pet.breed} · ${pet.age}살 · ${pet.weightKg}kg",
+                text = "${pet.species.label} · $breedText · $ageText · $weightText",
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
@@ -248,12 +294,4 @@ private fun PetRow(pet: PetEntry) {
             modifier = Modifier.size(20.dp),
         )
     }
-}
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun PetListScreenPreview() {
-    SiheungGagaeTheme { PetListScreen() }
 }

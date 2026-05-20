@@ -1,5 +1,7 @@
 package com.example.siheunggagae.data.model
 
+import com.google.gson.annotations.SerializedName
+
 enum class PetSpecies { DOG, CAT, OTHER }
 enum class PetGender { MALE, FEMALE, UNKNOWN }
 
@@ -8,10 +10,10 @@ data class PetCreate(
     val species: PetSpecies,
     val breed: String? = null,
     val age: Int? = null,
-    val weightKg: Float? = null,
-    val isNeutered: Boolean,
+    @SerializedName("weight_kg") val weightKg: Float? = null,
+    @SerializedName("is_neutered") val isNeutered: Boolean,
     val gender: PetGender? = null,
-    val photoUrl: String? = null,
+    @SerializedName("photo_url") val photoUrl: String? = null,
 )
 
 data class PetResponse(
@@ -20,20 +22,20 @@ data class PetResponse(
     val species: PetSpecies,
     val breed: String?,
     val age: Int?,
-    val weightKg: Float?,
-    val isNeutered: Boolean,
+    @SerializedName("weight_kg") val weightKg: Float?,
+    @SerializedName("is_neutered") val isNeutered: Boolean,
     val gender: PetGender?,
-    val photoUrl: String?,
-    val createdAt: String,
-    val updatedAt: String,
+    @SerializedName("photo_url") val photoUrl: String?,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String,
 )
 
 data class PetUpdate(
     val name: String? = null,
     val breed: String? = null,
     val age: Int? = null,
-    val weightKg: Float? = null,
-    val isNeutered: Boolean? = null,
+    @SerializedName("weight_kg") val weightKg: Float? = null,
+    @SerializedName("is_neutered") val isNeutered: Boolean? = null,
     val gender: PetGender? = null,
-    val photoUrl: String? = null,
+    @SerializedName("photo_url") val photoUrl: String? = null,
 )

@@ -36,7 +36,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
         fetchMyPets()
     }
 
-    private fun fetchMyPets() {
+    fun fetchMyPets() {
         viewModelScope.launch {
             _uiState.value = RequestUiState.Loading
             try {
