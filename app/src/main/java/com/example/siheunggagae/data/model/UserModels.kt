@@ -50,26 +50,46 @@ data class MessageResponse(
     val message: String,
 )
 
-data class VolunteerBadgeInfo(
-    val tier: VolunteerBadgeTier,
-    val count: Int,
-    val nextTier: VolunteerBadgeTier?,
-    val nextThreshold: Int?,
-    val progressPct: Int,
+// ── 봉사자 역할 전환 요청 ──────────────────────────────────────────────────────
+
+data class VolunteerRequestCreate(
+    val message: String,
 )
 
-data class ActivityStatsResponse(
-    val myMatchCount: Int,
-    val volunteerCompletedCount: Int,
-    val favoriteCount: Int,
-    val badge: VolunteerBadgeInfo,
+data class VolunteerRequestResponse(
+    val id: Int? = null,
+    val userId: Int? = null,
+    val message: String? = null,
+    val status: String? = null,
+    val createdAt: String? = null,
 )
+
+// ── 활동 통계 & 봉사 뱃지 ─────────────────────────────────────────────────────
 
 data class VolunteerStatsResponse(
-    val totalCount: Int,
-    val totalHours: Int,
-    val avgRating: Double?,
+    val totalCount: Int? = null,
+    val totalHours: Double? = null,
+    val avgRating: Double? = null,
 )
+
+data class VolunteerBadge(
+    val tier: String? = null,
+    val count: Int? = null,
+    val nextTier: String? = null,
+    val nextThreshold: Int? = null,
+    val progressPct: Int? = null,
+)
+
+typealias VolunteerBadgeInfo = VolunteerBadge
+
+data class ActivityStatsResponse(
+    val myMatchCount: Int? = null,
+    val volunteerCompletedCount: Int? = null,
+    val favoriteCount: Int? = null,
+    val badge: VolunteerBadge? = null,
+)
+
+// ── 내 매칭 목록 ─────────────────────────────────────────────────────────────
 
 data class MyMatchResponse(
     val id: Int,
@@ -89,63 +109,88 @@ data class MyMatchListResponse(
     val size: Int,
 )
 
-data class FavoriteStoreItem(
-    val favoriteId: Int,
+// ── 즐겨찾기 매장 ─────────────────────────────────────────────────────────────
+
+data class FavoriteStoreCreateRequest(
     val storeId: Int,
-    val name: String,
-    val category: StoreCategory,
-    val thumbnailUrl: String?,
-    val ratingAvg: String,
-    val createdAt: String,
+)
+
+data class FavoriteStoreCreateResponse(
+    val favoriteId: Long? = null,
+    val storeId: Long? = null,
+    val createdAt: String? = null,
+)
+
+data class FavoriteStoreItem(
+    val favoriteId: Int? = null,
+    val storeId: Int? = null,
+    val name: String? = null,
+    val category: String? = null,
+    val thumbnailUrl: String? = null,
+    val ratingAvg: Double? = null,
+    val createdAt: String? = null,
 )
 
 data class FavoriteStoreListResponse(
-    val items: List<FavoriteStoreItem>,
-    val total: Int,
-    val page: Int,
-    val size: Int,
+    val items: List<FavoriteStoreItem>? = null,
+    val total: Int? = null,
+    val page: Int? = null,
+    val size: Int? = null,
 )
 
-data class BlockCreateRequest(val targetUserId: Int)
+// ── 사용자 차단 ───────────────────────────────────────────────────────────────
 
-data class BlockCreatedResponse(
-    val blockId: Int,
+data class BlockCreateRequest(
     val targetUserId: Int,
-    val createdAt: String,
 )
+
+data class BlockCreateResponse(
+    val blockId: Int? = null,
+    val targetUserId: Int? = null,
+    val createdAt: String? = null,
+)
+
+typealias BlockCreatedResponse = BlockCreateResponse
+
+data class BlockItem(
+    val blockId: Int? = null,
+    val targetUserId: Int? = null,
+    val targetNickname: String? = null,
+    val createdAt: String? = null,
+)
+
+typealias BlockListItem = BlockItem
+
+data class BlockListResponse(
+    val items: List<BlockItem>? = null,
+    val total: Int? = null,
+)
+
+// ── 신고 ──────────────────────────────────────────────────────────────────────
 
 data class ReportCreateRequest(
     val targetUserId: Int,
     val reason: String,
 )
 
-data class ReportCreatedResponse(
-    val id: Int,
+data class ReportCreateResponse(
+    val id: Int? = null,
+    val targetUserId: Int? = null,
+    val reason: String? = null,
+    val createdAt: String? = null,
+)
+
+typealias ReportCreatedResponse = ReportCreateResponse
+
+data class ChatReportCreateRequest(
+    val chatId: Int,
     val targetUserId: Int,
+    val messageId: Int,
     val reason: String,
-    val createdAt: String,
 )
 
-data class BlockListItem(
-    val blockId: Int,
-    val targetUserId: Int,
-    val targetNickname: String?,
-    val createdAt: String,
-)
-
-data class BlockListResponse(
-    val items: List<BlockListItem>,
-    val total: Int,
-    val page: Int,
-    val size: Int,
-)
-
-data class VolunteerRequestCreate(val message: String)
-
-data class VolunteerRequestResponse(
-    val id: Int,
-    val userId: Int,
-    val message: String,
-    val status: String,
-    val createdAt: String,
+data class ChatReportCreateResponse(
+    val reportId: Int? = null,
+    val status: String? = null,
+    val createdAt: String? = null,
 )

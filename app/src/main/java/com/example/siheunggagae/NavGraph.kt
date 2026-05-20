@@ -142,7 +142,7 @@ sealed class Screen(val route: String) {
         fun createRoute(userId: Int) = "chat/$userId"
     }
     object NewsDetail      : Screen("news_detail/{newsId}") {
-        fun createRoute(newsId: Int) = "news_detail/$newsId"
+        fun createRoute(newsId: String) = "news_detail/$newsId"
     }
     object FavoriteStores  : Screen("favorite_stores")
     object BlockManage     : Screen("block_manage")
@@ -343,6 +343,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
                 onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
+                onNewsDetailClick = { newsId -> navController.navigate(Screen.NewsDetail.createRoute(newsId)) },
             )
         }
 
@@ -419,8 +420,24 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
-        composable(Screen.Map.route) {
-            MapScreen(onNavigate = { route -> navController.navigateTab(route) })
+        composable(
+            route = "${Screen.Map.route}?volunteerMode={volunteerMode}",
+            arguments = listOf(navArgument("volunteerMode") {
+                type = NavType.BoolType
+                defaultValue = false
+            }),
+        ) { backStackEntry ->
+            val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
+            MapScreen(
+                onNavigate = { route ->
+                    if (route == Screen.Home.route || route == Screen.Matching.route ||
+                        route.startsWith(Screen.Map.route) || route == Screen.News.route ||
+                        route == Screen.My.route
+                    ) navController.navigateTab(route)
+                    else navController.navigate(route)
+                },
+                startVolunteerMode = volunteerMode,
+            )
         }
 
         composable(Screen.News.route) {
@@ -444,6 +461,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     navController.navigate(Screen.PlaceDetail.createRoute(placeId))
                 },
                 onNavigate = { route -> navController.navigateTab(route) },
+                onNotificationClick = { navController.navigate(Screen.Notification.route) },
             )
         }
 
@@ -617,10 +635,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(
             route = Screen.NewsDetail.route,
-            arguments = listOf(navArgument("newsId") { type = NavType.IntType }),
+            arguments = listOf(navArgument("newsId") { type = NavType.StringType }),
         ) { backStackEntry ->
-            val newsId = backStackEntry.arguments?.getInt("newsId") ?: 1
-            NewsDetailScreen(newsId = newsId, onBack = { navController.popBackStack() })
+            val newsId = backStackEntry.arguments?.getString("newsId") ?: ""
+            NewsDetailScreen(
+                newsId = newsId,
+                onBack = { navController.popBackStack() },
+                onRelatedClick = { id -> navController.navigate(Screen.NewsDetail.createRoute(id)) },
+            )
         }
 
         composable(Screen.FavoriteStores.route) {
