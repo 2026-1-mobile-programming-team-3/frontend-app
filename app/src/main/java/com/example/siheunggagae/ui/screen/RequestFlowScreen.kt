@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import java.time.DayOfWeek
@@ -378,7 +379,7 @@ private fun PetCard(pet: Pet, isSelected: Boolean, onClick: () -> Unit) {
                     .background(Orange500F)
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_check),
+                    imageVector = Icons.Default.Check,
                     contentDescription = "선택됨",
                     tint = Color.White,
                     modifier = Modifier.size(14.dp)

@@ -31,11 +31,11 @@ enum class StoreCategory(val label: String, val apiValue: String?) {
     GROOMING("미용", null),
 }
 
-/** 봉사자 뱃지 등급 (API: VolunteerBadgeTier) */
+/** 봉사자 뱃지 등급 (API: VolunteerBadgeTier) — PDF 기준 달성 조건 */
 enum class VolunteerBadgeTier(val label: String, val requiredCount: Int) {
     NONE("없음", 0),
     SEED("새싹", 1),
-    FLOWER("꽃", 5),
-    FRUIT("열매", 10),
-    TREE("나무", 20),
+    FLOWER("꽃", 3),
+    FRUIT("열매", 8),
+    TREE("나무", 15),
 }

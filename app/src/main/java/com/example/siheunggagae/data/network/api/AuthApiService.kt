@@ -60,6 +60,14 @@ import com.example.siheunggagae.data.model.StoreReviewListResponse
 import com.example.siheunggagae.data.model.StoreSearchResponse
 import com.example.siheunggagae.data.model.TokenRefreshRequest
 import com.example.siheunggagae.data.model.TokenRefreshResponse
+import com.example.siheunggagae.data.model.ActivityStatsResponse
+import com.example.siheunggagae.data.model.MyMatchListResponse
+import com.example.siheunggagae.data.model.BlockCreateRequest
+import com.example.siheunggagae.data.model.BlockCreatedResponse
+import com.example.siheunggagae.data.model.BlockListResponse
+import com.example.siheunggagae.data.model.ReportCreateRequest
+import com.example.siheunggagae.data.model.ReportCreatedResponse
+import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.UnreadCountResponse
 import com.example.siheunggagae.data.model.UserMeResponse
 import com.example.siheunggagae.data.model.UserResponse
@@ -99,6 +107,20 @@ interface AuthApiService {
 
     @GET("api/v1/users/me")
     suspend fun getMe(): Response<UserMeResponse>
+
+    @GET("api/v1/users/me/activity-stats")
+    suspend fun getActivityStats(): Response<ActivityStatsResponse>
+
+    @GET("api/v1/users/me/volunteer-stats")
+    suspend fun getVolunteerStats(): Response<VolunteerStatsResponse>
+
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatches(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String = "DONE",
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MyMatchListResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
@@ -347,11 +369,51 @@ interface AuthApiService {
         @Body body: NotificationSettingsUpdateRequest,
     ): Response<NotificationSettingsResponse>
 
+    // ── Favorites ─────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/users/me/favorites/stores")
+    suspend fun getFavoriteStores(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<FavoriteStoreListResponse>
+
+    @DELETE("api/v1/users/me/favorites/stores/{storeId}")
+    suspend fun deleteFavoriteStore(
+        @Path("storeId") storeId: Int,
+    ): Response<Unit>
+
+    // ── Blocks ────────────────────────────────────────────────────────────────────
+
+    @GET("api/v1/users/me/blocks")
+    suspend fun getBlocks(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 50,
+    ): Response<BlockListResponse>
+
+    @POST("api/v1/users/me/blocks")
+    suspend fun createBlock(
+        @Body body: BlockCreateRequest,
+    ): Response<BlockCreatedResponse>
+
+    @DELETE("api/v1/users/me/blocks/{blockId}")
+    suspend fun deleteBlock(
+        @Path("blockId") blockId: Int,
+    ): Response<Unit>
+
     // ── Reports ───────────────────────────────────────────────────────────────────
 
     @POST("api/v1/reports")
-    suspend fun reportUser(@Body body: ReportCreateRequest): Response<ReportCreateResponse>
+    suspend fun createReport(
+        @Body body: ReportCreateRequest,
+    ): Response<ReportCreatedResponse>
 
     @POST("api/v1/reports/chat")
     suspend fun reportChatUser(@Body body: ChatReportCreateRequest): Response<ChatReportCreateResponse>
+
+    // ── Volunteer Request ─────────────────────────────────────────────────────────
+
+    @POST("api/v1/users/me/volunteer-request")
+    suspend fun submitVolunteerRequest(
+        @Body body: VolunteerRequestCreate,
+    ): Response<VolunteerRequestResponse>
 }

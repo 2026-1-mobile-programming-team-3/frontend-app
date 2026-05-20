@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -83,10 +85,11 @@ private fun categoryImageBg(category: String?) = when (category) {
 
 @Composable
 fun NewsScreen(
+    unreadCount: Int = 0,
     onNewsDetailClick: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
-    onNavigate: (String) -> Unit = {},
     onNotificationClick: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var newsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
@@ -104,7 +107,7 @@ fun NewsScreen(
 
     Scaffold(
         containerColor = BackgroundNs,
-        topBar = { NewsTopBar(onNotificationClick = onNotificationClick) },
+        topBar = { NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick) },
         bottomBar = { AppBottomBar(currentRoute = Screen.News.route, onNavigate = onNavigate) },
     ) { innerPadding ->
         if (isLoading) {
@@ -192,7 +195,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
+private fun NewsTopBar(unreadCount: Int = 0, onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -213,14 +216,27 @@ private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
             Box {
-                NewsTopBarIcon(onClick = onNotificationClick) { Icon(painter = painterResource(R.drawable.ic_notifications), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .align(Alignment.TopEnd)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Pink500Ns),
-                )
+                NewsTopBarIcon(onClick = onNotificationClick) {
+                    Icon(painter = painterResource(R.drawable.ic_notifications), contentDescription = "알림", tint = TextBlackNs, modifier = Modifier.size(18.dp))
+                }
+                if (unreadCount > 0) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .align(Alignment.TopEnd)
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Pink500Ns),
+                    ) {
+                        Text(
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                            fontFamily = PretendardFamily,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                }
             }
         }
     }

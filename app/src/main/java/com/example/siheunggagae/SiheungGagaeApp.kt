@@ -1,6 +1,7 @@
 package com.example.siheunggagae
 
 import android.app.Application
+import com.example.siheunggagae.data.local.LocalNotificationStore
 import com.example.siheunggagae.data.local.TokenManager
 import com.kakao.vectormap.KakaoMapSdk
 import com.example.siheunggagae.data.location.LocationProvider
@@ -21,7 +22,10 @@ class SiheungGagaeApp : Application() {
     lateinit var fcmTokenManager: FcmTokenManager
         private set
 
-    lateinit var geoRepository: GeoRepository
+    var geoRepository: GeoRepository? = null
+        private set
+
+    lateinit var localNotificationStore: LocalNotificationStore
         private set
 
     val sessionExpiredChannel = Channel<Unit>(Channel.CONFLATED)
@@ -30,15 +34,18 @@ class SiheungGagaeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        KakaoMapSdk.init(this, BuildConfig.KAKAO_APP_KEY)
+        runCatching { KakaoMapSdk.init(this, BuildConfig.KAKAO_APP_KEY) }
         tokenManager = TokenManager(applicationContext)
+        localNotificationStore = LocalNotificationStore(applicationContext)
         RetrofitClient.init(tokenManager) {
             sessionExpiredChannel.trySend(Unit)
         }
         fcmTokenManager = FcmTokenManager(RetrofitClient.api, tokenManager)
-        geoRepository = GeoRepository(RetrofitClient.api, LocationProvider(applicationContext))
+        runCatching {
+            geoRepository = GeoRepository(RetrofitClient.api, LocationProvider(applicationContext))
+        }
         appScope.launch {
-            fcmTokenManager.registerCurrentDevice()
+            runCatching { fcmTokenManager.registerCurrentDevice() }
         }
     }
 }
