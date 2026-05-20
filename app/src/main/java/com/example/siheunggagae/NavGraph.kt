@@ -502,6 +502,10 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onFavoriteStoresClick = { navController.navigate(Screen.FavoriteStores.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+                onNotifSettingsClick = { navController.navigate("${Screen.Settings.route}?section=notifications") },
+                onLocationSettingsClick = { navController.navigate("${Screen.Settings.route}?section=location") },
+                onPrivacyClick = { navController.navigate("${Screen.Settings.route}?section=privacy") },
+                onHelpClick = { navController.navigate(Screen.Help.route) },
                 onLogout = {
                     myScope.launch { myAuthRepo.logout() }
                     navController.navigate(Screen.Splash.route) {
@@ -523,7 +527,15 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
-        composable(Screen.Settings.route) {
+        composable(
+            route = "${Screen.Settings.route}?section={section}",
+            arguments = listOf(navArgument("section") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }),
+        ) { backStackEntry ->
+            val section = backStackEntry.arguments?.getString("section")
             val settingsContext = LocalContext.current
             val settingsApp = settingsContext.applicationContext as SiheungGagaeApp
             val settingsScope = rememberCoroutineScope()
@@ -554,6 +566,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 notifViewModel = notifViewModel,
                 locationViewModel = locationViewModel,
                 accountViewModel = accountViewModel,
+                initialSection = section,
             )
         }
 
