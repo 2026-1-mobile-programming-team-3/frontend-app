@@ -35,15 +35,8 @@ class PetAddViewModel(
 
     val isEditMode get() = petId != null
 
-    private val notePrefs =
-        application.getSharedPreferences("pet_notes", Context.MODE_PRIVATE)
-
     private val photoPrefs =
         application.getSharedPreferences("pet_photos", Context.MODE_PRIVATE)
-
-    // 수정 모드일 때 저장된 값을 동기로 읽어둠
-    val savedNote: String =
-        if (petId != null) notePrefs.getString("note_$petId", "") ?: "" else ""
 
     val savedPhotoUri: String? =
         if (petId != null) photoPrefs.getString("photo_$petId", null) else null
@@ -106,6 +99,7 @@ class PetAddViewModel(
                             isNeutered = isNeutered,
                             gender = gender,
                             photoUrl = null,
+                            note = note?.takeIf { it.isNotBlank() },
                         )
                     )
                 } else {
@@ -119,17 +113,13 @@ class PetAddViewModel(
                             isNeutered = isNeutered,
                             gender = gender,
                             photoUrl = null,
+                            note = note?.takeIf { it.isNotBlank() },
                         )
                     )
                 }
                 if (resp.isSuccessful) {
                     val id = petId ?: resp.body()?.id
                     if (id != null) {
-                        if (!note.isNullOrBlank()) {
-                            notePrefs.edit().putString("note_$id", note).apply()
-                        } else {
-                            notePrefs.edit().remove("note_$id").apply()
-                        }
                         val photoUri = _localPhotoUri.value
                         if (!photoUri.isNullOrBlank()) {
                             photoPrefs.edit().putString("photo_$id", photoUri).apply()

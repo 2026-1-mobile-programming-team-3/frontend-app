@@ -955,7 +955,7 @@ private val previewUser = UserMeResponse(
             id = 1, name = "파댕이", species = PetSpecies.DOG,
             breed = "말티즈", age = 3, weightKg = 3.2f,
             isNeutered = false, gender = PetGender.MALE,
-            photoUrl = null, createdAt = "", updatedAt = "",
+            photoUrl = null, note = null, createdAt = "", updatedAt = "",
         )
     ),
     createdAt = "",

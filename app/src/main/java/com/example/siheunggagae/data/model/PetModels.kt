@@ -12,6 +12,7 @@ data class PetCreate(
     val isNeutered: Boolean,
     val gender: PetGender? = null,
     val photoUrl: String? = null,
+    val note: String? = null,
 )
 
 data class PetResponse(
@@ -24,6 +25,7 @@ data class PetResponse(
     val isNeutered: Boolean,
     val gender: PetGender?,
     val photoUrl: String?,
+    val note: String?,
     val createdAt: String,
     val updatedAt: String,
 )
@@ -36,4 +38,5 @@ data class PetUpdate(
     val isNeutered: Boolean? = null,
     val gender: PetGender? = null,
     val photoUrl: String? = null,
+    val note: String? = null,
 )

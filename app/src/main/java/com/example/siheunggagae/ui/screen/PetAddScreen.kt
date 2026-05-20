@@ -180,7 +180,7 @@ fun PetAddScreen(
             age             = p.age ?: 1
             gender          = p.gender.toLabel()
             isNeutered      = p.isNeutered
-            noteInput       = viewModel?.savedNote ?: ""
+            noteInput       = p.note ?: ""
             formInitialized = true
         }
     }
