@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 
-// 앱에서 공통으로 사용할 스낵바 호스트
 @Composable
 fun SiheungSnackbarHost(hostState: SnackbarHostState) {
     SnackbarHost(
@@ -23,9 +22,9 @@ fun SiheungSnackbarHost(hostState: SnackbarHostState) {
         Snackbar(
             modifier = Modifier.padding(12.dp),
             shape = RoundedCornerShape(12.dp),
-            containerColor = Color(0xFF1E120A), // TextBlackPA
+            containerColor = Color(0xFF1E120A),
             contentColor = Color.White,
-            actionContentColor = Color(0xFFF7A35B) // 🔥 actionColor -> actionContentColor 로 수정됨!
+            actionContentColor = Color(0xFFF7A35B)
         ) {
             Text(
                 text = data.visuals.message,

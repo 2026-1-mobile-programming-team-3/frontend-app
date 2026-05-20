@@ -1,6 +1,5 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,9 +61,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetResponse
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.YearMonth
 
@@ -100,6 +103,10 @@ fun RequestFlowScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
+    // 🔥 스낵바 추가
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     var currentStep by remember { mutableStateOf(1) }
     var selectedPetId by remember { mutableStateOf<Int?>(viewModel.selectedPetId) }
 
@@ -112,14 +119,14 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
-    // 서버 통신 성공/실패 토스트 메시지 띄우기
+    //  토스트 대신 스낵바 띄우기
     LaunchedEffect(uiState) {
         if (uiState is RequestUiState.Success) {
-            Toast.makeText(context, "도움 요청이 성공적으로 등록되었습니다!", Toast.LENGTH_SHORT).show()
+            coroutineScope.launch { snackbarHostState.showSnackbar("도움 요청이 성공적으로 등록되었습니다!") }
             viewModel.resetState()
             onComplete()
         } else if (uiState is RequestUiState.Error) {
-            Toast.makeText(context, (uiState as RequestUiState.Error).message, Toast.LENGTH_SHORT).show()
+            coroutineScope.launch { snackbarHostState.showSnackbar((uiState as RequestUiState.Error).message) }
             viewModel.resetState()
         }
     }
@@ -139,6 +146,7 @@ fun RequestFlowScreen(
 
     Scaffold(
         containerColor = Color.White,
+        snackbarHost = { SiheungSnackbarHost(snackbarHostState) }, //  스낵바 부착
         topBar = {
             RequestFlowTopBar(
                 step = currentStep,
@@ -155,10 +163,11 @@ fun RequestFlowScreen(
                     // 데이터 뷰모델에 임시 저장
                     viewModel.selectedPetId = selectedPetId
                     if (currentStep == 2) {
-                        val time = selectedTime ?: timeInput
                         val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
                         val dayStr = selectedDay.toString().padStart(2, '0')
-                        viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr $time:00"
+
+                        // 🔥🔥🔥 422 에러 해결: 시간을 제외하고 날짜만 보냅니다.
+                        viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
                     }
                     currentStep++
                 } else {

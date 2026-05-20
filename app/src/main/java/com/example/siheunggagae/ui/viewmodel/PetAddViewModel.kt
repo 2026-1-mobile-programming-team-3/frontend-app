@@ -31,35 +31,22 @@ class PetAddViewModel(private val api: AuthApiService) : ViewModel() {
             _uiState.value = PetAddUiState.Error("이름은 필수 입력입니다.")
             return
         }
-
         viewModelScope.launch {
             _uiState.value = PetAddUiState.Loading
             try {
-                val age = ageStr.toIntOrNull()
-                val weightKg = weightStr.toFloatOrNull()
-
                 val request = PetCreate(
-                    name = name,
-                    species = species,
-                    breed = breed?.ifBlank { null },
-                    age = age,
-                    weightKg = weightKg,
-                    isNeutered = isNeutered,
-                    gender = gender
+                    name = name, species = species, breed = breed?.ifBlank { null },
+                    age = ageStr.toIntOrNull(), weightKg = weightStr.toFloatOrNull(),
+                    isNeutered = isNeutered, gender = gender
                 )
-
                 val response = api.addPet(request)
-                if (response.isSuccessful) {
-                    _uiState.value = PetAddUiState.Success
-                } else {
-                    _uiState.value = PetAddUiState.Error("등록 실패 (${response.code()})")
-                }
+                if (response.isSuccessful) _uiState.value = PetAddUiState.Success
+                else _uiState.value = PetAddUiState.Error("등록 실패 (${response.code()})")
             } catch (e: Exception) {
                 _uiState.value = PetAddUiState.Error("네트워크 오류 발생")
             }
         }
     }
-
     fun resetState() { _uiState.value = PetAddUiState.Idle }
 
     class Factory(private val api: AuthApiService) : ViewModelProvider.Factory {

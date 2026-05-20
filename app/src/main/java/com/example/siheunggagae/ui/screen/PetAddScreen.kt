@@ -86,7 +86,7 @@ private val ageUnitOptions = listOf("살", "개월")
 
 @Composable
 fun PetAddScreen(
-    viewModel: PetAddViewModel, // 🔥 뷰모델 추가
+    viewModel: PetAddViewModel, // 뷰모델 추가
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
