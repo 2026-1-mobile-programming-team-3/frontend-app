@@ -174,11 +174,11 @@ fun FavoriteStoresScreen(
                                 color = Brown700F,
                             )
                         }
-                        items(state.items, key = { it.favoriteId }) { item ->
+                        items(state.items, key = { it.favoriteId ?: 0 }) { item ->
                             FavoriteStoreCard(
                                 item = item,
-                                onCardClick = { onPlaceDetailClick(item.storeId) },
-                                onHeartClick = { viewModel?.removeFavorite(item.storeId) },
+                                onCardClick = { item.storeId?.let { onPlaceDetailClick(it) } },
+                                onHeartClick = { item.storeId?.let { viewModel?.removeFavorite(it) } },
                             )
                         }
                         item { Spacer(Modifier.height(16.dp)) }
@@ -265,7 +265,7 @@ private fun FavoriteStoreCard(
                     ),
             ) {
                 Icon(
-                    imageVector = item.category.icon(),
+                    imageVector = item.category.categoryIcon(),
                     contentDescription = null,
                     tint = Brown700F,
                     modifier = Modifier.size(32.dp),
@@ -275,7 +275,7 @@ private fun FavoriteStoreCard(
             // 이름 + 카테고리·평점
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.name,
+                    text = item.name ?: "",
                     fontFamily = PretendardFamily,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -290,7 +290,7 @@ private fun FavoriteStoreCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = item.category.label,
+                        text = item.category ?: "",
                         fontFamily = PretendardFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
@@ -304,7 +304,7 @@ private fun FavoriteStoreCard(
                         modifier = Modifier.size(12.dp),
                     )
                     Text(
-                        text = runCatching { "%.1f".format(item.ratingAvg.toDouble()) }.getOrDefault(item.ratingAvg),
+                        text = item.ratingAvg?.let { "%.1f".format(it) } ?: "-",
                         fontFamily = PretendardFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -332,19 +332,19 @@ private fun FavoriteStoreCard(
     }
 }
 
-private fun StoreCategory.icon(): ImageVector = when (this) {
-    StoreCategory.CAFE       -> Icons.Default.LocalCafe
-    StoreCategory.RESTAURANT -> Icons.Default.Restaurant
-    StoreCategory.PARK       -> Icons.Default.NaturePeople
-    else                     -> Icons.Default.LocalCafe
+private fun String?.categoryIcon(): ImageVector = when (this) {
+    StoreCategory.CAFE.label, StoreCategory.CAFE.apiValue       -> Icons.Default.LocalCafe
+    StoreCategory.RESTAURANT.label, StoreCategory.RESTAURANT.apiValue -> Icons.Default.Restaurant
+    StoreCategory.PARK.label, StoreCategory.PARK.apiValue       -> Icons.Default.NaturePeople
+    else                                                          -> Icons.Default.LocalCafe
 }
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 
 private val previewItems = listOf(
-    FavoriteStoreItem(1, 101, "댕댕 카페", StoreCategory.CAFE,       null, "4.9", "2026-05-01T10:00:00"),
-    FavoriteStoreItem(2, 102, "행복 공원",  StoreCategory.PARK,       null, "4.5", "2026-05-02T10:00:00"),
-    FavoriteStoreItem(3, 103, "멍이네 식당", StoreCategory.RESTAURANT, null, "4.2", "2026-05-03T10:00:00"),
+    FavoriteStoreItem(1, 101, "댕댕 카페",  StoreCategory.CAFE.label,       null, 4.9, "2026-05-01T10:00:00"),
+    FavoriteStoreItem(2, 102, "행복 공원",  StoreCategory.PARK.label,       null, 4.5, "2026-05-02T10:00:00"),
+    FavoriteStoreItem(3, 103, "멍이네 식당", StoreCategory.RESTAURANT.label, null, 4.2, "2026-05-03T10:00:00"),
 )
 
 @Preview(showBackground = true, showSystemUi = true)

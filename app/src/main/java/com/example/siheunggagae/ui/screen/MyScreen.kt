@@ -1010,9 +1010,9 @@ fun MyScreenSuccessPreview() {
                 MySectionLabel("활동")
                 Spacer(Modifier.height(6.dp))
                 ActivityStatsRow(
-                    myMatchCount = previewStats.myMatchCount,
-                    volunteerCount = previewStats.volunteerCompletedCount,
-                    favoriteCount = previewStats.favoriteCount,
+                    myMatchCount = previewStats.myMatchCount ?: 0,
+                    volunteerCount = previewStats.volunteerCompletedCount ?: 0,
+                    favoriteCount = previewStats.favoriteCount ?: 0,
                 )
                 Spacer(Modifier.height(12.dp))
                 MySectionLabel("봉사 뱃지", fontSize = 18)

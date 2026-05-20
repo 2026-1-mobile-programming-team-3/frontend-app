@@ -147,7 +147,7 @@ fun PlaceDetailScreen(
     fun toggleFavorite() {
         scope.launch {
             if (isFavorited) {
-                runCatching { RetrofitClient.api.removeFavoriteStore(placeId) }
+                runCatching { RetrofitClient.api.deleteFavoriteStore(placeId) }
                 isFavorited = false
             } else {
                 runCatching { RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId)) }

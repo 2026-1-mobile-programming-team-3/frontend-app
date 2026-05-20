@@ -73,9 +73,9 @@ data class VolunteerStatsResponse(
 )
 
 data class VolunteerBadge(
-    val tier: String? = null,
+    val tier: VolunteerBadgeTier? = null,
     val count: Int? = null,
-    val nextTier: String? = null,
+    val nextTier: VolunteerBadgeTier? = null,
     val nextThreshold: Int? = null,
     val progressPct: Int? = null,
 )

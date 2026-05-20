@@ -169,7 +169,7 @@ fun BlockManageScreen(
                                 color = Brown700B,
                             )
                         }
-                        items(state.items, key = { it.blockId }) { item ->
+                        items(state.items, key = { it.blockId ?: 0 }) { item ->
                             BlockedUserCard(
                                 item = item,
                                 onUnblockClick = { pendingUnblock = item },
@@ -206,7 +206,7 @@ fun BlockManageScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel?.unblock(target.blockId)
+                    target.blockId?.let { viewModel?.unblock(it) }
                     pendingUnblock = null
                 }) {
                     Text(
@@ -279,9 +279,9 @@ private fun BlockedUserCard(
     item: BlockListItem,
     onUnblockClick: () -> Unit,
 ) {
-    val avatarColor = avatarColors[item.targetUserId % avatarColors.size]
+    val avatarColor = avatarColors[(item.targetUserId ?: 0) % avatarColors.size]
     val initial = item.targetNickname?.take(1) ?: "?"
-    val dateLabel = runCatching { item.createdAt.take(10) }.getOrDefault("")
+    val dateLabel = item.createdAt?.take(10) ?: ""
 
     Card(
         shape = RoundedCornerShape(16.dp),

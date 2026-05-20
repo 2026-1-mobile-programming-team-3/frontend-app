@@ -460,8 +460,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onPlaceDetailClick = { placeId ->
                     navController.navigate(Screen.PlaceDetail.createRoute(placeId))
                 },
-                onNavigate = { route -> navController.navigateTab(route) },
-                onNotificationClick = { navController.navigate(Screen.Notification.route) },
+                onNavigate = { route -> navController.navigateTab(route) }
             )
         }
 
