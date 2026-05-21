@@ -168,7 +168,6 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = BackgroundH,
-        bottomBar = { AppBottomBar(currentRoute = Screen.Home.route, onNavigate = onNavigate) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -211,7 +210,7 @@ fun HomeScreen(
                 onNewsClick = onNewsDetailClick,
                 onVolunteerApplyClick = { onNavigate(Screen.VolunteerApply.route) },
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(96.dp))
         }
     }
 
