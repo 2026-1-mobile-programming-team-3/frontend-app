@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
+import com.example.siheunggagae.Screen // 👈 채팅 라우팅 경로 추적을 위한 스크린 임포트 추가
 import com.example.siheunggagae.data.model.MatchDetailResponse
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
@@ -84,6 +86,106 @@ fun MatchingDetailScreen(
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             StatusBannerD(statusText = request.status ?: "상태 없음")
                             RequestInfoCardD(request = request)
+
+                            // ─── 2단계: 지원자 현황 리스트 추가 ───
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = "지원자 현황 (${viewModel.applicantList.size}명)",
+                                fontFamily = PretendardFamily,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextBlackD
+                            )
+
+                            if (viewModel.applicantList.isEmpty()) {
+                                // 대기 중인 지원자가 아예 없을 때의 빈 레이아웃 예외 처리
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0xFFF9F9F9), RoundedCornerShape(16.dp))
+                                        .padding(vertical = 32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "아직 신청한 지원자가 없습니다.",
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 14.sp,
+                                        color = Brown700D
+                                    )
+                                }
+                            } else {
+                                // 지원자 리스트 루프 돌며 카드 컴포넌트 렌더링
+                                viewModel.applicantList.forEach { appItem ->
+                                    val applicantName = appItem.applicant?.nickname ?: "지원자"
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .shadow(1.dp, RoundedCornerShape(16.dp))
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color.White)
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        // 초록 프로필 이니셜 아바타
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.size(40.dp).clip(CircleShape).background(MintLightD)
+                                        ) {
+                                            Text(
+                                                text = applicantName.firstOrNull()?.toString() ?: "",
+                                                fontFamily = PretendardFamily,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Green600D
+                                            )
+                                        }
+
+                                        // 지원자 이름 및 한줄 요약 메시지 구역
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = applicantName,
+                                                fontFamily = PretendardFamily,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TextBlackD
+                                            )
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                text = appItem.message ?: "신청 메시지가 없습니다.",
+                                                fontFamily = PretendardFamily,
+                                                fontSize = 12.sp,
+                                                color = Brown700D,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        // 1:1 웹소켓 채팅방 연동 버튼 (매칭 글 ID와 해당 봉사자의 신청 고유 ID 바인딩)
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(50.dp))
+                                                .background(Pink500D)
+                                                .clickable {
+                                                    val appId = appItem.applicationId ?: 0
+                                                    onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                                }
+                                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = "채팅하기",
+                                                fontFamily = PretendardFamily,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp)) // 하단 마감 패딩
                         }
                     }
                 }
@@ -99,7 +201,6 @@ private fun MatchingDetailTopBar(
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    // 팀원 코드를 살려두되, 내 화면에서는 숨길 수 있는 치트키 스위치! (기본값 true)
     isMyRequest: Boolean = true
 ) {
     Row(
@@ -108,14 +209,12 @@ private fun MatchingDetailTopBar(
             .statusBarsPadding()
             .background(Color.White)
             .padding(horizontal = 8.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically // 세로 가운데 정렬
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // 1. 뒤로가기 버튼
         IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "뒤로", tint = TextBlackD)
         }
 
-        // 2. 제목 텍스트 (weight(1f)를 주어 남은 공간을 채우고, 버튼과 절대 겹치지 않게 차단합니다)
         Text(
             text = "내 봉사 상세",
             fontSize = 20.sp,
@@ -126,16 +225,13 @@ private fun MatchingDetailTopBar(
             overflow = TextOverflow.Ellipsis
         )
 
-        // 3. 우측 액션 버튼들
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(end = 8.dp)
         ) {
-            // 내가 쓸 기능 (수정/삭제)은 항상 노출
             TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
             TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
 
-            // 팀원이 추가한 기능은 '내 요청이 아닐 때만(!isMyRequest)' 보이도록 격리조치!
             if (!isMyRequest) {
                 TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
                 TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
@@ -174,9 +270,8 @@ private fun RequestInfoCardD(request: MatchDetailResponse) {
     ) {
         Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextBlackD)
 
-        //자르기 걷어내고, 서버가 보내주는 각각의 날짜와 시간 필드를 다이렉트로 매핑!
         val dateValue = request.desiredDate ?: "일정 미정"
-        val timeValue = request.desiredTime?.take(5) ?: "시간 미정" // 14:00:00 -> 14:00 만 쏙
+        val timeValue = request.desiredTime?.take(5) ?: "시간 미정"
 
         InfoRowD(PinkSurfaceD, R.drawable.ic_calendar_today, Pink500D, "일정", dateValue, FontWeight.Bold)
         HorizontalDivider(color = Gray300D)

@@ -2,7 +2,8 @@ package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
-
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,21 +26,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +72,7 @@ private val BackgroundP   = Color(0xFFFEFEFE)
 private val Gray300P      = Color(0xFFE8E8E8)
 private val TextBlackP    = Color(0xFF1E120A)
 private val Green600P     = Color(0xFF00A63E)
+private val Brown900C    = Color(0xFF614C3B)
 
 // ─── 메인 화면 ──────────────────────────────────────────────────────────────────
 
@@ -77,18 +84,12 @@ fun MatchingPublicDetailScreen(
     onNavigate: (String) -> Unit = {},
 ) {
     val uiState by remember(viewModel) {
-        viewModel?.uiState ?: MutableStateFlow(
-            MatchDetailUiState.Success(
-                MatchDetailResponse(
-                    title = "정왕동 실외견 병원 이동 부탁드립니다",
-                    status = "봉사자 모집 중",
-                    desiredDate = "2026-05-10T10:00:00Z",
-                    address = "정왕 동물병원",
-                    content = "슬개골 탈구 수술 후 경과 검진입니다. 차량 이동이 가능하신 분이면 좋겠어요."
-                )
-            )
-        )
+        viewModel?.uiState ?: MutableStateFlow(MatchDetailUiState.Loading)
     }.collectAsState()
+
+    var showApplyDialog by remember { mutableStateOf(false) }
+    var applyMessage by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
@@ -97,14 +98,40 @@ fun MatchingPublicDetailScreen(
     Scaffold(
         containerColor = BackgroundP,
         topBar = { PublicDetailTopBar(onBack = onBack) },
-        bottomBar = { PublicDetailBottomBar(onApply = {}, onChat = { onNavigate(Screen.Chat.createRoute(requestId)) }) },
+        bottomBar = {
+            // 👈 [해결] 데이터 로딩이 완전히 성공했을 때만 하단 바를 띄워 차단합니다 (세번째 사진 버그 해결)
+            if (uiState is MatchDetailUiState.Success) {
+                val state = uiState as MatchDetailUiState.Success
+                val authorId = state.detail.author?.userId
+                val myUserId = viewModel?.currentUserId
+                val isMyRequest = authorId != null && authorId == myUserId
+
+                PublicDetailBottomBar(
+                    isMyRequest = isMyRequest,
+                    isApplied = viewModel?.isApplied ?: false,
+                    onApply = { showApplyDialog = true },
+                    onChat = {
+                        if (viewModel?.isApplied == true) {
+                            val applicationId = viewModel.myApplicationId ?: 0
+                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                        } else {
+                            android.widget.Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onManageRequest = {
+                        // 내가 요청한 글일 경우 내 상세 관리 화면(MatchingDetailScreen)으로 라우팅 이동
+                        onNavigate(Screen.MatchingDetail.createRoute(requestId))
+                    }
+                )
+            }
+        },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState) {
                 is MatchDetailUiState.Loading -> {
                     CircularProgressIndicator(
                         color = Orange500P,
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 is MatchDetailUiState.Error -> {
@@ -112,7 +139,7 @@ fun MatchingPublicDetailScreen(
                         text = state.message,
                         color = Pink500P,
                         fontFamily = PretendardFamily,
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.Center)
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
                 is MatchDetailUiState.Success -> {
@@ -153,16 +180,52 @@ fun MatchingPublicDetailScreen(
                                 lineHeight = 20.sp,
                                 color = Brown700P,
                             )
-                            // 👈 실제 작성자의 중첩 객체 닉네임 매핑 완료!
                             RequesterCard(
                                 authorNickname = request.author?.nickname ?: "요청자",
-                                onChat = { onNavigate(Screen.Chat.createRoute(requestId)) }
+                                onChat = {
+                                    if (viewModel?.isApplied == true) {
+                                        val applicationId = viewModel.myApplicationId ?: 0
+                                        onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                                    } else {
+                                        android.widget.Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             )
                         }
                     }
                 }
                 else -> {}
             }
+        }
+
+        if (showApplyDialog) {
+            AlertDialog(
+                onDismissRequest = { showApplyDialog = false },
+                title = { Text("봉사 신청하기", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) },
+                text = {
+                    OutlinedTextField(
+                        value = applyMessage,
+                        onValueChange = { applyMessage = it },
+                        placeholder = { Text("신청 메시지(선택)", fontFamily = PretendardFamily) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel?.applyForMatch(requestId, applyMessage) { success, msg ->
+                            showApplyDialog = false
+                            android.widget.Toast.makeText(
+                                context,
+                                msg,
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }) { Text("신청하기") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showApplyDialog = false }) { Text("취소") }
+                }
+            )
         }
     }
 }
@@ -179,9 +242,9 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Box(
-            contentAlignment = androidx.compose.ui.Alignment.Center,
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .align(androidx.compose.ui.Alignment.CenterStart)
+                .align(Alignment.CenterStart)
                 .size(40.dp)
                 .shadow(2.dp, RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
@@ -202,10 +265,10 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
             color = TextBlackP,
-            modifier = Modifier.align(androidx.compose.ui.Alignment.Center),
+            modifier = Modifier.align(Alignment.Center),
         )
         Row(
-            modifier = Modifier.align(androidx.compose.ui.Alignment.CenterEnd),
+            modifier = Modifier.align(Alignment.CenterEnd),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PublicTopBarIcon(iconRes = R.drawable.ic_bookmark, desc = "북마크")
@@ -217,7 +280,7 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
 @Composable
 private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     Box(
-        contentAlignment = androidx.compose.ui.Alignment.Center,
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(40.dp)
             .shadow(2.dp, RoundedCornerShape(12.dp))
@@ -240,7 +303,7 @@ private fun PublicStatusBanner(statusText: String) {
             .background(PinkSurfaceP)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = statusText,
@@ -274,7 +337,6 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
             color = TextBlackP,
         )
 
-        // T 나 공백( ) 기준 모두 안전하게 분리해 내는 스펙 파서로 교체!
         val dateValue = request.desiredDate ?: "일정 미정"
         val timeValue = request.desiredTime?.take(5) ?: "시간 미정"
 
@@ -287,7 +349,7 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PublicIconBox(bg = BrownBorderP) {
@@ -302,7 +364,6 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
                         .background(OrangeSandP)
                         .padding(horizontal = 12.dp, vertical = 3.dp),
                 ) {
-                    // 👈 하드코딩 걷어내고 실제 내 펫의 이름과 종이 나오도록 실시간 연결!
                     val petName = request.pet?.name ?: "이름 없음"
                     val petSpecies = request.pet?.species ?: "종 미정"
                     Text(text = "$petName · $petSpecies", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, color = Brown700P)
@@ -313,7 +374,7 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = androidx.compose.ui.Alignment.Top,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             PublicIconBox(bg = Gray300P) {
@@ -339,7 +400,7 @@ private fun PublicInfoRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         PublicIconBox(bg = iconBg) {
@@ -356,7 +417,7 @@ private fun PublicInfoRow(
 @Composable
 private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
     Box(
-        contentAlignment = androidx.compose.ui.Alignment.Center,
+        contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(40.dp)
             .clip(RoundedCornerShape(10.dp))
@@ -374,7 +435,7 @@ private fun PublicRouteRow(destination: String) {
             .clip(RoundedCornerShape(50.dp))
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(16.dp))
@@ -396,19 +457,19 @@ private fun PublicMapCard() {
             .background(Brush.linearGradient(listOf(MintLightP, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))),
     ) {
         Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P,
-            modifier = Modifier.size(28.dp).align(androidx.compose.ui.Alignment.Center).offset((-40).dp, (-20).dp))
+            modifier = Modifier.size(28.dp).align(Alignment.Center).offset((-40).dp, (-20).dp))
         Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P,
-            modifier = Modifier.size(28.dp).align(androidx.compose.ui.Alignment.Center).offset(40.dp, 20.dp))
+            modifier = Modifier.size(28.dp).align(Alignment.Center).offset(40.dp, 20.dp))
 
         Row(
             modifier = Modifier
-                .align(androidx.compose.ui.Alignment.BottomStart)
+                .align(Alignment.BottomStart)
                 .padding(12.dp)
                 .clip(RoundedCornerShape(50.dp))
                 .background(Color.White)
                 .clickable { }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(painter = painterResource(R.drawable.ic_map), null, tint = TextBlackP, modifier = Modifier.size(14.dp))
@@ -427,11 +488,11 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .padding(16.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(
-            contentAlignment = androidx.compose.ui.Alignment.Center,
+            contentAlignment = Alignment.Center,
             modifier = Modifier.size(48.dp).clip(CircleShape).background(MintLightP),
         ) {
             Text(text = authorNickname.firstOrNull()?.toString() ?: "요", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackP)
@@ -450,7 +511,7 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
                 .border(1.dp, BrownBorderP, RoundedCornerShape(50.dp))
                 .clickable { onChat() }
                 .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = Brown700P, modifier = Modifier.size(14.dp))
@@ -462,7 +523,13 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
 // ─── 하단 고정 버튼 바 ─────────────────────────────────────────────────────────
 
 @Composable
-private fun PublicDetailBottomBar(onApply: () -> Unit, onChat: () -> Unit) {
+private fun PublicDetailBottomBar(
+    isMyRequest: Boolean,
+    isApplied: Boolean,
+    onApply: () -> Unit,
+    onChat: () -> Unit,
+    onManageRequest: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -470,30 +537,74 @@ private fun PublicDetailBottomBar(onApply: () -> Unit, onChat: () -> Unit) {
             .navigationBarsPadding()
             .padding(horizontal = 24.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            contentAlignment = androidx.compose.ui.Alignment.Center,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(Color.White)
-                .border(1.dp, BrownBorderP, CircleShape)
-                .clickable { onChat() },
-        ) {
-            Icon(painter = painterResource(R.drawable.ic_chat_bubble), contentDescription = "채팅", tint = Brown700P, modifier = Modifier.size(20.dp))
-        }
+        when {
+            // 1️⃣ Case A: [내가 쓴 게시글일 때]
+            // 굳이 쓸모없는 신청 폼 대신 내 요청 관리용 '지원 현황 보기' 버튼으로 매핑 (첫번째 사진 예외 완벽 대응)
+            isMyRequest -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Brown900C)
+                        .clickable { onManageRequest() },
+                ) {
+                    Text(text = "지원 현황 및 목록 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
 
-        Box(
-            contentAlignment = androidx.compose.ui.Alignment.Center,
-            modifier = Modifier
-                .weight(1f)
-                .height(44.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(Pink500P)
-                .clickable { onApply() },
-        ) {
-            Text(text = "봉사 신청하기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, lineHeight = 20.sp, color = Color.White)
+            // 2️⃣ Case B: [지원자 시점 - 아직 신청 안 했을 때]
+            // 작은 대화 말풍선 아이콘 + 넓은 [봉사 신청하기] 버튼 세트로 노출
+            !isApplied -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .border(1.dp, BrownBorderP, CircleShape)
+                        .clickable { onChat() },
+                ) {
+                    Icon(painter = painterResource(R.drawable.ic_chat_bubble), contentDescription = "채팅", tint = Brown700P, modifier = Modifier.size(20.dp))
+                }
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Pink500P)
+                        .clickable { onApply() },
+                ) {
+                    Text(text = "봉사 신청하기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            }
+
+            // 3️⃣ Case C: [지원자 시점 - 이미 신청을 마쳤을 때]
+            // 더 이상 신청폼을 열지 않고 가로 전체를 채우는 든든한 핑크색 [요청자와 채팅하기] 큰 버튼으로 트랜지션!
+            else -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Pink500P)
+                        .clickable { onChat() },
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(painter = painterResource(R.drawable.ic_chat_bubble), contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Text(text = "요청자와 채팅하기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            }
         }
     }
 }

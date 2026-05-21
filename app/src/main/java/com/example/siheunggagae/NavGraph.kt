@@ -142,8 +142,8 @@ sealed class Screen(val route: String) {
     object MatchingPublicDetail : Screen("matching_public_detail/{requestId}") {
         fun createRoute(requestId: Int) = "matching_public_detail/$requestId"
     }
-    object Chat             : Screen("chat/{userId}") {
-        fun createRoute(userId: Int) = "chat/$userId"
+    object Chat             : Screen("chat/{matchId}/{applicationId}") {
+        fun createRoute(matchId: Int, applicationId: Int) = "chat/$matchId/$applicationId"
     }
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: String) = "news_detail/$newsId"
@@ -424,16 +424,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(
             route = Screen.Chat.route,
-            arguments = listOf(navArgument("userId") { type = NavType.IntType }),
+            arguments = listOf(
+                navArgument("matchId") { type = NavType.IntType },
+                navArgument("applicationId") { type = NavType.IntType }
+            ),
         ) { backStackEntry ->
-            val userId = backStackEntry.arguments?.getInt("userId") ?: 0
+            val matchId = backStackEntry.arguments?.getInt("matchId") ?: 0
+            val applicationId = backStackEntry.arguments?.getInt("applicationId") ?: 0
+
+            val context = LocalContext.current
+            val app = context.applicationContext as SiheungGagaeApp
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+
+            val wsManager = remember(applicationId) {
+                com.example.siheunggagae.data.network.ChatWebSocketManager(
+                    tokenManager = app.tokenManager,
+                    refreshToken = {
+                        try {
+                            val resp = api.getMe()
+                            resp.isSuccessful
+                        } catch (e: Exception) {
+                            false
+                        }
+                    }
+                )
+            }
+
+            val chatViewModel: com.example.siheunggagae.ui.viewmodel.ChatViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.ChatViewModel.Factory(api, wsManager)
+            )
+
             ChatScreen(
-                userId = userId,
+                matchId = matchId,
+                applicationId = applicationId,
+                viewModel = chatViewModel,
                 onBack = { navController.popBackStack() },
                 onNavigate = { route -> navController.navigate(route) },
             )
         }
-
 
         composable(
             route = Screen.RequestFlow.route, // 이제 "request_flow?requestId={requestId}"가 됨
