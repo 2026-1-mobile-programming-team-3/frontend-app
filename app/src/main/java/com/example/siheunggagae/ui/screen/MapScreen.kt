@@ -39,6 +39,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -77,8 +79,11 @@ import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.model.StoreSearchResult
+import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
+import com.example.siheunggagae.data.model.toStoreResponse
+import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
@@ -116,6 +121,7 @@ fun MapScreen(
     startVolunteerMode: Boolean = false,
     focusLat: Double = 0.0,
     focusLng: Double = 0.0,
+    focusStoreId: Int = 0,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as SiheungGagaeApp
@@ -127,6 +133,7 @@ fun MapScreen(
             initialVolunteerMode = startVolunteerMode,
             focusLat = focusLat,
             focusLng = focusLng,
+            focusStoreId = focusStoreId,
         )
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -136,6 +143,7 @@ fun MapScreen(
         if (granted) viewModel.moveToCurrentLocation()
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
@@ -160,37 +168,85 @@ fun MapScreen(
         }
     }
 
-    // 지도 초기화
+    // 지도 초기화 + camera idle 리스너 등록
     LaunchedEffect(Unit) {
-        mapWrapper.init { mapReady = true }
+        mapWrapper.onMapDestroyed = { mapReady = false }
+        mapWrapper.init { kakaoMap: KakaoMap ->
+            kakaoMap.setOnCameraMoveEndListener { map, position, _ ->
+                val viewport = map.getViewport()
+                val sw = map.fromScreenPoint(viewport.left, viewport.bottom)
+                val ne = map.fromScreenPoint(viewport.right, viewport.top)
+                if (sw != null && ne != null) {
+                    viewModel.onViewportChange(
+                        sw.latitude, sw.longitude,
+                        ne.latitude, ne.longitude,
+                        position.zoomLevel,
+                    )
+                }
+            }
+            mapReady = true
+        }
         if (!locationPermission.hasPermission) locationPermission.request()
     }
 
+    // 세션 무효화(PlaceDetailScreen 등 다른 KakaoMap 인스턴스 초기화 시) 후 재초기화
+    LaunchedEffect(mapReady) {
+        if (!mapReady && mapWrapper.hasBeenInitialized) {
+            delay(100)
+            mapWrapper.reinit()
+        }
+    }
+
+    // truncated 시 스낵바 안내
+    LaunchedEffect(uiState.truncated) {
+        if (uiState.truncated) {
+            snackbarHostState.showSnackbar("더 확대해 주세요 — 표시 가능한 매장 수를 초과했습니다.")
+        }
+    }
+
     // cameraSerial이 바뀔 때마다 cameraTarget으로 이동 (초기 로드 / 내 위치 버튼 / 포커스 좌표 모두 처리)
+    // 프로그래매틱 moveCamera 는 OnCameraMoveEndListener 를 발화하지 않을 수 있으므로
+    // 애니메이션 완료 후 직접 viewport 로드를 트리거한다.
     LaunchedEffect(mapReady, uiState.cameraSerial) {
         if (!mapReady) return@LaunchedEffect
         val (lat, lng) = uiState.cameraTarget ?: return@LaunchedEffect
         val zoomLevel = if (focusLat != 0.0 && focusLng != 0.0 && uiState.cameraSerial == 1) 17 else 15
         mapWrapper.moveCamera(lat, lng, zoomLevel)
+        // 카메라 애니메이션 완료 대기 후 초기 viewport 로드
+        delay(500)
+        val bounds = mapWrapper.getVisibleBounds() ?: return@LaunchedEffect
+        viewModel.onViewportChange(
+            bounds.first.latitude, bounds.first.longitude,
+            bounds.second.latitude, bounds.second.longitude,
+            mapWrapper.getCurrentZoom(),
+        )
     }
 
-    // 매장 마커 동기화 (카테고리 필터 반영)
-    LaunchedEffect(mapReady, uiState.stores, uiState.visibleCategories) {
+    // viewport 마커 동기화 — zoom 11+ 에서 bbox 기반 데이터, 줌에 따라 클러스터링
+    LaunchedEffect(mapReady, uiState.viewportStores, uiState.visibleCategories, uiState.currentZoom) {
         if (!mapReady) return@LaunchedEffect
         mapWrapper.clearMarkersWithPrefix("store_")
-        uiState.stores
-            .filter { it.category in uiState.visibleCategories }
-            .forEach { store ->
-                val color = categoryColors[store.category] ?: defaultMarkerColor
-                val markerId = "store_${store.resolvedId}"
+        mapWrapper.clearMarkersWithPrefix("cluster_")
+        val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
+        computeViewportMarkers(filtered, uiState.currentZoom).forEach { marker ->
+            if (marker.singleStore != null) {
+                val color = categoryColors[marker.singleStore.category] ?: defaultMarkerColor
                 mapWrapper.addMarker(
-                    id = markerId,
-                    lat = store.latitude,
-                    lng = store.longitude,
+                    id = marker.id,
+                    lat = marker.lat,
+                    lng = marker.lng,
                     markerColor = color,
-                    onTap = { viewModel.selectStore(store) },
+                    onTap = { viewModel.selectStore(marker.singleStore.toStoreResponse()) },
+                )
+            } else {
+                mapWrapper.addClusterMarker(
+                    id = marker.id,
+                    lat = marker.lat,
+                    lng = marker.lng,
+                    count = marker.count,
                 )
             }
+        }
     }
 
     // 봉사요청 마커 동기화
@@ -231,6 +287,7 @@ fun MapScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
         bottomBar = { AppBottomBar(currentRoute = Screen.Map.route, onNavigate = onNavigate) },
     ) { navPadding ->
@@ -314,7 +371,7 @@ fun MapScreen(
             onFavoriteToggle = { viewModel.toggleFavorite(selectedStore) },
             onNavigateToDetail = {
                 viewModel.selectStore(null)
-                onNavigate(Screen.PlaceDetail.createRoute(selectedStore.resolvedId))
+                onNavigate(Screen.PlaceDetail.createRoute(selectedStore.resolvedId, selectedStore.latitude, selectedStore.longitude))
             },
         )
     }
@@ -561,6 +618,7 @@ private fun StoreDetailSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = Color.White,
+        scrimColor = Color.Transparent,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         dragHandle = { MapDragHandle() },
     ) {
@@ -785,6 +843,41 @@ private fun MapPlaceItem(
             )
         }
     }
+}
+
+// ─── Viewport 마커 클러스터링 ──────────────────────────────────────────────────
+
+private data class ViewportMarker(
+    val id: String,
+    val lat: Double,
+    val lng: Double,
+    val count: Int,
+    val singleStore: StoreViewportItem?,  // null = 클러스터
+)
+
+/**
+ * zoom >= 14: 개별 마커
+ * zoom 11~13: 소수점 자리 수 기반 그리드 클러스터링
+ *   zoom 11~12 → 1자리(≈11km 격자), zoom 13 → 2자리(≈1km 격자)
+ */
+private fun computeViewportMarkers(stores: List<StoreViewportItem>, zoom: Int): List<ViewportMarker> {
+    if (zoom >= 14) {
+        return stores.map { ViewportMarker("store_${it.storeId}", it.latitude, it.longitude, 1, it) }
+    }
+    val decimals = if (zoom <= 12) 1 else 2
+    return stores
+        .groupBy { "${"%.${decimals}f".format(it.latitude)},${"%.${decimals}f".format(it.longitude)}" }
+        .map { (key, group) ->
+            val centerLat = group.sumOf { it.latitude } / group.size
+            val centerLng = group.sumOf { it.longitude } / group.size
+            ViewportMarker(
+                id = "cluster_$key",
+                lat = centerLat,
+                lng = centerLng,
+                count = group.size,
+                singleStore = if (group.size == 1) group.first() else null,
+            )
+        }
 }
 
 // ─── 검색 오버레이 (병화-4) ───────────────────────────────────────────────────

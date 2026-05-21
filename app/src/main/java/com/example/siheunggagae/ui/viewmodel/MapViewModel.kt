@@ -12,9 +12,12 @@ import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
+import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.network.api.AuthApiService
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +40,10 @@ data class MapUiState(
     val totalCount: Int = 0,
     val visibleCategories: Set<String> = MapFilterStore.DEFAULT_CATEGORIES,
     val favoriteStoreIds: Set<Int> = emptySet(),
+    // viewport (bbox) 기반 마커 전용
+    val viewportStores: List<StoreViewportItem> = emptyList(),
+    val currentZoom: Int = 15,
+    val truncated: Boolean = false,
 )
 
 class MapViewModel(
@@ -46,10 +53,15 @@ class MapViewModel(
     initialVolunteerMode: Boolean = false,
     private val focusLat: Double = 0.0,
     private val focusLng: Double = 0.0,
+    private val focusStoreId: Int = 0,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MapUiState(isVolunteerMode = initialVolunteerMode))
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+
+    // viewport 로드 debounce 용
+    private var viewportJob: Job? = null
+    private var lastBbox: DoubleArray? = null  // [swLat, swLng, neLat, neLng]
 
     init {
         loadInitial()
@@ -122,6 +134,11 @@ class MapViewModel(
         viewModelScope.launch {
             loadStores(location.latitude, location.longitude, category)
         }
+        val bbox = lastBbox
+        val zoom = _uiState.value.currentZoom
+        if (bbox != null && zoom >= 11) {
+            enqueueViewportLoad(bbox[0], bbox[1], bbox[2], bbox[3])
+        }
     }
 
     fun selectStore(store: StoreResponse?) {
@@ -179,6 +196,41 @@ class MapViewModel(
         viewModelScope.launch {
             loadStores(lat, lng, _uiState.value.selectedCategory)
         }
+        val bbox = lastBbox
+        val zoom = _uiState.value.currentZoom
+        if (bbox != null && zoom >= 11) {
+            enqueueViewportLoad(bbox[0], bbox[1], bbox[2], bbox[3])
+        }
+    }
+
+    fun onViewportChange(swLat: Double, swLng: Double, neLat: Double, neLng: Double, zoom: Int) {
+        lastBbox = doubleArrayOf(swLat, swLng, neLat, neLng)
+        _uiState.update { it.copy(currentZoom = zoom) }
+        if (zoom < 11) {
+            viewportJob?.cancel()
+            _uiState.update { it.copy(viewportStores = emptyList(), truncated = false) }
+            return
+        }
+        enqueueViewportLoad(swLat, swLng, neLat, neLng, debounceMs = 300L)
+    }
+
+    private fun enqueueViewportLoad(
+        swLat: Double, swLng: Double, neLat: Double, neLng: Double,
+        debounceMs: Long = 0L,
+    ) {
+        viewportJob?.cancel()
+        viewportJob = viewModelScope.launch {
+            if (debounceMs > 0) delay(debounceMs)
+            val category = _uiState.value.selectedCategory.apiValue
+            val response = runCatching {
+                api.getStoresByViewport(swLat, swLng, neLat, neLng, category)
+            }.getOrNull()
+            val body = response?.body()
+            _uiState.update { it.copy(
+                viewportStores = body?.stores ?: emptyList(),
+                truncated = body?.truncated ?: false,
+            )}
+        }
     }
 
     fun applyFilter(visibleApiCategories: Set<String>) {
@@ -207,12 +259,15 @@ class MapViewModel(
         }.getOrNull()
         val body = response?.body()
         val favoriteIds = FavoritesCache.ids.value
-        _uiState.update { it.copy(
-            stores = (body?.stores ?: emptyList()).map { s ->
-                s.copy(isFavorited = s.resolvedId in favoriteIds)
-            },
-            totalCount = body?.total ?: 0,
-        )}
+        val stores = (body?.stores ?: emptyList()).map { s ->
+            s.copy(isFavorited = s.resolvedId in favoriteIds)
+        }
+        _uiState.update { it.copy(stores = stores, totalCount = body?.total ?: 0) }
+
+        // 진입 시 특정 매장을 바로 선택해 바텀시트를 열어야 하는 경우
+        if (focusStoreId != 0 && _uiState.value.selectedStore == null) {
+            stores.find { it.resolvedId == focusStoreId }?.let { selectStore(it) }
+        }
     }
 
     private suspend fun loadVolunteerMarkers() {
@@ -229,9 +284,10 @@ class MapViewModel(
         private val initialVolunteerMode: Boolean = false,
         private val focusLat: Double = 0.0,
         private val focusLng: Double = 0.0,
+        private val focusStoreId: Int = 0,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MapViewModel(api, locationProvider, filterStore, initialVolunteerMode, focusLat, focusLng) as T
+            MapViewModel(api, locationProvider, filterStore, initialVolunteerMode, focusLat, focusLng, focusStoreId) as T
     }
 }

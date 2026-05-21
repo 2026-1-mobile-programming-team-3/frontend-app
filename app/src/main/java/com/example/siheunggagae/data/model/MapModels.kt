@@ -54,8 +54,11 @@ data class StoreDetailResponse(
 )
 
 data class StoreReview(
-    @SerializedName(value = "review_id", alternate = ["reviewId"])
+    @SerializedName(value = "review_id", alternate = ["reviewId", "id"])
     val reviewId: Int? = null,
+    @SerializedName(value = "user_id", alternate = ["userId", "author_id", "authorId"])
+    val userId: Int? = null,
+    @SerializedName(value = "nickname", alternate = ["author_nickname", "user_nickname", "author"])
     val nickname: String? = null,
     val rating: Int? = null,
     @SerializedName(value = "is_pet_allowed", alternate = ["isPetAllowed"])
@@ -95,6 +98,36 @@ data class StoreSearchResult(
 
 data class StoreSearchResponse(
     val results: List<StoreSearchResult>? = null,
+)
+
+// ── Viewport 매장 (bbox 기반) ──────────────────────────────────────────────────
+
+data class StoreViewportItem(
+    val storeId: Int = 0,
+    val name: String = "",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val category: String = "",
+    val isPetAllowed: Boolean = false,
+    val ratingAvg: Double? = null,
+    val ratingCount: Int = 0,
+) {
+    val resolvedId: Int get() = storeId
+}
+
+data class StoreViewportResponse(
+    val stores: List<StoreViewportItem> = emptyList(),
+    val truncated: Boolean = false,
+)
+
+fun StoreViewportItem.toStoreResponse() = StoreResponse(
+    storeId = storeId,
+    name = name,
+    latitude = latitude,
+    longitude = longitude,
+    category = category,
+    ratingAvg = ratingAvg?.toFloat(),
+    isPetAllowed = isPetAllowed,
 )
 
 // ── 봉사 마커 (Volunteer Markers) ──────────────────────────────────────────────
