@@ -134,6 +134,10 @@ fun MyScreen(
     onFavoriteStoresClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
+    onNotifSettingsClick: () -> Unit = {},
+    onLocationSettingsClick: () -> Unit = {},
+    onPrivacyClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     val uiState by remember(viewModel) {
@@ -232,7 +236,14 @@ fun MyScreen(
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("설정")
                     Spacer(Modifier.height(6.dp))
-                    SettingsSection(onVolunteerApplyClick = onVolunteerApplyClick)
+                    SettingsSection(
+                        regionDong = user?.regionDong ?: "미설정",
+                        onNotifSettingsClick = onNotifSettingsClick,
+                        onLocationSettingsClick = onLocationSettingsClick,
+                        onPrivacyClick = onPrivacyClick,
+                        onHelpClick = onHelpClick,
+                        onVolunteerApplyClick = onVolunteerApplyClick,
+                    )
                     Spacer(Modifier.height(16.dp))
                     LogoutButton(onClick = { showLogoutDialog = true })
                     Spacer(Modifier.height(24.dp))
@@ -825,15 +836,27 @@ private fun RecordItem(
 // ─── 설정 섹션 ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(onVolunteerApplyClick: () -> Unit = {}) {
+private fun SettingsSection(
+    regionDong: String = "미설정",
+    onNotifSettingsClick: () -> Unit = {},
+    onLocationSettingsClick: () -> Unit = {},
+    onPrivacyClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {},
+    onVolunteerApplyClick: () -> Unit = {},
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val versionName = remember {
+        try { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "—" }
+        catch (_: Exception) { "—" }
+    }
     SectionCard {
-        SettingsItem(title = "알림 설정")
+        SettingsItem(title = "알림 설정", onClick = onNotifSettingsClick)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
-        SettingsItem(title = "지역 설정", subtitle = "정왕동")
+        SettingsItem(title = "지역 설정", subtitle = regionDong, onClick = onLocationSettingsClick)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
-        SettingsItem(title = "개인정보 및 보안")
+        SettingsItem(title = "개인정보 및 보안", onClick = onPrivacyClick)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
-        SettingsItem(title = "앱 정보", subtitle = "v3.0.0")
+        SettingsItem(title = "앱 정보", subtitle = versionName, onClick = onHelpClick)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Divider9)
         SettingsItem(title = "봉사자 자격 신청", titleColor = Green500My, onClick = onVolunteerApplyClick)
     }
@@ -955,7 +978,7 @@ private val previewUser = UserMeResponse(
             id = 1, name = "파댕이", species = PetSpecies.DOG,
             breed = "말티즈", age = 3, weightKg = 3.2f,
             isNeutered = false, gender = PetGender.MALE,
-            photoUrl = null, createdAt = "", updatedAt = "",
+            photoUrl = null, note = null, createdAt = "", updatedAt = "",
         )
     ),
     createdAt = "",
@@ -1025,7 +1048,7 @@ fun MyScreenSuccessPreview() {
                 Spacer(Modifier.height(12.dp))
                 MySectionLabel("설정")
                 Spacer(Modifier.height(6.dp))
-                SettingsSection()
+                SettingsSection(regionDong = previewUser.regionDong ?: "정왕동")
                 Spacer(Modifier.height(16.dp))
                 LogoutButton()
                 Spacer(Modifier.height(24.dp))

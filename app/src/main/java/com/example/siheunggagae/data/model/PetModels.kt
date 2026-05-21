@@ -14,6 +14,7 @@ data class PetCreate(
     @SerializedName("is_neutered") val isNeutered: Boolean,
     val gender: PetGender? = null,
     @SerializedName("photo_url") val photoUrl: String? = null,
+    val note: String? = null,
 )
 
 data class PetResponse(
@@ -26,6 +27,7 @@ data class PetResponse(
     @SerializedName("is_neutered") val isNeutered: Boolean,
     val gender: PetGender?,
     @SerializedName("photo_url") val photoUrl: String?,
+    val note: String?,
     @SerializedName("created_at") val createdAt: String,
     @SerializedName("updated_at") val updatedAt: String,
 )
@@ -38,4 +40,5 @@ data class PetUpdate(
     @SerializedName("is_neutered") val isNeutered: Boolean? = null,
     val gender: PetGender? = null,
     @SerializedName("photo_url") val photoUrl: String? = null,
+    val note: String? = null,
 )
