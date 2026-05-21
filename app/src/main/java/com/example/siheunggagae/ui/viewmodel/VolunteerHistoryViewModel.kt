@@ -3,7 +3,7 @@ package com.example.siheunggagae.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.siheunggagae.data.model.MyMatchResponse
+import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.repository.UserRepository
@@ -16,7 +16,7 @@ sealed class VolunteerHistoryUiState {
     object NotVolunteer : VolunteerHistoryUiState()
     data class Success(
         val stats: VolunteerStatsResponse,
-        val matches: List<MyMatchResponse>,
+        val matches: List<MatchListItem>,
     ) : VolunteerHistoryUiState()
     data class Error(val message: String) : VolunteerHistoryUiState()
 }
@@ -47,8 +47,11 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
                 val stats = if (statsResp.isSuccessful) statsResp.body()
                     ?: VolunteerStatsResponse(0, 0.0, null)
                 else VolunteerStatsResponse(0, 0.0, null)
-                val matches = if (matchesResp.isSuccessful) matchesResp.body()?.content ?: emptyList()
-                else emptyList()
+
+                // emptyList 뒤에 <MatchListItem>을 명시하여 컴파일러 에러를 완벽하게 차단합니다.
+                val matches = if (matchesResp.isSuccessful) matchesResp.body()?.items ?: emptyList<MatchListItem>()
+                else emptyList<MatchListItem>()
+
                 _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
             }.onFailure {
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")

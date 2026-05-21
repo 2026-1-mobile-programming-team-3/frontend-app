@@ -23,8 +23,7 @@ class MyRequestsViewModel(private val api: AuthApiService) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = MyRequestsUiState.Loading
             try {
-                // 사용자가 작성한 요청을 조회하기 위해 role 파라미터를 "author"로 지정합니다.
-                val response = api.getMyMatches(role = "author")
+                val response = api.getMyMatches(role = "author", status = null)
                 if (response.isSuccessful && response.body() != null) {
                     _uiState.value = MyRequestsUiState.Success(response.body()!!.items ?: emptyList())
                 } else {

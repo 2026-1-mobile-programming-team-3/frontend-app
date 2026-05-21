@@ -8,6 +8,7 @@ import com.example.siheunggagae.data.model.BlockListResponse
 import com.example.siheunggagae.data.model.ReportCreateRequest
 import com.example.siheunggagae.data.model.ReportCreatedResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
+import com.example.siheunggagae.data.model.MatchListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.NotificationSettingsResponse
 import com.example.siheunggagae.data.model.NotificationSettingsUpdateRequest
@@ -33,7 +34,7 @@ class UserRepository {
 
     suspend fun getVolunteerStats(): Response<VolunteerStatsResponse> = api.getVolunteerStats()
 
-    suspend fun getMyMatches(page: Int = 1, size: Int = 20): Response<MyMatchListResponse> =
+    suspend fun getMyMatches(page: Int = 1, size: Int = 20): Response<MatchListResponse> =
         api.getMyMatches(role = "applicant", status = "DONE", page = page, size = size)
 
     suspend fun updateMe(request: UserUpdateRequest): Response<UserMeResponse> =
@@ -44,8 +45,8 @@ class UserRepository {
     suspend fun updatePet(petId: Int, body: PetUpdate): Response<PetResponse> =
         api.updatePet(petId, body)
 
-    suspend fun deletePet(petId: Int): Response<MessageResponse> = api.deletePet(petId)
-
+    // 수정 후
+    suspend fun deletePet(petId: Int): Response<Unit> = api.deletePet(petId)
     suspend fun getFavoriteStores(page: Int = 1, size: Int = 20): Response<FavoriteStoreListResponse> =
         api.getFavoriteStores(page, size)
 

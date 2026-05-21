@@ -110,10 +110,10 @@ interface AuthApiService {
     @GET("api/v1/users/me/matches")
     suspend fun getMyMatches(
         @Query("role") role: String = "applicant",
-        @Query("status") status: String = "DONE",
+        @Query("status") status: String? = null, // 모든 상태를 볼 수 있게 null 허용
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20,
-    ): Response<MyMatchListResponse>
+    ): Response<MatchListResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>

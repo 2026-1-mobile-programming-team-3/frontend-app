@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
@@ -92,22 +93,53 @@ fun MatchingDetailScreen(
     }
 }
 
-// ── TopBar ──
+// ── TopBar 수정본 ──
 @Composable
-private fun MatchingDetailTopBar(onBack: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp)) {
-        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+private fun MatchingDetailTopBar(
+    onBack: () -> Unit,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit,
+    // 팀원 코드를 살려두되, 내 화면에서는 숨길 수 있는 치트키 스위치! (기본값 true)
+    isMyRequest: Boolean = true
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .background(Color.White)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically // 세로 가운데 정렬
+    ) {
+        // 1. 뒤로가기 버튼
+        IconButton(onClick = onBack) {
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "뒤로", tint = TextBlackD)
         }
-        Text("내 봉사 상세", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextBlackD, modifier = Modifier.align(Alignment.Center))
 
-        Row(modifier = Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // 수정/삭제 (질문자님 기능)
+        // 2. 제목 텍스트 (weight(1f)를 주어 남은 공간을 채우고, 버튼과 절대 겹치지 않게 차단합니다)
+        Text(
+            text = "내 봉사 상세",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = TextBlackD,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // 3. 우측 액션 버튼들
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(end = 8.dp)
+        ) {
+            // 내가 쓸 기능 (수정/삭제)은 항상 노출
             TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
             TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
-            // 더보기/공유 (main 브랜치 기능)
-            TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
-            TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
+
+            // 팀원이 추가한 기능은 '내 요청이 아닐 때만(!isMyRequest)' 보이도록 격리조치!
+            if (!isMyRequest) {
+                TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
+                TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
+            }
         }
     }
 }

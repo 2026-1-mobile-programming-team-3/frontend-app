@@ -38,7 +38,6 @@ fun MyRequestsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // 화면 진입 시 데이터를 갱신합니다.
     LaunchedEffect(Unit) {
         viewModel.fetchMyRequests()
     }
