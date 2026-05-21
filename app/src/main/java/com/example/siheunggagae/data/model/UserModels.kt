@@ -1,5 +1,7 @@
 package com.example.siheunggagae.data.model
 
+import com.google.gson.annotations.SerializedName
+
 enum class UserRole { USER, VOLUNTEER, ADMIN }
 
 data class UserResponse(
@@ -122,12 +124,17 @@ data class FavoriteStoreCreateResponse(
 )
 
 data class FavoriteStoreItem(
+    @SerializedName(value = "favorite_id", alternate = ["favoriteId"])
     val favoriteId: Int? = null,
+    @SerializedName(value = "store_id", alternate = ["storeId", "id"])
     val storeId: Int? = null,
     val name: String? = null,
     val category: String? = null,
+    @SerializedName(value = "thumbnail_url", alternate = ["thumbnailUrl"])
     val thumbnailUrl: String? = null,
+    @SerializedName(value = "rating_avg", alternate = ["ratingAvg"])
     val ratingAvg: Double? = null,
+    @SerializedName(value = "created_at", alternate = ["createdAt"])
     val createdAt: String? = null,
 )
 

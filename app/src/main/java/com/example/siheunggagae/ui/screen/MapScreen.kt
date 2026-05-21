@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,10 +36,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -67,11 +73,17 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
+import android.content.Intent
+import android.net.Uri
 import com.example.siheunggagae.data.model.StoreCategory
+import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.model.StoreSearchResult
+import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
+import com.example.siheunggagae.data.model.toStoreResponse
+import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
@@ -107,6 +119,9 @@ private val volunteerMarkerColor = 0xFF2196F3.toInt()
 fun MapScreen(
     onNavigate: (String) -> Unit = {},
     startVolunteerMode: Boolean = false,
+    focusLat: Double = 0.0,
+    focusLng: Double = 0.0,
+    focusStoreId: Int = 0,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as SiheungGagaeApp
@@ -116,6 +131,9 @@ fun MapScreen(
             locationProvider = LocationProvider(context),
             filterStore = MapFilterStore(context),
             initialVolunteerMode = startVolunteerMode,
+            focusLat = focusLat,
+            focusLng = focusLng,
+            focusStoreId = focusStoreId,
         )
     )
     val uiState by viewModel.uiState.collectAsState()
@@ -125,6 +143,7 @@ fun MapScreen(
         if (granted) viewModel.moveToCurrentLocation()
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
@@ -149,42 +168,85 @@ fun MapScreen(
         }
     }
 
-    // 지도 초기화
+    // 지도 초기화 + camera idle 리스너 등록
     LaunchedEffect(Unit) {
-        mapWrapper.init { mapReady = true }
+        mapWrapper.onMapDestroyed = { mapReady = false }
+        mapWrapper.init { kakaoMap: KakaoMap ->
+            kakaoMap.setOnCameraMoveEndListener { map, position, _ ->
+                val viewport = map.getViewport()
+                val sw = map.fromScreenPoint(viewport.left, viewport.bottom)
+                val ne = map.fromScreenPoint(viewport.right, viewport.top)
+                if (sw != null && ne != null) {
+                    viewModel.onViewportChange(
+                        sw.latitude, sw.longitude,
+                        ne.latitude, ne.longitude,
+                        position.zoomLevel,
+                    )
+                }
+            }
+            mapReady = true
+        }
         if (!locationPermission.hasPermission) locationPermission.request()
     }
 
-    // 맵 준비되면 무조건 시흥시로 시작 (에뮬레이터 GPS 위치 무시)
+    // 세션 무효화(PlaceDetailScreen 등 다른 KakaoMap 인스턴스 초기화 시) 후 재초기화
     LaunchedEffect(mapReady) {
-        if (!mapReady) return@LaunchedEffect
-        mapWrapper.moveCamera(37.3795, 126.8025)
+        if (!mapReady && mapWrapper.hasBeenInitialized) {
+            delay(100)
+            mapWrapper.reinit()
+        }
     }
 
-    // 내 위치 버튼 → cameraSerial이 바뀔 때마다 항상 이동 (같은 좌표여도 재실행)
+    // truncated 시 스낵바 안내
+    LaunchedEffect(uiState.truncated) {
+        if (uiState.truncated) {
+            snackbarHostState.showSnackbar("더 확대해 주세요 — 표시 가능한 매장 수를 초과했습니다.")
+        }
+    }
+
+    // cameraSerial이 바뀔 때마다 cameraTarget으로 이동 (초기 로드 / 내 위치 버튼 / 포커스 좌표 모두 처리)
+    // 프로그래매틱 moveCamera 는 OnCameraMoveEndListener 를 발화하지 않을 수 있으므로
+    // 애니메이션 완료 후 직접 viewport 로드를 트리거한다.
     LaunchedEffect(mapReady, uiState.cameraSerial) {
         if (!mapReady) return@LaunchedEffect
         val (lat, lng) = uiState.cameraTarget ?: return@LaunchedEffect
-        mapWrapper.moveCamera(lat, lng)
+        val zoomLevel = if (focusLat != 0.0 && focusLng != 0.0 && uiState.cameraSerial == 1) 17 else 15
+        mapWrapper.moveCamera(lat, lng, zoomLevel)
+        // 카메라 애니메이션 완료 대기 후 초기 viewport 로드
+        delay(500)
+        val bounds = mapWrapper.getVisibleBounds() ?: return@LaunchedEffect
+        viewModel.onViewportChange(
+            bounds.first.latitude, bounds.first.longitude,
+            bounds.second.latitude, bounds.second.longitude,
+            mapWrapper.getCurrentZoom(),
+        )
     }
 
-    // 매장 마커 동기화 (카테고리 필터 반영)
-    LaunchedEffect(mapReady, uiState.stores, uiState.visibleCategories) {
+    // viewport 마커 동기화 — zoom 11+ 에서 bbox 기반 데이터, 줌에 따라 클러스터링
+    LaunchedEffect(mapReady, uiState.viewportStores, uiState.visibleCategories, uiState.currentZoom) {
         if (!mapReady) return@LaunchedEffect
         mapWrapper.clearMarkersWithPrefix("store_")
-        uiState.stores
-            .filter { it.category in uiState.visibleCategories }
-            .forEach { store ->
-                val color = categoryColors[store.category] ?: defaultMarkerColor
-                val markerId = "store_${store.resolvedId}"
+        mapWrapper.clearMarkersWithPrefix("cluster_")
+        val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
+        computeViewportMarkers(filtered, uiState.currentZoom).forEach { marker ->
+            if (marker.singleStore != null) {
+                val color = categoryColors[marker.singleStore.category] ?: defaultMarkerColor
                 mapWrapper.addMarker(
-                    id = markerId,
-                    lat = store.latitude,
-                    lng = store.longitude,
+                    id = marker.id,
+                    lat = marker.lat,
+                    lng = marker.lng,
                     markerColor = color,
-                    onTap = { viewModel.selectStore(store) },
+                    onTap = { viewModel.selectStore(marker.singleStore.toStoreResponse()) },
+                )
+            } else {
+                mapWrapper.addClusterMarker(
+                    id = marker.id,
+                    lat = marker.lat,
+                    lng = marker.lng,
+                    count = marker.count,
                 )
             }
+        }
     }
 
     // 봉사요청 마커 동기화
@@ -207,20 +269,25 @@ fun MapScreen(
     val sheetState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = true,
+            skipHiddenState = false,
         )
     )
 
-    // 마커 탭 시 카메라 이동 + 시트 올리기
+    // 매장 선택 시 카메라 이동 + 목록 시트 숨기기 / 해제 시 다시 표시
     LaunchedEffect(uiState.selectedStore) {
-        val store = uiState.selectedStore ?: return@LaunchedEffect
-        if (mapReady) {
-            mapWrapper.moveCamera(store.latitude, store.longitude)
+        val store = uiState.selectedStore
+        if (store != null) {
+            if (mapReady) mapWrapper.moveCamera(store.latitude, store.longitude)
+            sheetState.bottomSheetState.hide()
+        } else {
+            if (sheetState.bottomSheetState.currentValue == SheetValue.Hidden) {
+                sheetState.bottomSheetState.partialExpand()
+            }
         }
-        scope.launch { sheetState.bottomSheetState.partialExpand() }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
         bottomBar = { AppBottomBar(currentRoute = Screen.Map.route, onNavigate = onNavigate) },
     ) { navPadding ->
@@ -234,15 +301,11 @@ fun MapScreen(
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { MapDragHandle() },
             sheetContent = {
-                val isExpanded = sheetState.bottomSheetState.currentValue == SheetValue.Expanded
                 MapBottomSheetContent(
-                    selectedStore = uiState.selectedStore,
                     stores = uiState.stores,
                     totalCount = uiState.totalCount,
-                    isExpanded = isExpanded,
-                    onStoreClick = { store -> onNavigate(Screen.PlaceDetail.createRoute(store.resolvedId)) },
+                    onStoreClick = { store -> viewModel.selectStore(store) },
                     onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
-                    onClearSelection = { viewModel.selectStore(null) },
                 )
             },
             containerColor = Color.Transparent,
@@ -295,6 +358,22 @@ fun MapScreen(
                 }
             }
         }
+    }
+
+    // 매장 선택 시 상세 모달
+    val selectedStore = uiState.selectedStore
+    if (selectedStore != null) {
+        StoreDetailSheet(
+            store = selectedStore,
+            detail = uiState.selectedStoreDetail,
+            isDetailLoading = uiState.isDetailLoading,
+            onDismiss = { viewModel.selectStore(null) },
+            onFavoriteToggle = { viewModel.toggleFavorite(selectedStore) },
+            onNavigateToDetail = {
+                viewModel.selectStore(null)
+                onNavigate(Screen.PlaceDetail.createRoute(selectedStore.resolvedId, selectedStore.latitude, selectedStore.longitude))
+            },
+        )
     }
 
     if (showFilterSheet) {
@@ -458,17 +537,14 @@ private fun MapDragHandle() {
 
 @Composable
 private fun MapBottomSheetContent(
-    selectedStore: StoreResponse?,
     stores: List<StoreResponse>,
     totalCount: Int,
-    isExpanded: Boolean,
     onStoreClick: (StoreResponse) -> Unit,
     onFavoriteToggle: (StoreResponse) -> Unit,
-    onClearSelection: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (selectedStore != null) {
-            // 마커 선택 상태: 단일 매장 카드
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+        run {
+            val displayCount = if (totalCount > 0) totalCount else stores.size
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -477,39 +553,7 @@ private fun MapBottomSheetContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "선택된 매장",
-                    fontFamily = PretendardFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
-                )
-                IconButton(onClick = onClearSelection, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_refresh),
-                        contentDescription = "선택 해제",
-                        tint = Brown700Mp,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-            HorizontalDivider(color = Color(0xFFF3F4F6))
-            MapPlaceItem(
-                place = selectedStore,
-                onClick = { onStoreClick(selectedStore) },
-                onFavoriteToggle = { onFavoriteToggle(selectedStore) },
-            )
-        } else {
-            // 기본 상태: 주변 매장 목록
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = if (totalCount > 0) "주변 매장 $totalCount 곳" else "주변 매장",
+                    text = "주변 매장 ${displayCount}개",
                     fontFamily = PretendardFamily,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
@@ -537,25 +581,8 @@ private fun MapBottomSheetContent(
                 }
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            if (isExpanded) {
-                // 풀스크린 모드: 전체 리스트
-                LazyColumn {
-                    items(stores, key = { it.resolvedId }) { store ->
-                        MapPlaceItem(
-                            place = store,
-                            onClick = { onStoreClick(store) },
-                            onFavoriteToggle = { onFavoriteToggle(store) },
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 20.dp),
-                            color = Color(0xFFF3F4F6),
-                        )
-                    }
-                    item { Spacer(Modifier.height(16.dp)) }
-                }
-            } else {
-                // 기본 모드: 첫 번째 카드만
-                stores.firstOrNull()?.let { store ->
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(stores, key = { it.resolvedId }) { store ->
                     MapPlaceItem(
                         place = store,
                         onClick = { onStoreClick(store) },
@@ -566,7 +593,164 @@ private fun MapBottomSheetContent(
                         color = Color(0xFFF3F4F6),
                     )
                 }
+                item { Spacer(Modifier.height(16.dp)) }
             }
+        }
+    }
+}
+
+// ─── 매장 상세 모달 ───────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StoreDetailSheet(
+    store: StoreResponse,
+    detail: StoreDetailResponse?,
+    isDetailLoading: Boolean,
+    onDismiss: () -> Unit,
+    onFavoriteToggle: () -> Unit,
+    onNavigateToDetail: () -> Unit,
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        scrimColor = Color.Transparent,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        dragHandle = { MapDragHandle() },
+    ) {
+        // 그라디언트 배너
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+                .background(Brush.linearGradient(listOf(Color(0xFFD0FEE1), Color(0xFFE0F7FA)))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_location_on),
+                contentDescription = null,
+                tint = Pink500Mp,
+                modifier = Modifier.size(36.dp),
+            )
+        }
+
+        // 이름 + 즐겨찾기
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = store.name,
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp,
+                    color = TextBlack,
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(store.category, fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                    store.distanceM?.let { d ->
+                        Text("·", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                        val distText = if (d < 1000) "${"%.0f".format(d)}m" else "${"%.1f".format(d / 1000)}km"
+                        Text(distText, fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                    }
+                    store.ratingAvg?.let { r ->
+                        Text("·", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                        Icon(painterResource(R.drawable.ic_star), null, tint = StarYellow, modifier = Modifier.size(12.dp))
+                        Text("%.1f".format(r), fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                    }
+                }
+            }
+            IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_favorite),
+                    contentDescription = "즐겨찾기",
+                    tint = if (store.isFavorited) Pink500Mp else Brown400Mp,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+
+        HorizontalDivider(color = Color(0xFFF3F4F6))
+
+        // 상세 정보 (로딩 or 실제 내용)
+        if (isDetailLoading) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(72.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Orange500Mp, modifier = Modifier.size(24.dp))
+            }
+        } else if (detail != null) {
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                detail.address?.let { addr ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(painterResource(R.drawable.ic_location_on), null, tint = Brown700Mp, modifier = Modifier.size(16.dp).padding(top = 2.dp))
+                        Text(addr, fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = TextBlack)
+                    }
+                }
+                detail.operatingHours?.let { hours ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(painterResource(R.drawable.ic_schedule), null, tint = Brown700Mp, modifier = Modifier.size(16.dp))
+                        Text(hours, fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = TextBlack)
+                    }
+                }
+                detail.phone?.let { phone ->
+                    Row(
+                        modifier = Modifier.clickable {
+                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                        },
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(painterResource(R.drawable.ic_call), null, tint = Brown700Mp, modifier = Modifier.size(16.dp))
+                        Text(phone, fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = Color(0xFF388AF5))
+                    }
+                }
+            }
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+        }
+
+        // 상세 페이지 버튼
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Brown900Mp)
+                .clickable { onNavigateToDetail() }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "상세 정보 보기",
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 24.sp,
+                color = Color.White,
+            )
         }
     }
 }
@@ -659,6 +843,41 @@ private fun MapPlaceItem(
             )
         }
     }
+}
+
+// ─── Viewport 마커 클러스터링 ──────────────────────────────────────────────────
+
+private data class ViewportMarker(
+    val id: String,
+    val lat: Double,
+    val lng: Double,
+    val count: Int,
+    val singleStore: StoreViewportItem?,  // null = 클러스터
+)
+
+/**
+ * zoom >= 14: 개별 마커
+ * zoom 11~13: 소수점 자리 수 기반 그리드 클러스터링
+ *   zoom 11~12 → 1자리(≈11km 격자), zoom 13 → 2자리(≈1km 격자)
+ */
+private fun computeViewportMarkers(stores: List<StoreViewportItem>, zoom: Int): List<ViewportMarker> {
+    if (zoom >= 14) {
+        return stores.map { ViewportMarker("store_${it.storeId}", it.latitude, it.longitude, 1, it) }
+    }
+    val decimals = if (zoom <= 12) 1 else 2
+    return stores
+        .groupBy { "${"%.${decimals}f".format(it.latitude)},${"%.${decimals}f".format(it.longitude)}" }
+        .map { (key, group) ->
+            val centerLat = group.sumOf { it.latitude } / group.size
+            val centerLng = group.sumOf { it.longitude } / group.size
+            ViewportMarker(
+                id = "cluster_$key",
+                lat = centerLat,
+                lng = centerLng,
+                count = group.size,
+                singleStore = if (group.size == 1) group.first() else null,
+            )
+        }
 }
 
 // ─── 검색 오버레이 (병화-4) ───────────────────────────────────────────────────

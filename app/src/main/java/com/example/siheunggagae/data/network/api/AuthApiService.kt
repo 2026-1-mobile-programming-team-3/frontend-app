@@ -60,6 +60,7 @@ import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.model.StoreReviewCreateResponse
 import com.example.siheunggagae.data.model.StoreReviewListResponse
 import com.example.siheunggagae.data.model.StoreSearchResponse
+import com.example.siheunggagae.data.model.StoreViewportResponse
 import com.example.siheunggagae.data.model.TokenRefreshRequest
 import com.example.siheunggagae.data.model.TokenRefreshResponse
 import com.example.siheunggagae.data.model.UnreadCountResponse
@@ -295,6 +296,15 @@ interface AuthApiService {
         @Query("category") category: String? = null,
         @Query("is_pet_allowed") isPetAllowed: Boolean? = null,
     ): Response<StoreListResponse>
+
+    @GET("api/v1/maps/stores/viewport")
+    suspend fun getStoresByViewport(
+        @Query("sw_lat") swLat: Double,
+        @Query("sw_lng") swLng: Double,
+        @Query("ne_lat") neLat: Double,
+        @Query("ne_lng") neLng: Double,
+        @Query("category") category: String? = null,
+    ): Response<StoreViewportResponse>
 
     @GET("api/v1/maps/stores/{storeId}")
     suspend fun getStoreDetail(@Path("storeId") storeId: Int): Response<StoreDetailResponse>
