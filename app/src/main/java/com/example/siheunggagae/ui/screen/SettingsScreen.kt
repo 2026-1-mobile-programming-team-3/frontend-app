@@ -45,12 +45,16 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,6 +111,7 @@ fun SettingsScreen(
     notifViewModel: NotificationSettingsViewModel? = null,
     locationViewModel: LocationSettingsViewModel? = null,
     accountViewModel: AccountSettingsViewModel? = null,
+    initialSection: String? = null,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -156,6 +161,32 @@ fun SettingsScreen(
         catch (_: Exception) { "—" }
     }
 
+    // ── 섹션 스크롤 ───────────────────────────────────────────────────────────
+    val scrollState = rememberScrollState()
+    var notifSectionY by remember { mutableIntStateOf(-1) }
+    var privacySectionY by remember { mutableIntStateOf(-1) }
+    var sectionScrollDone by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (initialSection == "location") {
+            locationInput = currentDong ?: ""
+            locationError = null
+            showLocationSheet = true
+        }
+    }
+    LaunchedEffect(notifSectionY) {
+        if (initialSection == "notifications" && notifSectionY >= 0 && !sectionScrollDone) {
+            sectionScrollDone = true
+            scrollState.animateScrollTo(notifSectionY)
+        }
+    }
+    LaunchedEffect(privacySectionY) {
+        if (initialSection == "privacy" && privacySectionY >= 0 && !sectionScrollDone) {
+            sectionScrollDone = true
+            scrollState.animateScrollTo(privacySectionY)
+        }
+    }
+
     Scaffold(
         containerColor = BackgroundSt,
         topBar = { SettingsTopBar(onBack = onBack) },
@@ -164,7 +195,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -181,7 +212,9 @@ fun SettingsScreen(
             Spacer(Modifier.height(4.dp))
 
             // ── 알림 ──────────────────────────────────────────────────────────
-            SettingsSectionLabel("알림")
+            Box(modifier = Modifier.onGloballyPositioned { notifSectionY = it.positionInParent().y.toInt() }) {
+                SettingsSectionLabel("알림")
+            }
             SettingsSectionCard {
                 SettingsSwitchItem(imageVector = Icons.Default.Notifications, label = "매칭 알림", checked = matchingNotif,
                     onCheckedChange = { v -> matchingNotifLocal = v; notifViewModel?.toggle(NotifKey.MATCH, v) })
@@ -221,7 +254,9 @@ fun SettingsScreen(
             Spacer(Modifier.height(4.dp))
 
             // ── 기타 ──────────────────────────────────────────────────────────
-            SettingsSectionLabel("기타")
+            Box(modifier = Modifier.onGloballyPositioned { privacySectionY = it.positionInParent().y.toInt() }) {
+                SettingsSectionLabel("기타")
+            }
             SettingsSectionCard {
                 SettingsNavItem(iconRes = R.drawable.ic_help, label = "도움말", onClick = onHelpClick)
                 SettingsDivider()
