@@ -111,7 +111,7 @@ fun HomeScreen(
     unreadCount: Int = 0,
     onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
-    onPlaceDetailClick: (Int) -> Unit = {},
+    onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onNewsDetailClick: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -435,7 +435,7 @@ fun NearbyStoresSection(
     miniMapView: MapView,
     onCategorySelected: (StoreCategory) -> Unit = {},
     onMapClick: () -> Unit = {},
-    onPlaceDetailClick: (Int) -> Unit = {},
+    onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onFavoriteClick: (StoreResponse) -> Unit = {},
 ) {
     Column(
@@ -548,7 +548,7 @@ fun NearbyStoresSection(
 private fun HomeStoreItem(
     number: Int,
     store: StoreResponse,
-    onPlaceDetailClick: (Int) -> Unit,
+    onPlaceDetailClick: (Int, Double, Double) -> Unit,
     onFavoriteClick: (StoreResponse) -> Unit,
 ) {
     val distanceText = store.distanceM?.let {
@@ -558,7 +558,7 @@ private fun HomeStoreItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onPlaceDetailClick(store.resolvedId) }
+            .clickable { onPlaceDetailClick(store.resolvedId, store.latitude, store.longitude) }
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

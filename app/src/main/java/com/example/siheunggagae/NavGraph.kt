@@ -118,12 +118,13 @@ sealed class Screen(val route: String) {
     object RequestFlow  : Screen("request_flow")
     object MyRequests   : Screen("my_requests")
     object Map          : Screen("map") {
-        fun createRoute(focusLat: Double, focusLng: Double) =
-            "map?focusLat=$focusLat&focusLng=$focusLng"
+        fun createRoute(focusLat: Double, focusLng: Double, focusStoreId: Int = 0) =
+            "map?volunteerMode=false&focusLat=$focusLat&focusLng=$focusLng&focusStoreId=$focusStoreId"
     }
     object News         : Screen("news")
-    object PlaceDetail  : Screen("place_detail/{placeId}") {
-        fun createRoute(placeId: Int) = "place_detail/$placeId"
+    object PlaceDetail  : Screen("place_detail/{placeId}?lat={lat}&lng={lng}") {
+        fun createRoute(placeId: Int, lat: Double = 0.0, lng: Double = 0.0) =
+            "place_detail/$placeId?lat=$lat&lng=$lng"
     }
     object My              : Screen("my")
     object Settings        : Screen("settings")
@@ -345,7 +346,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 unreadCount = unreadCountState.value,
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
-                onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
+                onPlaceDetailClick = { placeId, lat, lng -> navController.navigate(Screen.PlaceDetail.createRoute(placeId, lat, lng)) },
                 onNewsDetailClick = { newsId -> navController.navigate(Screen.NewsDetail.createRoute(newsId)) },
             )
         }
@@ -424,16 +425,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(
-            route = "${Screen.Map.route}?volunteerMode={volunteerMode}&focusLat={focusLat}&focusLng={focusLng}",
+            route = "${Screen.Map.route}?volunteerMode={volunteerMode}&focusLat={focusLat}&focusLng={focusLng}&focusStoreId={focusStoreId}",
             arguments = listOf(
                 navArgument("volunteerMode") { type = NavType.BoolType; defaultValue = false },
                 navArgument("focusLat") { type = NavType.StringType; defaultValue = "0.0" },
                 navArgument("focusLng") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("focusStoreId") { type = NavType.IntType; defaultValue = 0 },
             ),
         ) { backStackEntry ->
             val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
             val focusLat = backStackEntry.arguments?.getString("focusLat")?.toDoubleOrNull() ?: 0.0
             val focusLng = backStackEntry.arguments?.getString("focusLng")?.toDoubleOrNull() ?: 0.0
+            val focusStoreId = backStackEntry.arguments?.getInt("focusStoreId") ?: 0
             MapScreen(
                 onNavigate = { route ->
                     if (route == Screen.Home.route || route == Screen.Matching.route ||
@@ -445,6 +448,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 startVolunteerMode = volunteerMode,
                 focusLat = focusLat,
                 focusLng = focusLng,
+                focusStoreId = focusStoreId,
             )
         }
 
@@ -474,16 +478,23 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(
             route = Screen.PlaceDetail.route,
-            arguments = listOf(navArgument("placeId") { type = NavType.IntType }),
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.IntType },
+                navArgument("lat") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("lng") { type = NavType.StringType; defaultValue = "0.0" },
+            ),
         ) { backStackEntry ->
             val placeId = backStackEntry.arguments?.getInt("placeId") ?: 0
+            val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull() ?: 0.0
+            val lng = backStackEntry.arguments?.getString("lng")?.toDoubleOrNull() ?: 0.0
             PlaceDetailScreen(
                 placeId = placeId,
+                initialLat = lat,
+                initialLng = lng,
                 onBack = { navController.popBackStack() },
-                onNavigateToMap = { lat, lng ->
-                    navController.navigate(Screen.Map.createRoute(lat, lng)) {
-                        launchSingleTop = true
-                        popUpTo(Screen.Home.route) { saveState = true }
+                onNavigateToMap = { lat, lng, storeId ->
+                    navController.navigate(Screen.Map.createRoute(lat, lng, storeId)) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
             )
