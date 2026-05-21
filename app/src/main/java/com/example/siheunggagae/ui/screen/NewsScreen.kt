@@ -108,7 +108,6 @@ fun NewsScreen(
     Scaffold(
         containerColor = BackgroundNs,
         topBar = { NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick) },
-        bottomBar = { AppBottomBar(currentRoute = Screen.News.route, onNavigate = onNavigate) },
     ) { innerPadding ->
         if (isLoading) {
             Box(
@@ -120,7 +119,7 @@ fun NewsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(bottom = 16.dp),
+                contentPadding = PaddingValues(bottom = 96.dp),
             ) {
                 item {
                     Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {

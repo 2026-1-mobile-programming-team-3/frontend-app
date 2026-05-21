@@ -151,7 +151,6 @@ fun MyScreen(
 
     Scaffold(
         topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
-        bottomBar = { AppBottomBar(currentRoute = Screen.My.route, onNavigate = onNavigate) },
         containerColor = Background9,
     ) { padding ->
         when (uiState) {
@@ -246,7 +245,7 @@ fun MyScreen(
                     )
                     Spacer(Modifier.height(16.dp))
                     LogoutButton(onClick = { showLogoutDialog = true })
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(96.dp))
                 }
             }
         }

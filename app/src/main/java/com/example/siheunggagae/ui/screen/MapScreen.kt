@@ -222,7 +222,6 @@ fun MapScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
-        bottomBar = { AppBottomBar(currentRoute = Screen.Map.route, onNavigate = onNavigate) },
     ) { navPadding ->
         BottomSheetScaffold(
             modifier = Modifier.padding(navPadding),

@@ -148,7 +148,6 @@ fun MatchingScreen(
     Scaffold(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
-        bottomBar = { AppBottomBar(currentRoute = Screen.Matching.route, onNavigate = onNavigate) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onRequestFlowClick,
@@ -165,6 +164,7 @@ fun MatchingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item { SummaryCards() }
