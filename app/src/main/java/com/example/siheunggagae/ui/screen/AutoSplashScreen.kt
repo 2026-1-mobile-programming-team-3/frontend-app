@@ -1,24 +1,21 @@
 package com.example.siheunggagae.ui.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.example.siheunggagae.SiheungGagaeApp
 import com.example.siheunggagae.data.repository.AuthRepository
-import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -62,37 +59,20 @@ fun AutoSplashScreen(
 
 @Composable
 private fun SplashLogo() {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.White),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "🐾",
-                fontSize = 64.sp,
-            )
-            Text(
-                text = "시흥가개",
-                fontFamily = PretendardFamily,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 48.sp,
-                color = Color(0xFF8A6E58),
-            )
-            Text(
-                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Color(0xFFC4A882),
-            )
-        }
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data("file:///android_asset/logo.svg")
+                .build(),
+            contentDescription = "시흥가개 로고",
+            modifier = Modifier.size(200.dp),
+        )
     }
 }
 
