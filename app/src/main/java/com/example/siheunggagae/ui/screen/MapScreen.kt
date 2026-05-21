@@ -304,12 +304,21 @@ fun MapScreen(
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             sheetDragHandle = { MapDragHandle() },
             sheetContent = {
-                MapBottomSheetContent(
-                    stores = uiState.stores,
-                    totalCount = uiState.totalCount,
-                    onStoreClick = { store -> viewModel.selectStore(store) },
-                    onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
-                )
+                if (uiState.isVolunteerMode) {
+                    VolunteerBottomSheetContent(
+                        volunteers = uiState.volunteerMarkers,
+                        onItemClick = { vol ->
+                            mapWrapper.moveCamera(vol.latitude, vol.longitude, 16)
+                        },
+                    )
+                } else {
+                    MapBottomSheetContent(
+                        stores = uiState.stores,
+                        totalCount = uiState.totalCount,
+                        onStoreClick = { store -> viewModel.selectStore(store) },
+                        onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
+                    )
+                }
             },
             containerColor = Color.Transparent,
         ) { _ ->
@@ -591,6 +600,105 @@ private fun MapBottomSheetContent(
                         onClick = { onStoreClick(store) },
                         onFavoriteToggle = { onFavoriteToggle(store) },
                     )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = Color(0xFFF3F4F6),
+                    )
+                }
+                item { Spacer(Modifier.height(16.dp)) }
+            }
+        }
+    }
+}
+
+// ─── 봉사활동 바텀시트 ────────────────────────────────────────────────────────
+
+@Composable
+private fun VolunteerBottomSheetContent(
+    volunteers: List<VolunteerMarkerDto>,
+    onItemClick: (VolunteerMarkerDto) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "봉사활동 요청 ${volunteers.size}건",
+                fontFamily = PretendardFamily,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack,
+            )
+        }
+        HorizontalDivider(color = Color(0xFFF3F4F6))
+        if (volunteers.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = 48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "주변 봉사 요청이 없습니다",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Brown700Mp,
+                )
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(volunteers, key = { it.requestId }) { vol ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onItemClick(vol) }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFE8F4FD)),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_handshake),
+                                contentDescription = null,
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = vol.title ?: "봉사 요청",
+                                fontFamily = PretendardFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 22.sp,
+                                color = TextBlack,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = vol.status ?: "",
+                                fontFamily = PretendardFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Brown700Mp,
+                            )
+                        }
+                        Icon(
+                            painter = painterResource(R.drawable.ic_location_on),
+                            contentDescription = null,
+                            tint = Color(0xFF2196F3),
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                     HorizontalDivider(
                         modifier = Modifier.padding(horizontal = 20.dp),
                         color = Color(0xFFF3F4F6),
