@@ -213,7 +213,7 @@ fun PlaceDetailScreen(
         scope.launch {
             val ok = runCatching {
                 val resp = if (newFavorited) RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId))
-                           else RetrofitClient.api.removeFavoriteStore(placeId)
+                           else RetrofitClient.api.deleteFavoriteStore(placeId)
                 resp.isSuccessful
                     || (newFavorited && resp.code() == 409)
                     || (!newFavorited && resp.code() == 404)

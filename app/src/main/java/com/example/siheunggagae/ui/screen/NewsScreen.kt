@@ -67,14 +67,22 @@ private val PlaceholderNs  = Color(0xFFC1AFA0)
 
 private val newsCategories = listOf("전체", "정책", "행사", "봉사", "지원")
 
-private fun categoryColor(category: String?) = when (category) {
+private fun categoryToKorean(category: String?) = when (category?.uppercase()) {
+    "POLICY"    -> "정책"
+    "EVENT"     -> "행사"
+    "VOLUNTEER" -> "봉사"
+    "SUPPORT"   -> "지원"
+    else        -> category ?: "소식"
+}
+
+private fun categoryColor(category: String?) = when (categoryToKorean(category)) {
     "행사" -> Green500Ns
     "봉사" -> Pink500Ns
     "지원" -> Orange500Ns
     else   -> Brown700Ns
 }
 
-private fun categoryImageBg(category: String?) = when (category) {
+private fun categoryImageBg(category: String?) = when (categoryToKorean(category)) {
     "행사" -> MintNs
     "봉사" -> PinkSurfaceNs
     "지원" -> Color(0xFFFFF3E0)
@@ -103,7 +111,7 @@ fun NewsScreen(
     }
 
     val filteredList = if (selectedCategory == "전체") newsList
-                       else newsList.filter { (it.category ?: "") == selectedCategory }
+                       else newsList.filter { categoryToKorean(it.category) == selectedCategory }
 
     Scaffold(
         containerColor = BackgroundNs,
@@ -335,7 +343,7 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = item.category ?: "소식",
+                    text = categoryToKorean(item.category),
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -401,7 +409,7 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                text = item.category ?: "소식",
+                text = categoryToKorean(item.category),
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
@@ -444,7 +452,7 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
-            text = item.category ?: "소식",
+            text = categoryToKorean(item.category),
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,

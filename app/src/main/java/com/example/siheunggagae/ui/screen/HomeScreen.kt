@@ -574,7 +574,7 @@ private fun HomeStoreItem(
             Text(store.name, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH)
             Text(
                 text = buildString {
-                    append(store.category)
+                    append(storeApiToKorean(store.category))
                     if (distanceText.isNotEmpty()) append(" · $distanceText")
                     if (store.ratingAvg != null) append(" · ⭐ ${"%.1f".format(store.ratingAvg)}")
                 },
@@ -652,7 +652,7 @@ fun PetNewsSection(
             Column(modifier = Modifier.weight(1f)) {
                 if (mainNews != null) {
                     val (tColor, tBg) = newsTagColors(mainNews.category ?: "")
-                    HomeTagChip(text = mainNews.category ?: "", textColor = tColor, bgColor = tBg)
+                    HomeTagChip(text = newsApiToKorean(mainNews.category), textColor = tColor, bgColor = tBg)
                     Spacer(Modifier.height(5.dp))
                     Text(mainNews.title ?: "", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 28.sp, color = TextBlackH, maxLines = 2)
                     Spacer(Modifier.height(4.dp))
@@ -688,7 +688,7 @@ fun PetNewsSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                HomeTagChip(item.category ?: "", tColor, tBg)
+                HomeTagChip(newsApiToKorean(item.category), tColor, tBg)
                 Text(item.title ?: "", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH, modifier = Modifier.weight(1f))
                 Text(item.publishedDate ?: "", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = GrayTextH)
             }
@@ -817,7 +817,18 @@ private fun HomeTagChip(text: String, textColor: Color, bgColor: Color) {
     }
 }
 
-private fun newsTagColors(category: String): Pair<Color, Color> = when (category) {
+private fun newsApiToKorean(category: String?) = when (category?.uppercase()) {
+    "POLICY"    -> "정책"
+    "EVENT"     -> "행사"
+    "VOLUNTEER" -> "봉사"
+    "SUPPORT"   -> "지원"
+    else        -> category ?: ""
+}
+
+private fun storeApiToKorean(category: String?): String =
+    StoreCategory.entries.find { it.apiValue == category }?.label ?: category ?: ""
+
+private fun newsTagColors(category: String): Pair<Color, Color> = when (newsApiToKorean(category)) {
     "지원" -> Pair(Color(0xFF0284C7), Color(0xFFE0F2FE))
     "행사" -> Pair(Color(0xFF7C3AED), Color(0xFFF5F3FF))
     "봉사" -> Pair(Color(0xFF059669), Color(0xFFD1FAE5))
