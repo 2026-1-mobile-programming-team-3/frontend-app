@@ -1,11 +1,13 @@
 package com.example.siheunggagae.ui.screen
 
+import com.example.siheunggagae.MapViewWrapper
 import com.example.siheunggagae.R
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color as AndroidColor
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +32,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +46,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,8 +60,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,6 +71,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.example.siheunggagae.data.local.FavoritesCache
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreReview
@@ -72,6 +82,7 @@ import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.kakao.vectormap.MapView
 import kotlinx.coroutines.launch
 
 // ─── Colors ────────────────────────────────────────────────────────────────────
@@ -96,9 +107,13 @@ private val MapSkyPL     = Color(0xFFE0F7FA)
 @Composable
 fun PlaceDetailScreen(
     placeId: Int = 0,
+    initialLat: Double = 0.0,
+    initialLng: Double = 0.0,
     onBack: () -> Unit = {},
+    onNavigateToMap: (lat: Double, lng: Double, storeId: Int) -> Unit = { _, _, _ -> },
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var store by remember { mutableStateOf<StoreDetailResponse?>(null) }
     var reviews by remember { mutableStateOf<List<StoreReview>>(emptyList()) }
@@ -106,16 +121,63 @@ fun PlaceDetailScreen(
     var isFavorited by remember { mutableStateOf(false) }
     var showReviewSheet by remember { mutableStateOf(false) }
     var myNickname by remember { mutableStateOf<String?>(null) }
+    var myUserId by remember { mutableStateOf<Int?>(null) }
     var displayCount by remember { mutableIntStateOf(3) }
 
+    val mapView = remember { MapView(context) }
+    val mapWrapper = remember { MapViewWrapper(mapView) }
+    var mapReady by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapWrapper.resume()
+                Lifecycle.Event.ON_PAUSE  -> mapWrapper.pause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            mapView.finish()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        mapWrapper.init { mapReady = true }
+    }
+
+    LaunchedEffect(mapReady, store) {
+        if (!mapReady || store == null) return@LaunchedEffect
+        val lat = store?.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 } ?: return@LaunchedEffect
+        val lng = store?.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 } ?: return@LaunchedEffect
+        mapWrapper.addMarker(
+            id = "detail_pin",
+            lat = lat,
+            lng = lng,
+            markerColor = AndroidColor.parseColor("#F14369"),
+        )
+        mapWrapper.moveCamera(lat, lng, 16)
+    }
+
     LaunchedEffect(placeId) {
-        myNickname = runCatching { RetrofitClient.api.getMe().body()?.nickname }.getOrNull()
+        val me = runCatching { RetrofitClient.api.getMe().body() }.getOrNull()
+        myNickname = me?.nickname
+        myUserId = me?.id
         if (placeId > 0) {
             store = runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }.getOrNull()
             reviews = runCatching {
                 RetrofitClient.api.getStoreReviews(placeId).body()?.reviews ?: emptyList()
             }.getOrDefault(emptyList())
-            isFavorited = store?.isFavorited == true
+            // FavoritesCache 공유 상태로 즐겨찾기 여부 확인
+            if (!FavoritesCache.isLoaded) {
+                val items = runCatching {
+                    RetrofitClient.api.getFavoriteStores().body()?.items
+                }.getOrNull()
+                val ids = items?.mapNotNull { it.storeId }?.toSet() ?: emptySet()
+                FavoritesCache.init(ids)
+            }
+            isFavorited = FavoritesCache.contains(placeId)
         }
         isLoading = false
     }
@@ -145,13 +207,20 @@ fun PlaceDetailScreen(
     }
 
     fun toggleFavorite() {
+        val newFavorited = !isFavorited
+        isFavorited = newFavorited
+        if (newFavorited) FavoritesCache.add(placeId) else FavoritesCache.remove(placeId)
         scope.launch {
-            if (isFavorited) {
-                runCatching { RetrofitClient.api.deleteFavoriteStore(placeId) }
-                isFavorited = false
-            } else {
-                runCatching { RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId)) }
-                isFavorited = true
+            val ok = runCatching {
+                val resp = if (newFavorited) RetrofitClient.api.addFavoriteStore(FavoriteStoreCreateRequest(placeId))
+                           else RetrofitClient.api.deleteFavoriteStore(placeId)
+                resp.isSuccessful
+                    || (newFavorited && resp.code() == 409)
+                    || (!newFavorited && resp.code() == 404)
+            }.getOrDefault(false)
+            if (!ok) {
+                isFavorited = !newFavorited
+                if (!newFavorited) FavoritesCache.add(placeId) else FavoritesCache.remove(placeId)
             }
         }
     }
@@ -225,7 +294,7 @@ fun PlaceDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(20.dp))
+                                Icon(imageVector = Icons.Filled.Star, null, tint = StarYellowPL, modifier = Modifier.size(20.dp))
                                 Text(
                                     text = "%.1f".format(s.ratingAvg),
                                     fontFamily = PretendardFamily,
@@ -350,42 +419,63 @@ fun PlaceDetailScreen(
                             lineHeight = 16.sp,
                             color = Brown700PL,
                         )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_location_on),
-                                contentDescription = null,
-                                tint = Pink500PL,
-                                modifier = Modifier.size(32.dp).align(Alignment.Center),
-                            )
-                            if (!s.address.isNullOrEmpty()) {
-                                Row(
+                        val mapLat = s.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
+                        val mapLng = s.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
+                        val hasLocation = mapLat != null && mapLng != null
+                        if (hasLocation) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(24.dp)),
+                            ) {
+                                AndroidView(
+                                    factory = { mapView },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                                // 모든 터치 소비 → 지도 조작 막고 탭만 화면 전환
+                                Box(
                                     modifier = Modifier
-                                        .align(Alignment.BottomStart)
-                                        .padding(12.dp)
-                                        .clip(RoundedCornerShape(50.dp))
-                                        .background(Color.White)
-                                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500PL, modifier = Modifier.size(12.dp))
-                                    Text(
-                                        text = s.address.take(10),
-                                        fontFamily = PretendardFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        lineHeight = 16.sp,
-                                        color = TextBlackPL,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                                        .fillMaxSize()
+                                        .clickable {
+                                            onNavigateToMap(mapLat!!, mapLng!!, placeId)
+                                        },
+                                )
+                                if (!s.address.isNullOrEmpty()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(12.dp)
+                                            .clip(RoundedCornerShape(50.dp))
+                                            .background(Color.White)
+                                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500PL, modifier = Modifier.size(12.dp))
+                                        Text(
+                                            text = s.address.take(10),
+                                            fontFamily = PretendardFamily,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            lineHeight = 16.sp,
+                                            color = TextBlackPL,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .clip(RoundedCornerShape(24.dp))
+                                    .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("위치 정보 없음", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700PL)
                             }
                         }
                     }
@@ -445,7 +535,10 @@ fun PlaceDetailScreen(
                                     color = TextBlackPL,
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    repeat(5) { Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(18.dp)) }
+                                    val filled = s.ratingAvg?.let { Math.round(it).toInt() } ?: 0
+                                    repeat(5) { i ->
+                                        Icon(imageVector = Icons.Filled.Star, null, tint = if (i < filled) StarYellowPL else Gray100PL, modifier = Modifier.size(18.dp))
+                                    }
                                 }
                                 Text(
                                     text = "총 ${reviews.size}개의 리뷰",
@@ -462,15 +555,27 @@ fun PlaceDetailScreen(
 
                 // 리뷰 목록 (displayCount만큼만 표시)
                 items(reviews.take(displayCount)) { review ->
+                    val uid = myUserId
+                    val nick = myNickname
+                    val isMyReview = when {
+                        uid != null && review.userId != null -> review.userId == uid
+                        nick != null && review.nickname != null -> review.nickname.trim() == nick.trim()
+                        else -> false
+                    }
                     PlaceReviewCardFromApi(
                         review = review,
-                        isMyReview = myNickname != null && review.nickname == myNickname,
+                        isMyReview = isMyReview,
                         onDelete = {
                             val rid = review.reviewId ?: return@PlaceReviewCardFromApi
                             scope.launch {
-                                runCatching { RetrofitClient.api.deleteStoreReview(placeId, rid) }
-                                reviews = reviews.filter { it.reviewId != rid }
-                                store = runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }.getOrNull()
+                                val deleted = runCatching {
+                                    RetrofitClient.api.deleteStoreReview(placeId, rid)
+                                }.getOrNull()?.let { it.isSuccessful || it.code() == 404 } ?: false
+                                if (deleted) {
+                                    reviews = reviews.filter { it.reviewId != rid }
+                                    runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }
+                                        .getOrNull()?.let { store = it }
+                                }
                             }
                         },
                         modifier = Modifier
@@ -525,8 +630,10 @@ fun PlaceDetailScreen(
             onSubmitted = {
                 showReviewSheet = false
                 scope.launch {
-                    reviews = runCatching { RetrofitClient.api.getStoreReviews(placeId).body()?.reviews ?: emptyList() }.getOrDefault(emptyList())
-                    store = runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }.getOrNull()
+                    runCatching { RetrofitClient.api.getStoreReviews(placeId).body()?.reviews }
+                        .getOrNull()?.let { reviews = it }
+                    runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }
+                        .getOrNull()?.let { store = it }
                 }
             },
         )
@@ -577,9 +684,9 @@ private fun PlaceDetailTopBar(
                     .clickable { onFavoriteToggle() },
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_bookmark),
+                    painter = painterResource(R.drawable.ic_favorite),
                     contentDescription = "즐겨찾기",
-                    tint = if (isFavorited) Pink500PL else TextBlackPL,
+                    tint = if (isFavorited) Pink500PL else BrownBorderPL,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -727,8 +834,8 @@ private fun PlaceReviewCardFromApi(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     val rating = review.rating ?: 0
-                    repeat(rating) {
-                        Icon(painter = painterResource(R.drawable.ic_star), null, tint = StarYellowPL, modifier = Modifier.size(12.dp))
+                    repeat(5) { i ->
+                        Icon(imageVector = Icons.Filled.Star, null, tint = if (i < rating) StarYellowPL else Gray100PL, modifier = Modifier.size(12.dp))
                     }
                 }
             }
@@ -810,6 +917,7 @@ private fun ReviewWriteSheet(
     onDismiss: () -> Unit,
     onSubmitted: () -> Unit,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var rating by remember { mutableIntStateOf(0) }
     var isPetAllowed by remember { mutableStateOf(true) }
@@ -842,7 +950,7 @@ private fun ReviewWriteSheet(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     repeat(5) { index ->
                         Icon(
-                            painter = painterResource(R.drawable.ic_star),
+                            imageVector = Icons.Filled.Star,
                             contentDescription = null,
                             tint = if (index < rating) StarYellowPL else Gray100PL,
                             modifier = Modifier.size(32.dp).clickable { rating = index + 1 },
@@ -908,13 +1016,27 @@ private fun ReviewWriteSheet(
                     .clickable(enabled = rating > 0 && content.isNotBlank() && !isSubmitting) {
                         isSubmitting = true
                         scope.launch {
-                            runCatching {
+                            val result = runCatching {
                                 RetrofitClient.api.createStoreReview(
                                     storeId,
                                     StoreReviewCreateRequest(rating = rating, isPetAllowed = isPetAllowed, content = content),
                                 )
                             }
-                            onSubmitted()
+                            val response = result.getOrNull()
+                            val code = response?.code()
+                            if (response?.isSuccessful == true) {
+                                onSubmitted()
+                            } else {
+                                isSubmitting = false
+                                val msg = when (code) {
+                                    409 -> "이미 리뷰를 작성한 매장입니다."
+                                    422 -> "입력 내용을 확인해 주세요."
+                                    401, 403 -> "로그인이 필요합니다."
+                                    null -> "네트워크 오류가 발생했습니다."
+                                    else -> "등록에 실패했습니다. (HTTP $code)"
+                                }
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
             ) {

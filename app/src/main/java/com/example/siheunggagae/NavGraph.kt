@@ -1,8 +1,27 @@
 package com.example.siheunggagae
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateBounds
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -48,6 +68,7 @@ import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -57,9 +78,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.ui.unit.Dp
+import androidx.compose.animation.core.animateDpAsState
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -121,10 +146,14 @@ sealed class Screen(val route: String) {
         fun createRoute(requestId: Int) = "request_flow?requestId=$requestId"
     }
     object MyRequests   : Screen("my_requests")
-    object Map          : Screen("map")
+    object Map          : Screen("map") {
+        fun createRoute(focusLat: Double, focusLng: Double, focusStoreId: Int = 0) =
+            "map?volunteerMode=false&focusLat=$focusLat&focusLng=$focusLng&focusStoreId=$focusStoreId"
+    }
     object News         : Screen("news")
-    object PlaceDetail  : Screen("place_detail/{placeId}") {
-        fun createRoute(placeId: Int) = "place_detail/$placeId"
+    object PlaceDetail  : Screen("place_detail/{placeId}?lat={lat}&lng={lng}") {
+        fun createRoute(placeId: Int, lat: Double = 0.0, lng: Double = 0.0) =
+            "place_detail/$placeId?lat=$lat&lng=$lng"
     }
     object My              : Screen("my")
     object Settings        : Screen("settings")
@@ -171,69 +200,168 @@ private val bottomNavEntries = listOf(
     BottomNavEntry(iconRes = R.drawable.ic_person,    label = "마이", route = Screen.My.route),
 )
 
+// ─── 애니메이션 튜닝 상수 ─────────────────────────────────────────────────────
+// iOS 표준 ease-out (cubic-bezier(0.32, 0.72, 0, 1)) — 빠르게 시작해서 부드럽게 정착.
+// Apple Human Interface Guidelines 의 system curve 와 같은 특성.
+private val AppleEaseOut = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
+// iOS 표준 ease-in-out — push/pop 전환의 자연스러운 가속/감속.
+private val AppleEaseInOut = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
+
+// 화면 전환 시간 (Apple 느낌의 충분히 긴 듀레이션)
+private const val SCREEN_ENTER_MS = 380
+private const val SCREEN_EXIT_MS = 320
+private const val SCREEN_FADE_MS = 280
+
+// 도크 morph 듀레이션. 화면 전환과 동시에 끝나도록 살짝 짧게 잡는다.
+// spring 대신 tween — overshoot 없이 정확하게 정착해서 전환 끝난 뒤 흔들림 제거.
+private const val DOCK_MORPH_MS = 320
+private val DockColorAnim = tween<Color>(DOCK_MORPH_MS, easing = AppleEaseOut)
+private val DockDpAnim = tween<Dp>(DOCK_MORPH_MS, easing = AppleEaseOut)
+private val DockFloatAnim = tween<Float>(DOCK_MORPH_MS, easing = AppleEaseOut)
+private val DockSizeAnim = tween<androidx.compose.ui.unit.IntSize>(
+    DOCK_MORPH_MS,
+    easing = AppleEaseOut,
+)
+
+// 도크 아이콘 크기 — 선택/미선택 모두 동일하게 유지해서 통일감 확보.
+private val DockIconSize = 22.dp
+
+// LookaheadScope 가 자식 bounds 변화를 사전 측정해 위치를 매끄럽게 보간하도록 하는 BoundsTransform.
+// SpaceEvenly 가 픽셀 단위로 위치를 재계산할 때 생기는 미세한 점프(stutter)를 제거한다.
+@OptIn(ExperimentalSharedTransitionApi::class)
+private val DockBoundsTransform = BoundsTransform { _, _ ->
+    tween(DOCK_MORPH_MS, easing = AppleEaseOut)
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 6.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(50.dp))
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.White)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            bottomNavEntries.forEach { entry ->
-                val selected = currentRoute == entry.route
-                if (selected) {
-                    Row(
-                        modifier = Modifier
-                            .wrapContentWidth()
-                            .clip(RoundedCornerShape(50.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .clickable { }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        if (entry.icon != null) {
-                            Icon(imageVector = entry.icon, contentDescription = entry.label, tint = Color.White, modifier = Modifier.size(18.dp))
-                        } else if (entry.iconRes != null) {
-                            Icon(painter = painterResource(entry.iconRes), contentDescription = entry.label, tint = Color.White, modifier = Modifier.size(18.dp))
-                        }
-                        Text(
-                            text = entry.label,
-                            fontFamily = PretendardFamily,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            lineHeight = 16.sp,
-                            color = Color.White,
-                        )
-                    }
-                } else {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .clickable { onNavigate(entry.route) },
-                    ) {
-                        if (entry.icon != null) {
-                            Icon(imageVector = entry.icon, contentDescription = entry.label, tint = Color(0xFFC4A882), modifier = Modifier.size(22.dp))
-                        } else if (entry.iconRes != null) {
-                            Icon(painter = painterResource(entry.iconRes), contentDescription = entry.label, tint = Color(0xFFC4A882), modifier = Modifier.size(22.dp))
-                        }
-                    }
+        LookaheadScope {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                bottomNavEntries.forEach { entry ->
+                    BottomNavItem(
+                        modifier = Modifier.animateBounds(
+                            lookaheadScope = this@LookaheadScope,
+                            boundsTransform = DockBoundsTransform,
+                        ),
+                        entry = entry,
+                        selected = currentRoute == entry.route,
+                        onClick = { onNavigate(entry.route) },
+                    )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun BottomNavItem(
+    modifier: Modifier = Modifier,
+    entry: BottomNavEntry,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) Color(0xFF1A1A1A) else Color.Transparent,
+        animationSpec = DockColorAnim,
+        label = "dockBg",
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) Color.White else Color(0xFFC4A882),
+        animationSpec = DockColorAnim,
+        label = "dockIcon",
+    )
+    val hPadding by animateDpAsState(
+        targetValue = if (selected) 14.dp else 10.dp,
+        animationSpec = DockDpAnim,
+        label = "dockPad",
+    )
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50.dp))
+            .background(bgColor)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = hPadding, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (entry.icon != null) {
+            Icon(
+                imageVector = entry.icon,
+                contentDescription = entry.label,
+                tint = iconColor,
+                modifier = Modifier.size(DockIconSize),
+            )
+        } else if (entry.iconRes != null) {
+            Icon(
+                painter = painterResource(entry.iconRes),
+                contentDescription = entry.label,
+                tint = iconColor,
+                modifier = Modifier.size(DockIconSize),
+            )
+        }
+        AnimatedVisibility(
+            visible = selected,
+            enter = expandHorizontally(animationSpec = DockSizeAnim) +
+                fadeIn(animationSpec = DockFloatAnim),
+            exit = shrinkHorizontally(animationSpec = DockSizeAnim) +
+                fadeOut(animationSpec = DockFloatAnim),
+        ) {
+            Text(
+                text = entry.label,
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 16.sp,
+                color = Color.White,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+// ─── 화면 전환 애니메이션 헬퍼 ─────────────────────────────────────────────────
+
+private fun isTopLevelTabRoute(route: String?): Boolean {
+    if (route == null) return false
+    return route == Screen.Home.route ||
+        route == Screen.Matching.route ||
+        route.startsWith(Screen.Map.route) ||
+        route == Screen.News.route ||
+        route == Screen.My.route
+}
+
+private fun isTopLevelTab(entry: NavBackStackEntry): Boolean =
+    isTopLevelTabRoute(entry.destination.route)
+
+// 실제 라우트(예: "map?volunteerMode=false")를 탭 슬롯과 매칭되도록 정규화.
+private fun normalizeTabRoute(route: String?): String =
+    when {
+        route == null -> ""
+        route.startsWith(Screen.Map.route) -> Screen.Map.route
+        else -> route
+    }
 
 // ─── NavHost ───────────────────────────────────────────────────────────────────
 
@@ -248,9 +376,65 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
     }
 
+    // 단일 공유 BottomBar — 탭 라우트일 때만 표시하고, 라우트가 바뀔 때만
+    // morph 애니메이션이 일어나도록 NavHost 위에 한 번만 mount.
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+    val showBottomBar = isTopLevelTabRoute(currentRoute)
+    val tabRoute = normalizeTabRoute(currentRoute)
+
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
         startDestination = Screen.AutoSplash.route,
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = {
+            if (isTopLevelTab(initialState) && isTopLevelTab(targetState)) {
+                // Shared Axis Z: 같은 레벨 탭 전환 — fade + 살짝 줌인
+                fadeIn(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)) +
+                    scaleIn(initialScale = 0.94f, animationSpec = tween(SCREEN_ENTER_MS, easing = AppleEaseOut))
+            } else {
+                // Shared Axis X: 푸시 — 오른쪽에서 슬라이드 인 + fade
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(SCREEN_ENTER_MS, easing = AppleEaseInOut),
+                ) + fadeIn(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut))
+            }
+        },
+        exitTransition = {
+            if (isTopLevelTab(initialState) && isTopLevelTab(targetState)) {
+                fadeOut(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)) +
+                    scaleOut(targetScale = 1.04f, animationSpec = tween(SCREEN_EXIT_MS, easing = AppleEaseOut))
+            } else {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(SCREEN_EXIT_MS, easing = AppleEaseInOut),
+                ) + fadeOut(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut))
+            }
+        },
+        popEnterTransition = {
+            if (isTopLevelTab(initialState) && isTopLevelTab(targetState)) {
+                fadeIn(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)) +
+                    scaleIn(initialScale = 0.94f, animationSpec = tween(SCREEN_ENTER_MS, easing = AppleEaseOut))
+            } else {
+                // 뒤로가기: 왼쪽에서 슬라이드 인
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(SCREEN_ENTER_MS, easing = AppleEaseInOut),
+                ) + fadeIn(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut))
+            }
+        },
+        popExitTransition = {
+            if (isTopLevelTab(initialState) && isTopLevelTab(targetState)) {
+                fadeOut(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)) +
+                    scaleOut(targetScale = 1.04f, animationSpec = tween(SCREEN_EXIT_MS, easing = AppleEaseOut))
+            } else {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(SCREEN_EXIT_MS, easing = AppleEaseInOut),
+                ) + fadeOut(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut))
+            }
+        },
     ) {
         // 재호-1: 로고 스플래시 + 토큰 확인 → 홈 or 시작 화면
         composable(Screen.AutoSplash.route) {
@@ -346,7 +530,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 unreadCount = unreadCountState.value,
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
-                onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
+                onPlaceDetailClick = { placeId, lat, lng -> navController.navigate(Screen.PlaceDetail.createRoute(placeId, lat, lng)) },
                 onNewsDetailClick = { newsId -> navController.navigate(Screen.NewsDetail.createRoute(newsId)) },
             )
         }
@@ -504,13 +688,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(
-            route = "${Screen.Map.route}?volunteerMode={volunteerMode}",
-            arguments = listOf(navArgument("volunteerMode") {
-                type = NavType.BoolType
-                defaultValue = false
-            }),
+            route = "${Screen.Map.route}?volunteerMode={volunteerMode}&focusLat={focusLat}&focusLng={focusLng}&focusStoreId={focusStoreId}",
+            arguments = listOf(
+                navArgument("volunteerMode") { type = NavType.BoolType; defaultValue = false },
+                navArgument("focusLat") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("focusLng") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("focusStoreId") { type = NavType.IntType; defaultValue = 0 },
+            ),
         ) { backStackEntry ->
             val volunteerMode = backStackEntry.arguments?.getBoolean("volunteerMode") ?: false
+            val focusLat = backStackEntry.arguments?.getString("focusLat")?.toDoubleOrNull() ?: 0.0
+            val focusLng = backStackEntry.arguments?.getString("focusLng")?.toDoubleOrNull() ?: 0.0
+            val focusStoreId = backStackEntry.arguments?.getInt("focusStoreId") ?: 0
             MapScreen(
                 onNavigate = { route ->
                     if (route == Screen.Home.route || route == Screen.Matching.route ||
@@ -520,6 +709,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     else navController.navigate(route)
                 },
                 startVolunteerMode = volunteerMode,
+                focusLat = focusLat,
+                focusLng = focusLng,
+                focusStoreId = focusStoreId,
             )
         }
 
@@ -549,12 +741,25 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(
             route = Screen.PlaceDetail.route,
-            arguments = listOf(navArgument("placeId") { type = NavType.IntType }),
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.IntType },
+                navArgument("lat") { type = NavType.StringType; defaultValue = "0.0" },
+                navArgument("lng") { type = NavType.StringType; defaultValue = "0.0" },
+            ),
         ) { backStackEntry ->
             val placeId = backStackEntry.arguments?.getInt("placeId") ?: 0
+            val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull() ?: 0.0
+            val lng = backStackEntry.arguments?.getString("lng")?.toDoubleOrNull() ?: 0.0
             PlaceDetailScreen(
                 placeId = placeId,
+                initialLat = lat,
+                initialLng = lng,
                 onBack = { navController.popBackStack() },
+                onNavigateToMap = { lat, lng, storeId ->
+                    navController.navigate(Screen.Map.createRoute(lat, lng, storeId)) {
+                        popUpTo(Screen.Home.route) { inclusive = false }
+                    }
+                },
             )
         }
 
@@ -770,6 +975,25 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.Privacy.route) {
             PrivacyPolicyScreen(onBack = { navController.popBackStack() })
+        }
+    }
+
+        AnimatedVisibility(
+            visible = showBottomBar,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(SCREEN_ENTER_MS, easing = AppleEaseOut),
+            ) + fadeIn(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(SCREEN_EXIT_MS, easing = AppleEaseInOut),
+            ) + fadeOut(animationSpec = tween(SCREEN_FADE_MS, easing = AppleEaseOut)),
+        ) {
+            AppBottomBar(
+                currentRoute = tabRoute,
+                onNavigate = { route -> navController.navigateTab(route) },
+            )
         }
     }
 }

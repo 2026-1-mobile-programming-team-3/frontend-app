@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,11 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.siheunggagae.ui.theme.Gray40
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.example.siheunggagae.ui.theme.Gray80
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -31,6 +34,7 @@ fun StartScreen(
     onLogin: () -> Unit = {},
     onSignup: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -43,26 +47,14 @@ fun StartScreen(
                 .padding(horizontal = 36.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(text = "🐾", fontSize = 56.sp)
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "시흥가개",
-                fontFamily = PretendardFamily,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 48.sp,
-                color = Color(0xFF8A6E58),
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data("file:///android_asset/logo.svg")
+                    .build(),
+                contentDescription = "시흥가개 로고",
+                modifier = Modifier.size(180.dp),
             )
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Gray40,
-            )
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(48.dp))
 
             Box(
                 contentAlignment = Alignment.Center,

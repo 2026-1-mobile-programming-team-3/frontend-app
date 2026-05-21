@@ -85,7 +85,6 @@ private val FABBrown      = Color(0xFF9A7B5E)
 
 // ─── 데이터 ────────────────────────────────────────────────────────────────────
 
-// 하드코딩된 숫자(count) 제거, API 상태값과 매칭
 enum class MatchingTab(val label: String, val status: MatchStatus?) {
     ALL("전체", null),
     WAITING("모집중", MatchStatus.WAITING),
@@ -108,17 +107,14 @@ fun MatchingScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
 
-    // 팀원이 추가한 액션 시트 상태 (타입을 MatchListItem으로 변경)
     var showActionsSheet by remember { mutableStateOf(false) }
     var longPressedRequest by remember { mutableStateOf<MatchListItem?>(null) }
     val actionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // 화면이 나타날 때마다 서버에서 최신 목록을 새로고침
     LaunchedEffect(Unit) {
         viewModel.fetchMatches(selectedTab.status?.name)
     }
 
-    // 요청 건수 계산 로직
     val requestCount = if (uiState is MatchingUiState.Success) {
         (uiState as MatchingUiState.Success).matches.size
     } else 0
@@ -126,7 +122,6 @@ fun MatchingScreen(
     Scaffold(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
-        bottomBar = { AppBottomBar(currentRoute = Screen.Matching.route, onNavigate = onNavigate) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onRequestFlowClick,
@@ -140,7 +135,12 @@ fun MatchingScreen(
         }
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            // 👈 [충돌 해결 완료] 충돌 마커를 걷어내고, 팀원의 하단 패딩 및 간격 설정을 안전하게 적용했습니다.
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item { SummaryCards(onMyRequests = onMyRequests, requestCount = requestCount) }
 
@@ -153,7 +153,6 @@ fun MatchingScreen(
             item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
             item { Spacer(Modifier.height(12.dp)) }
 
-            // 🔥 서버 데이터 상태에 따라 화면 그리기 (질문자님 기능)
             when (val state = uiState) {
                 is MatchingUiState.Loading -> {
                     item {
@@ -181,7 +180,6 @@ fun MatchingScreen(
                             MatchingRequestCard(
                                 request = request,
                                 onCardClick = { request.matchId?.let { onCardClick(it) } },
-                                // 팀원의 롱클릭 기능 연동
                                 onCardLongClick = {
                                     longPressedRequest = request
                                     showActionsSheet = true
@@ -192,11 +190,10 @@ fun MatchingScreen(
                     }
                 }
             }
-            item { Spacer(Modifier.height(80.dp)) } // 하단 여백 추가
+            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
-    // 팀원이 추가한 액션 시트
     if (showActionsSheet) {
         ModalBottomSheet(
             onDismissRequest = { showActionsSheet = false },
@@ -322,7 +319,6 @@ private fun MatchingRequestCard(
     onCardClick: () -> Unit = {},
     onCardLongClick: () -> Unit = {}
 ) {
-    // 서버에서 온 String 상태값을 앱 내 Enum 상태값으로 매핑
     val matchStatus = MatchStatus.entries.find { it.name == request.status } ?: MatchStatus.WAITING
 
     Card(
@@ -338,7 +334,6 @@ private fun MatchingRequestCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            // 1행: 상태 칩 + 생성일(또는 희망일)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -350,13 +345,11 @@ private fun MatchingRequestCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            // 2행: 제목
             Text(
                 text = request.title ?: "제목 없음",
                 fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp, color = TextBlack,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
-            // 3행: 지역·희망일
             val timePart = request.desiredTime?.take(5) ?: ""
             val subInfo = listOfNotNull(
                 request.address?.split(" ")?.getOrNull(2) ?: request.address,
@@ -366,7 +359,6 @@ private fun MatchingRequestCard(
                 Spacer(Modifier.height(5.dp))
                 Text(text = subInfo, fontFamily = PretendardFamily, fontSize = 13.sp, lineHeight = 18.sp, color = Brown700M)
             }
-            // 4행: 신청수
             if (request.applicationsCount != null && request.applicationsCount > 0) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -495,9 +487,9 @@ private fun CardActionsSheetContent(
 
 @Composable
 private fun CardActionRow(
-    icon: ImageVector,
-    iconBg: Color,
-    iconTint: Color,
+    icon : ImageVector,
+    iconBg : Color,
+    iconTint : Color,
     label: String,
     labelColor: Color,
     onClick: () -> Unit,
@@ -536,7 +528,5 @@ private fun CardActionRow(
 @Composable
 fun MatchingScreenPreview() {
     SiheungGagaeTheme {
-        // Preview용 컴포저블은 ViewModel이 필요하여 주석처리 혹은 Mock 데이터를 넘기도록 작성해야 합니다.
-        // MatchingScreen(viewModel = ...)
     }
 }
