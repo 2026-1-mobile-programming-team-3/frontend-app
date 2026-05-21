@@ -89,13 +89,15 @@ class MapViewWrapper(private val mapView: MapView) {
         lat: Double,
         lng: Double,
         @ColorInt markerColor: Int? = null,
+        category: String? = null,
+        name: String? = null,
         onTap: (() -> Unit)? = null,
     ) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
 
         val style = if (markerColor != null) {
-            LabelStyles.from(LabelStyle.from(createPinBitmap(markerColor)))
+            LabelStyles.from(LabelStyle.from(createPinBitmap(markerColor, category, name)))
         } else {
             LabelStyles.from(LabelStyle.from())
         }
@@ -167,33 +169,71 @@ class MapViewWrapper(private val mapView: MapView) {
         }
     }
 
-    private fun createPinBitmap(@ColorInt color: Int): Bitmap {
-        val w = 44; val h = 60
-        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val cx = w / 2f
-        val r = 17f       // 원 반지름
-        val cy = r + 3f   // 원 중심 Y
-        val tipY = h - 3f // 뾰족한 끝 Y
-        val theta = 38f   // 아래 벌어지는 각도
+    private fun createPinBitmap(@ColorInt color: Int, category: String? = null, name: String? = null): Bitmap {
+        val r  = 22f   // 원 반지름
+        val cx = r + 3f
+        val cy = r + 3f
 
-        fun pinPath(r: Float, tipY: Float): Path {
-            val path = Path()
-            path.arcTo(RectF(cx - r, cy - r, cx + r, cy + r), 90f + theta, 360f - 2f * theta)
-            path.lineTo(cx, tipY)
-            path.close()
-            return path
+        // 매장명을 5자 기준으로 2줄 분리
+        val line1 = name?.take(5) ?: ""
+        val line2 = if ((name?.length ?: 0) > 5) name!!.drop(5).take(6) else ""
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            this.color = 0xFF1E120A.toInt()
+        }
+        val lineH   = textPaint.descent() - textPaint.ascent()
+        val textGap = 4f
+        val lines   = listOfNotNull(line1.ifEmpty { null }, line2.ifEmpty { null })
+        val textBlockH = lines.size * lineH + (lines.size - 1).coerceAtLeast(0) * textGap
+
+        val totalW = maxOf((cx + r + 3f) * 2, lines.maxOfOrNull { textPaint.measureText(it) + 8f } ?: 0f)
+        val totalH = cy + r + 3f + textGap + textBlockH + 4f
+
+        val bitmap = Bitmap.createBitmap(totalW.toInt(), totalH.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val pinCx = totalW / 2f
+
+        // 흰 테두리 원
+        canvas.drawCircle(pinCx, cy, r + 3f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = android.graphics.Color.WHITE })
+        // 카테고리 컬러 원
+        canvas.drawCircle(pinCx, cy, r,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+
+        // 카테고리 이모지 or 별
+        val icon = when (category?.uppercase()) {
+            "CAFE"       -> "☕"
+            "PARK"       -> "🌳"
+            "HOSPITAL"   -> "🏥"
+            "GROOMING"   -> "✂"
+            "RESTAURANT" -> "🍽"
+            else         -> "★"
+        }
+        val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = r * 0.95f
+            textAlign = Paint.Align.CENTER
+            this.color = android.graphics.Color.WHITE
+        }
+        canvas.drawText(icon, pinCx, cy + r * 0.32f, iconPaint)
+
+        // 매장명 텍스트 (원 아래) — 흰 테두리 → 검정 채움 순서로 2회 드로우
+        val strokePaint = Paint(textPaint).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+            strokeJoin = Paint.Join.ROUND
+            this.color = android.graphics.Color.WHITE
+        }
+        textPaint.style = Paint.Style.FILL
+        var nameY = cy + r + 3f + textGap - textPaint.ascent()
+        lines.forEach { line ->
+            canvas.drawText(line, pinCx, nameY, strokePaint)
+            canvas.drawText(line, pinCx, nameY, textPaint)
+            nameY += lineH + textGap
         }
 
-        // 흰 테두리
-        canvas.drawPath(pinPath(r + 2.5f, tipY + 2f),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = android.graphics.Color.WHITE })
-        // 카테고리 컬러 채움
-        canvas.drawPath(pinPath(r, tipY),
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
-        // 가운데 흰 점
-        canvas.drawCircle(cx, cy, r * 0.3f,
-            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = android.graphics.Color.WHITE })
         return bitmap
     }
 }

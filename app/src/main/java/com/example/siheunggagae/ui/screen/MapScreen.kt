@@ -239,6 +239,8 @@ fun MapScreen(
                     lat = marker.lat,
                     lng = marker.lng,
                     markerColor = color,
+                    category = marker.singleStore.category,
+                    name = marker.singleStore.name,
                     onTap = { viewModel.selectStore(marker.singleStore.toStoreResponse()) },
                 )
             } else {
