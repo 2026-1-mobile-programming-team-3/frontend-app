@@ -112,6 +112,9 @@ private val categoryColors = mapOf(
 private val defaultMarkerColor = 0xFF614B3A.toInt()
 private val volunteerMarkerColor = 0xFF2196F3.toInt()
 
+private fun storeCategoryToKorean(category: String?): String =
+    StoreCategory.entries.find { it.apiValue == category }?.label ?: category ?: ""
+
 // ─── 메인 화면 ────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -660,7 +663,7 @@ private fun StoreDetailSheet(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(store.category, fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
+                    Text(storeCategoryToKorean(store.category), fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
                     store.distanceM?.let { d ->
                         Text("·", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700Mp)
                         val distText = if (d < 1000) "${"%.0f".format(d)}m" else "${"%.1f".format(d / 1000)}km"
@@ -806,7 +809,7 @@ private fun MapPlaceItem(
             ) {
                 Text(
                     text = buildString {
-                        append(place.category)
+                        append(storeCategoryToKorean(place.category))
                         if (distanceText.isNotEmpty()) append(" · $distanceText")
                     },
                     fontFamily = PretendardFamily,
@@ -1033,7 +1036,7 @@ private fun MapSearchOverlay(
                             }
                             if (!result.category.isNullOrEmpty()) {
                                 Text(
-                                    text = result.category,
+                                    text = storeCategoryToKorean(result.category),
                                     fontFamily = PretendardFamily,
                                     fontSize = 12.sp,
                                     color = Brown400Mp,
