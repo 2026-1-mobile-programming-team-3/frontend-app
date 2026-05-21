@@ -2,6 +2,9 @@ package com.example.siheunggagae
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateBounds
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Spring
@@ -65,6 +68,7 @@ import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -214,6 +218,14 @@ private val DockSizeAnim = tween<androidx.compose.ui.unit.IntSize>(
 // 도크 아이콘 크기 — 선택/미선택 모두 동일하게 유지해서 통일감 확보.
 private val DockIconSize = 22.dp
 
+// LookaheadScope 가 자식 bounds 변화를 사전 측정해 위치를 매끄럽게 보간하도록 하는 BoundsTransform.
+// SpaceEvenly 가 픽셀 단위로 위치를 재계산할 때 생기는 미세한 점프(stutter)를 제거한다.
+@OptIn(ExperimentalSharedTransitionApi::class)
+private val DockBoundsTransform = BoundsTransform { _, _ ->
+    tween(DOCK_MORPH_MS, easing = AppleEaseOut)
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
     Box(
@@ -222,22 +234,28 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 6.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(50.dp))
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.White)
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            bottomNavEntries.forEach { entry ->
-                BottomNavItem(
-                    entry = entry,
-                    selected = currentRoute == entry.route,
-                    onClick = { onNavigate(entry.route) },
-                )
+        LookaheadScope {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                bottomNavEntries.forEach { entry ->
+                    BottomNavItem(
+                        modifier = Modifier.animateBounds(
+                            lookaheadScope = this@LookaheadScope,
+                            boundsTransform = DockBoundsTransform,
+                        ),
+                        entry = entry,
+                        selected = currentRoute == entry.route,
+                        onClick = { onNavigate(entry.route) },
+                    )
+                }
             }
         }
     }
@@ -245,6 +263,7 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
 
 @Composable
 private fun BottomNavItem(
+    modifier: Modifier = Modifier,
     entry: BottomNavEntry,
     selected: Boolean,
     onClick: () -> Unit,
@@ -267,7 +286,7 @@ private fun BottomNavItem(
     val interactionSource = remember { MutableInteractionSource() }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(50.dp))
             .background(bgColor)
             .clickable(
