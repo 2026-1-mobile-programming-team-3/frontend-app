@@ -46,7 +46,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check // main의 변경사항 반영
+import androidx.compose.material.icons.filled.Check
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
@@ -70,7 +69,6 @@ import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.YearMonth
 
-// 스펙 컬러
 private val Brown900F    = Color(0xFF614B3A)
 private val Brown700F    = Color(0xFF8A6E58)
 private val Brown400F    = Color(0xFFC4A882)
@@ -95,7 +93,7 @@ private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 @Composable
 fun RequestFlowScreen(
     viewModel: RequestViewModel,
-    matchId: Int = 0, // 수정 시 전달할 ID (0은 신규 등록)
+    matchId: Int = 0,
     onBack: () -> Unit = {},
     onComplete: () -> Unit = {},
     onAddPet: () -> Unit = {}
@@ -116,20 +114,20 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
-    // 수정 모드 시 데이터 로드
     LaunchedEffect(matchId) {
         if (matchId != 0) {
             viewModel.loadMatchDetail(matchId)
         }
     }
 
-    // 데이터 로드 완료 후 로컬 상태 동기화
-    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId) {
+    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId, viewModel.desiredTime) {
         if (matchId != 0) {
             titleInput = viewModel.title
             destination = viewModel.address
             memo = viewModel.content
             selectedPetId = viewModel.selectedPetId
+            timeInput = viewModel.desiredTime?.take(5) ?: ""
+            selectedTime = viewModel.desiredTime?.take(5)
         }
     }
 
@@ -177,6 +175,30 @@ fun RequestFlowScreen(
                         val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
                         val dayStr = selectedDay.toString().padStart(2, '0')
                         viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
+
+                        // 👈 [시간 저장 로직 핵심 변경!] 어떤 방식으로 입력했든 HH:mm:00 포맷으로 강제 정렬합니다.
+                        val rawTime = if (timeInput.isNotBlank()) timeInput else selectedTime ?: "12:00"
+                        val formattedTime = when {
+                            rawTime.matches(Regex("^\\d{2}:\\d{2}$")) -> "$rawTime:00"
+                            rawTime.matches(Regex("^\\d{1}:\\d{2}$")) -> "0$rawTime:00"
+                            rawTime.contains("오전") -> {
+                                val clean = rawTime.replace("오전", "").trim()
+                                val parts = clean.split(":")
+                                val h = parts.getOrNull(0)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
+                                val m = parts.getOrNull(1)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
+                                "$h:$m:00"
+                            }
+                            rawTime.contains("오후") -> {
+                                val clean = rawTime.replace("오후", "").trim()
+                                val parts = clean.split(":")
+                                var h = parts.getOrNull(0)?.toIntOrNull() ?: 12
+                                if (h < 12) h += 12
+                                val m = parts.getOrNull(1)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
+                                "$h:$m:00"
+                            }
+                            else -> if (rawTime.contains(":")) "$rawTime:00" else "12:00:00"
+                        }
+                        viewModel.desiredTime = formattedTime
                     }
                     currentStep++
                 } else {
@@ -211,8 +233,8 @@ fun RequestFlowScreen(
                 2 -> Step2Content(
                     currentMonth = currentMonth, onMonthChange = { currentMonth = it },
                     selectedDay = selectedDay, onSelectDay = { selectedDay = it },
-                    timeInput = timeInput, onTimeChange = { timeInput = it },
-                    selectedTime = selectedTime, onSelectTime = { selectedTime = it }
+                    timeInput = timeInput, onTimeChange = { timeInput = it; selectedTime = null },
+                    selectedTime = selectedTime, onSelectTime = { selectedTime = it; timeInput = it } // 👈 퀵 선택 시 입력창도 같이 채워지도록 연동!
                 )
                 3 -> Step3Content(
                     title = titleInput, onTitleChange = { titleInput = it },
@@ -278,8 +300,6 @@ private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
 
 // ─── 스텝 인디케이터 ─────────────────────────────────────────────────────────────
 
-private val stepLabels = listOf("반려동물", "일정", "요청 내용")
-
 @Composable
 private fun StepIndicator(currentStep: Int) {
     Column(
@@ -323,7 +343,7 @@ private fun StepIndicator(currentStep: Int) {
     }
 }
 
-// ─── Step 1: 반려동물 선택 (서버 데이터) ────────────────────────────────────────
+// ─── Step 1: 반려동물 선택 ────────────────────────────────────────
 
 @Composable
 private fun Step1Content(
@@ -419,7 +439,6 @@ private fun PetCard(pet: PetResponse, isSelected: Boolean, onClick: () -> Unit) 
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.align(Alignment.TopEnd).size(24.dp).clip(CircleShape).background(Orange500F)
             ) {
-                // main의 변경사항인 Icons.Default.Check 사용
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = "선택됨",
@@ -430,6 +449,7 @@ private fun PetCard(pet: PetResponse, isSelected: Boolean, onClick: () -> Unit) 
         }
     }
 }
+
 @Composable
 private fun AddPetCard(onAddPet: () -> Unit = {}) {
     Column(
@@ -511,7 +531,7 @@ private fun Step2Content(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "예: 오전 9:30",
+                    text = "예: 14:30",
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp,
                     color = Brown400F
@@ -853,8 +873,6 @@ private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean 
     }
 }
 
-// ─── 점선 테두리 Modifier ──────────────────────────────────────────────────────
-
 private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, strokeWidth: Dp = 1.5.dp): Modifier =
     this.drawBehind {
         drawRoundRect(
@@ -863,3 +881,5 @@ private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, stroke
             style = Stroke(width = strokeWidth.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f)))
         )
     }
+
+private val stepLabels = listOf("반려동물", "일정", "요청 내용")

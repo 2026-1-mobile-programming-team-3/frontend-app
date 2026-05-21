@@ -11,6 +11,7 @@ data class MatchCreateRequest(
     val longitude: Float,
     val address: String? = null,
     val desiredDate: String? = null,
+    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
     val petId: Int? = null,
 )
 
@@ -27,6 +28,7 @@ data class MatchUpdateRequest(
     val longitude: Float? = null,
     val address: String? = null,
     val desiredDate: String? = null,
+    @com.google.gson.annotations.SerializedName("desired_time") val desiredTime: String? = null,
     val petId: Int? = null,
 )
 
@@ -37,6 +39,7 @@ data class MatchListItem(
     val latitude: Double? = null,
     val longitude: Double? = null,
     @SerializedName("desired_date") val desiredDate: String? = null,
+    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
     val status: String? = null,
     @SerializedName("author_nickname") val authorNickname: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
@@ -76,6 +79,7 @@ data class MatchDetailResponse(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val desiredDate: String? = null,
+    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
     val status: String? = null,
     val applicationsCount: Int? = null,
     val createdAt: String? = null,

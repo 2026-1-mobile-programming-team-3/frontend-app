@@ -105,6 +105,7 @@ import com.example.siheunggagae.ui.theme.Gray80
 import com.example.siheunggagae.ui.theme.Gray95
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
 
 // ─── 라우트 정의 ───────────────────────────────────────────────────────────────
 
@@ -407,8 +408,15 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+
+            // 1. 뷰모델 프로바이더 팩토리를 이용해 뷰모델 인스턴스를 생성합니다.
+            val matchDetailViewModel: MatchDetailViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = MatchDetailViewModel.Factory(com.example.siheunggagae.data.network.RetrofitClient.api)
+            )
+
             MatchingPublicDetailScreen(
                 requestId = requestId,
+                viewModel = matchDetailViewModel, // 2. 👈 여기에 방금 만든 뷰모델을 쏙 넣어줍니다!
                 onBack = { navController.popBackStack() },
                 onNavigate = { route -> navController.navigate(route) },
             )

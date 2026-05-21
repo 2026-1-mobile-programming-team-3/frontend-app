@@ -25,6 +25,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
 
     var selectedPetId: Int? = null
     var desiredDate: String? = null
+    var desiredTime: String? = null // 👈 1. 시간 저장을 위한 변수 추가!
     var title: String = ""
     var content: String = ""
     var address: String = ""
@@ -33,24 +34,21 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
 
     init { fetchMyPets() }
 
-    // RequestViewModel.kt
-
-    // 1. 기존 데이터 불러오기
+    // 1. 기존 데이터 불러오기 (수정 모드)
     fun loadMatchDetail(matchId: Int) {
         viewModelScope.launch {
             _uiState.value = RequestUiState.Loading
             try {
-                val response = api.getMatchDetail(matchId) // API 호출 (기존에 정의되어 있어야 함)
+                val response = api.getMatchDetail(matchId)
                 if (response.isSuccessful && response.body() != null) {
                     val data = response.body()!!
-                    // 불러온 데이터로 현재 상태값들 업데이트
                     title = data.title ?: ""
                     content = data.content ?: ""
                     address = data.address ?: ""
                     desiredDate = data.desiredDate
+                    desiredTime = data.desiredTime // 👈 2. 기존 시간 데이터 받아오기
                     selectedPetId = data.pet?.petId
 
-                    // 성공 상태로 전환 (UI가 업데이트됨)
                     _uiState.value = RequestUiState.Idle
                 } else {
                     _uiState.value = RequestUiState.Error("데이터를 불러올 수 없습니다.")
@@ -61,10 +59,10 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
-    // 2. 데이터 수정 (PATCH/PUT) 요청
+    // 2. 데이터 수정 요청
     fun updateRequest(matchId: Int) {
-        // 유효성 검사 로직
-        if (selectedPetId == null || title.isBlank() || content.isBlank() || address.isBlank() || desiredDate == null) {
+        // 시간 검증 추가
+        if (selectedPetId == null || title.isBlank() || content.isBlank() || address.isBlank() || desiredDate == null || desiredTime == null) {
             _uiState.value = RequestUiState.Error("필수 입력 항목을 모두 채워주세요.")
             return
         }
@@ -72,7 +70,6 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = RequestUiState.Loading
             try {
-                // 수정된 부분: MatchCreateRequest 대신 MatchUpdateRequest를 사용
                 val updateBody = MatchUpdateRequest(
                     title = title,
                     content = content,
@@ -80,6 +77,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                     longitude = longitude,
                     address = address,
                     desiredDate = desiredDate,
+                    desiredTime = desiredTime, // 👈 3. 수정 요청 바디에 시간 추가!
                     petId = selectedPetId
                 )
                 val response = api.updateMatch(matchId, updateBody)
@@ -91,7 +89,6 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
-    // public으로 열어둠 (PetListScreen에서 호출)
     fun fetchMyPets() {
         viewModelScope.launch {
             _uiState.value = RequestUiState.Loading
@@ -108,8 +105,10 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
+    // 3. 신규 데이터 등록 요청
     fun submitRequest() {
-        if (selectedPetId == null || title.isBlank() || content.isBlank() || address.isBlank() || desiredDate == null) {
+        // 시간 검증 추가
+        if (selectedPetId == null || title.isBlank() || content.isBlank() || address.isBlank() || desiredDate == null || desiredTime == null) {
             _uiState.value = RequestUiState.Error("필수 입력 항목을 모두 채워주세요.")
             return
         }
@@ -119,7 +118,9 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                 val requestBody = MatchCreateRequest(
                     title = title, content = content,
                     latitude = latitude, longitude = longitude,
-                    address = address, desiredDate = desiredDate, petId = selectedPetId
+                    address = address, desiredDate = desiredDate,
+                    desiredTime = desiredTime, // 👈 4. 생성 요청 바디에 시간 추가!
+                    petId = selectedPetId
                 )
                 val response = api.createMatch(requestBody)
                 if (response.isSuccessful) _uiState.value = RequestUiState.Success

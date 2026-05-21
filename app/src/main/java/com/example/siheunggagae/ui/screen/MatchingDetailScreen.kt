@@ -174,8 +174,9 @@ private fun RequestInfoCardD(request: MatchDetailResponse) {
     ) {
         Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextBlackD)
 
-        val dateValue = request.desiredDate?.take(10) ?: "일정 미정"
-        val timeValue = if (request.desiredDate != null && request.desiredDate.length > 10) request.desiredDate.substring(11, 16) else "시간 미정"
+        //자르기 걷어내고, 서버가 보내주는 각각의 날짜와 시간 필드를 다이렉트로 매핑!
+        val dateValue = request.desiredDate ?: "일정 미정"
+        val timeValue = request.desiredTime?.take(5) ?: "시간 미정" // 14:00:00 -> 14:00 만 쏙
 
         InfoRowD(PinkSurfaceD, R.drawable.ic_calendar_today, Pink500D, "일정", dateValue, FontWeight.Bold)
         HorizontalDivider(color = Gray300D)
