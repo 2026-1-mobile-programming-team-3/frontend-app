@@ -1,6 +1,13 @@
 ﻿package com.example.siheunggagae.ui.screen
 
+import android.content.Intent
+import android.graphics.ImageDecoder
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,10 +26,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +63,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetGender
 import com.example.siheunggagae.data.model.PetSpecies
@@ -62,10 +77,6 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.PetAddUiState
 import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
-import androidx.compose.material3.SnackbarHostState // 추가
-import androidx.compose.runtime.rememberCoroutineScope // 추가
-import kotlinx.coroutines.launch // 추가
-import com.example.siheunggagae.ui.component.SiheungSnackbarHost // 추가
 
 // 스펙 컬러
 private val Brown900PA    = Color(0xFF614B3A)
@@ -82,50 +93,125 @@ private val speciesOptions = listOf("강아지", "고양이", "기타")
 private val genderOptions  = listOf("수컷", "암컷")
 private val ageUnitOptions = listOf("살", "개월")
 
+// 종류 문자열 ↔ enum 변환
+private fun String.toPetSpecies() = when (this) {
+    "강아지" -> PetSpecies.DOG
+    "고양이" -> PetSpecies.CAT
+    else    -> PetSpecies.OTHER
+}
+private fun PetSpecies.toLabel() = when (this) {
+    PetSpecies.DOG   -> "강아지"
+    PetSpecies.CAT   -> "고양이"
+    PetSpecies.OTHER -> "기타"
+}
+private fun String.toPetGender() = when (this) {
+    "수컷" -> PetGender.MALE
+    "암컷" -> PetGender.FEMALE
+    else  -> null
+}
+private fun PetGender?.toLabel() = when (this) {
+    PetGender.MALE   -> "수컷"
+    PetGender.FEMALE -> "암컷"
+    else             -> "수컷"
+}
+
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 @Composable
 fun PetAddScreen(
-    viewModel: PetAddViewModel, // 뷰모델 추가
-    onBack: () -> Unit = {}
+    viewModel: PetAddViewModel? = null,
+    onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
-    // 스낵바 상태와 코루틴 스코프 생성
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+    val uiState by remember(viewModel) {
+        viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(PetAddUiState.Idle)
+    }.collectAsState()
+    val initialPet by remember(viewModel) {
+        viewModel?.initialPet ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
+    val localPhotoUri by remember(viewModel) {
+        viewModel?.localPhotoUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+    }.collectAsState()
 
-    var nameInput       by remember { mutableStateOf("") }
-    var selectedSpecies by remember { mutableStateOf("강아지") }
-    var breedInput      by remember { mutableStateOf("") }
-    var age             by remember { mutableIntStateOf(1) }
-    var ageUnit         by remember { mutableStateOf("살") }
-    var gender          by remember { mutableStateOf("수컷") }
-    var isNeutered      by remember { mutableStateOf(false) }
-    var noteInput       by remember { mutableStateOf("") }
+    // URI → 비트맵 (IO 스레드)
+    var photoBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(localPhotoUri) {
+        photoBitmap = if (localPhotoUri != null) {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val uri = Uri.parse(localPhotoUri)
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source).asImageBitmap()
+                }.getOrNull()
+            }
+        } else null
+    }
 
+    // 갤러리 피커
+    val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            viewModel?.setLocalPhotoUri(uri.toString())
+        }
+    }
+
+    val isEditMode = viewModel?.isEditMode == true
+    var formInitialized by rememberSaveable { mutableStateOf(!isEditMode) }
+
+    var nameInput       by rememberSaveable { mutableStateOf("") }
+    var selectedSpecies by rememberSaveable { mutableStateOf("강아지") }
+    var breedInput      by rememberSaveable { mutableStateOf("") }
+    var age             by rememberSaveable { mutableIntStateOf(1) }
+    var ageUnit         by rememberSaveable { mutableStateOf("살") }
+    var gender          by rememberSaveable { mutableStateOf("수컷") }
+    var isNeutered      by rememberSaveable { mutableStateOf(false) }
+    var noteInput       by rememberSaveable { mutableStateOf("") }
+
+    // 수정 모드: initialPet 도착하면 한 번만 폼 초기화
+    LaunchedEffect(initialPet) {
+        if (!formInitialized && initialPet != null) {
+            val p = initialPet!!
+            nameInput       = p.name
+            selectedSpecies = p.species.toLabel()
+            breedInput      = p.breed ?: ""
+            age             = p.age ?: 1
+            gender          = p.gender.toLabel()
+            isNeutered      = p.isNeutered
+            noteInput       = viewModel?.savedNote ?: ""
+            formInitialized = true
+        }
+    }
+
+    // 저장 결과 처리
     LaunchedEffect(uiState) {
         when (uiState) {
-            is PetAddUiState.Success -> {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar("반려동물이 성공적으로 등록되었습니다!")
-                }
-                viewModel.resetState()
+            is PetAddUiState.SaveSuccess -> {
+                Toast.makeText(context, "성공적으로 저장되었습니다!", Toast.LENGTH_SHORT).show()
+                viewModel?.clearError()
                 onBack()
             }
             is PetAddUiState.Error -> {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar((uiState as PetAddUiState.Error).message)
-                }
-                viewModel.resetState()
+                Toast.makeText(context, (uiState as PetAddUiState.Error).message, Toast.LENGTH_SHORT).show()
+                viewModel?.clearError()
             }
             else -> {}
         }
     }
+
+    val isSaving = uiState is PetAddUiState.Saving
+    val isLoading = uiState is PetAddUiState.Loading
+    val canSave = nameInput.isNotBlank() && !isSaving && !isLoading
+
     Scaffold(
         containerColor = BackgroundPA,
-        snackbarHost = { SiheungSnackbarHost(snackbarHostState) },
-        topBar = { PetAddTopBar(onBack = onBack) },
+        topBar = {
+            PetAddTopBar(
+                title = if (isEditMode) "반려동물 수정" else "반려동물 추가",
+                onBack = onBack,
+            )
+        },
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -134,41 +220,31 @@ fun PetAddScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                // 한글 선택값을 서버 Enum 값으로 변환
-                val speciesEnum = when(selectedSpecies) {
-                    "강아지" -> PetSpecies.DOG
-                    "고양이" -> PetSpecies.CAT
-                    else -> PetSpecies.OTHER
-                }
-                val genderEnum = when(gender) {
-                    "수컷" -> PetGender.MALE
-                    "암컷" -> PetGender.FEMALE
-                    else -> PetGender.UNKNOWN
-                }
-                val isButtonEnabled = nameInput.isNotBlank() && uiState !is PetAddUiState.Loading
-
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (isButtonEnabled) Brown700PA else Color(0xFFE5E7EB))
-                        .clickable(enabled = isButtonEnabled) {
-                            // 🔥 뷰모델로 데이터 전송
-                            viewModel.addPet(
+                        .background(if (canSave) Brown900PA else Brown900PA.copy(alpha = 0.4f))
+                        .then(if (canSave) Modifier.clickable {
+                            viewModel?.save(
                                 name = nameInput,
-                                species = speciesEnum,
-                                breed = breedInput,
-                                ageStr = age.toString(),
-                                weightStr = "", // UI에 몸무게가 없으므로 빈값 처리 (서버에서 null로 받음)
+                                species = selectedSpecies.toPetSpecies(),
+                                breed = breedInput.takeIf { it.isNotBlank() },
+                                age = age,
+                                gender = gender.toPetGender(),
                                 isNeutered = isNeutered,
-                                gender = genderEnum
+                                note = noteInput.takeIf { it.isNotBlank() },
                             )
-                        },
+                        } else Modifier),
                 ) {
-                    if (uiState is PetAddUiState.Loading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    if (isSaving || isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp),
+                        )
                     } else {
                         Text(
                             text = "저장하기",
@@ -176,60 +252,74 @@ fun PetAddScreen(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             lineHeight = 24.sp,
-                            color = if (isButtonEnabled) Color.White else Brown400PA,
+                            color = Color.White,
                         )
                     }
                 }
             }
         },
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Spacer(Modifier.height(4.dp))
+        if (isLoading && !isSaving) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Orange500PA)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Spacer(Modifier.height(4.dp))
 
-            PetPreviewCard(
-                name = nameInput,
-                species = selectedSpecies,
-                age = age,
-                ageUnit = ageUnit,
-                gender = gender,
-            )
+                PetPreviewCard(
+                    name = nameInput,
+                    species = selectedSpecies,
+                    age = age,
+                    ageUnit = ageUnit,
+                    gender = gender,
+                    photoBitmap = photoBitmap,
+                    onPickPhoto = {
+                        imagePicker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                    },
+                )
 
-            PetSectionLabelPA("기본 정보")
-            BasicInfoCard(
-                nameInput = nameInput,
-                onNameChange = { nameInput = it },
-                selectedSpecies = selectedSpecies,
-                onSpeciesSelect = { selectedSpecies = it },
-                breedInput = breedInput,
-                onBreedChange = { breedInput = it },
-            )
+                PetSectionLabelPA("기본 정보")
+                BasicInfoCard(
+                    nameInput = nameInput,
+                    onNameChange = { nameInput = it },
+                    selectedSpecies = selectedSpecies,
+                    onSpeciesSelect = { selectedSpecies = it },
+                    speciesEnabled = !isEditMode,
+                    breedInput = breedInput,
+                    onBreedChange = { breedInput = it },
+                )
 
-            PetSectionLabelPA("상세 정보")
-            DetailInfoCard(
-                age = age,
-                ageUnit = ageUnit,
-                onDecrement = { if (age > 1) age-- },
-                onIncrement = { age++ },
-                onAgeUnitSelect = { ageUnit = it },
-                gender = gender,
-                onGenderSelect = { gender = it },
-                isNeutered = isNeutered,
-                onNeuteredChange = { isNeutered = it },
-            )
+                PetSectionLabelPA("상세 정보")
+                DetailInfoCard(
+                    age = age,
+                    ageUnit = ageUnit,
+                    onDecrement = { if (age > 1) age-- },
+                    onIncrement = { age++ },
+                    onAgeUnitSelect = { ageUnit = it },
+                    gender = gender,
+                    onGenderSelect = { gender = it },
+                    isNeutered = isNeutered,
+                    onNeuteredChange = { isNeutered = it },
+                )
 
-            NoteSection(
-                note = noteInput,
-                onNoteChange = { if (it.length <= 300) noteInput = it },
-            )
+                NoteSection(
+                    note = noteInput,
+                    onNoteChange = { if (it.length <= 300) noteInput = it },
+                )
 
-            Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
+            }
         }
     }
 }
@@ -237,7 +327,7 @@ fun PetAddScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun PetAddTopBar(onBack: () -> Unit) {
+private fun PetAddTopBar(title: String, onBack: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,11 +353,11 @@ private fun PetAddTopBar(onBack: () -> Unit) {
             )
         }
         Text(
-            text = "반려동물 추가",
+            text = title,
             fontFamily = PretendardFamily,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 32.sp,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 24.sp,
             color = TextBlackPA,
             modifier = Modifier.align(Alignment.Center),
         )
@@ -283,6 +373,8 @@ private fun PetPreviewCard(
     age: Int,
     ageUnit: String,
     gender: String,
+    photoBitmap: ImageBitmap? = null,
+    onPickPhoto: () -> Unit = {},
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -297,19 +389,46 @@ private fun PetPreviewCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_pets),
-                    contentDescription = null,
-                    tint = Orange500PA,
-                    modifier = Modifier.size(32.dp),
-                )
+            Box {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .clickable { onPickPhoto() },
+                ) {
+                    if (photoBitmap != null) {
+                        Image(
+                            bitmap = photoBitmap,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_pets),
+                            contentDescription = null,
+                            tint = Orange500PA,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .background(Brown900PA),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = "사진 변경",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
@@ -363,6 +482,7 @@ private fun BasicInfoCard(
     onNameChange: (String) -> Unit,
     selectedSpecies: String,
     onSpeciesSelect: (String) -> Unit,
+    speciesEnabled: Boolean = true,
     breedInput: String,
     onBreedChange: (String) -> Unit,
 ) {
@@ -436,7 +556,8 @@ private fun BasicInfoCard(
                 PetSelectChip(
                     label = option,
                     selected = option == selectedSpecies,
-                    onClick = { onSpeciesSelect(option) },
+                    enabled = speciesEnabled,
+                    onClick = { if (speciesEnabled) onSpeciesSelect(option) },
                 )
             }
         }
@@ -688,17 +809,27 @@ private fun PetCardDivider() {
 }
 
 @Composable
-private fun PetSelectChip(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun PetSelectChip(label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    val bgColor = when {
+        !enabled && selected -> Brown400PA
+        selected             -> Brown900PA
+        else                 -> Color.White
+    }
+    val textColor = when {
+        !enabled -> Brown400PA
+        selected -> Color.White
+        else     -> Brown700PA
+    }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
-            .background(if (selected) Brown900PA else Color.White)
+            .background(bgColor)
             .then(
                 if (!selected) Modifier.border(1.dp, BrownBorderPA, RoundedCornerShape(50.dp))
                 else Modifier
             )
-            .clickable { onClick() }
+            .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Text(
@@ -707,7 +838,7 @@ private fun PetSelectChip(label: String, selected: Boolean, onClick: () -> Unit)
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 20.sp,
-            color = if (selected) Color.White else Brown700PA,
+            color = textColor,
         )
     }
 }

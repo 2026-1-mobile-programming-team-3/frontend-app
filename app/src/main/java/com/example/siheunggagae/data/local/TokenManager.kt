@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class TokenManager(context: Context) {
 
@@ -24,6 +26,9 @@ class TokenManager(context: Context) {
     val expiresAt: Long
         get() = prefs.getLong(KEY_EXPIRES_AT, 0L)
 
+    private val _localProfileImageUri = MutableStateFlow(prefs.getString(KEY_PROFILE_IMAGE, null))
+    val localProfileImageUri: StateFlow<String?> = _localProfileImageUri
+
     fun saveTokens(accessToken: String, refreshToken: String, expiresIn: Int = 3600) {
         prefs.edit()
             .putString(KEY_ACCESS, accessToken)
@@ -32,8 +37,16 @@ class TokenManager(context: Context) {
             .apply()
     }
 
+    fun setLocalProfileImageUri(uri: String?) {
+        prefs.edit().apply {
+            if (uri != null) putString(KEY_PROFILE_IMAGE, uri) else remove(KEY_PROFILE_IMAGE)
+        }.apply()
+        _localProfileImageUri.value = uri
+    }
+
     fun clearTokens() {
         prefs.edit().clear().apply()
+        _localProfileImageUri.value = null
     }
 
     // 만료 30초 전부터 갱신이 필요하다고 판단
@@ -46,5 +59,6 @@ class TokenManager(context: Context) {
         private const val KEY_ACCESS = "access_token"
         private const val KEY_REFRESH = "refresh_token"
         private const val KEY_EXPIRES_AT = "expires_at"
+        private const val KEY_PROFILE_IMAGE = "local_profile_image_uri"
     }
 }

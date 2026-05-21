@@ -23,15 +23,28 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.repository.AuthRepository
+import com.example.siheunggagae.data.repository.UserRepository
+import com.example.siheunggagae.data.repository.NotificationRepository
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
+import com.example.siheunggagae.ui.viewmodel.MyViewModel
+import com.example.siheunggagae.ui.viewmodel.NotificationViewModel
+import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
+import com.example.siheunggagae.ui.viewmodel.PetListViewModel
+import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -61,6 +74,7 @@ import com.example.siheunggagae.ui.screen.MatchingPublicDetailScreen
 import com.example.siheunggagae.ui.screen.MatchingScreen
 import com.example.siheunggagae.ui.screen.MyRequestsScreen
 import com.example.siheunggagae.ui.screen.MyScreen
+import com.example.siheunggagae.ui.screen.ProfileEditScreen
 import com.example.siheunggagae.ui.screen.NewsDetailScreen
 import com.example.siheunggagae.ui.screen.NewsScreen
 import com.example.siheunggagae.ui.screen.NotificationScreen
@@ -70,7 +84,20 @@ import com.example.siheunggagae.ui.screen.PlaceDetailScreen
 import com.example.siheunggagae.ui.screen.RequestFlowScreen
 import com.example.siheunggagae.ui.screen.SettingsScreen
 import com.example.siheunggagae.ui.screen.SignUpScreen
+import com.example.siheunggagae.ui.screen.BlockManageScreen
+import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
+import com.example.siheunggagae.ui.screen.HelpScreen
+import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
+import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
+import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
+import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
+import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
+import com.example.siheunggagae.ui.viewmodel.AccountSettingsViewModel
+import com.example.siheunggagae.ui.viewmodel.LocationSettingsViewModel
+import com.example.siheunggagae.ui.viewmodel.NotificationSettingsViewModel
+import com.example.siheunggagae.ui.viewmodel.VolunteerBadgeViewModel
+import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
 import com.example.siheunggagae.ui.theme.Brown40
 import com.example.siheunggagae.ui.theme.Gray10
 import com.example.siheunggagae.ui.theme.Gray40
@@ -101,8 +128,13 @@ sealed class Screen(val route: String) {
     object My              : Screen("my")
     object Settings        : Screen("settings")
     object PetList         : Screen("pet_list")
-    object PetAdd          : Screen("pet_add")
-    object VolunteerApply  : Screen("volunteer_apply")
+    object PetAdd          : Screen("pet_add?petId={petId}") {
+        fun editRoute(petId: Int) = "pet_add?petId=$petId"
+    }
+    object VolunteerApply      : Screen("volunteer_apply")
+    object VolunteerBadgeList  : Screen("volunteer_badge_list")
+    object VolunteerHistory    : Screen("volunteer_history")
+    object ProfileEdit     : Screen("profile_edit")
     object MatchingDetail       : Screen("matching_detail/{requestId}") {
         fun createRoute(requestId: Int) = "matching_detail/$requestId"
     }
@@ -115,6 +147,10 @@ sealed class Screen(val route: String) {
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: String) = "news_detail/$newsId"
     }
+    object FavoriteStores  : Screen("favorite_stores")
+    object BlockManage     : Screen("block_manage")
+    object Help            : Screen("help")
+    object Privacy         : Screen("privacy")
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -239,15 +275,23 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.SignUp.route) {
+            val signUpContext = LocalContext.current
+            val signUpRepo = remember {
+                val a = signUpContext.applicationContext as SiheungGagaeApp
+                AuthRepository(a.tokenManager, a.fcmTokenManager)
+            }
+            val signUpViewModel: AuthViewModel = viewModel(factory = AuthViewModel.Factory(signUpRepo))
+
             SignUpScreen(
+                viewModel = signUpViewModel,
                 onBack = {
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onSignUpClick = {
+                onSignUpSuccess = {
                     navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onNavigateToLogin = {
@@ -287,7 +331,18 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Home.route) {
+            val homeNotifRepo = remember { NotificationRepository() }
+            val unreadCountState = remember { mutableStateOf(0) }
+            val homeLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(homeLifecycle) {
+                homeLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    runCatching { homeNotifRepo.getUnreadCount() }.onSuccess { resp ->
+                        if (resp.isSuccessful) unreadCountState.value = resp.body()?.unreadCount ?: 0
+                    }
+                }
+            }
             HomeScreen(
+                unreadCount = unreadCountState.value,
                 onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNavigate = { route -> navController.navigateTab(route) },
                 onPlaceDetailClick = { placeId -> navController.navigate(Screen.PlaceDetail.createRoute(placeId)) },
@@ -296,7 +351,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Notification.route) {
-            NotificationScreen(onBack = { navController.popBackStack() })
+            val notifApp = LocalContext.current.applicationContext as SiheungGagaeApp
+            val notifViewModel: NotificationViewModel = viewModel(
+                factory = NotificationViewModel.Factory(
+                    NotificationRepository(notifApp.localNotificationStore)
+                )
+            )
+            NotificationScreen(
+                viewModel = notifViewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(Screen.Matching.route) {
@@ -424,15 +488,26 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.News.route) {
+            val newsNotifRepo = remember { NotificationRepository() }
+            val newsUnreadCount = remember { mutableStateOf(0) }
+            val newsLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(newsLifecycle) {
+                newsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    runCatching { newsNotifRepo.getUnreadCount() }.onSuccess { resp ->
+                        if (resp.isSuccessful) newsUnreadCount.value = resp.body()?.unreadCount ?: 0
+                    }
+                }
+            }
             NewsScreen(
+                unreadCount = newsUnreadCount.value,
+                onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNewsDetailClick = { newsId ->
                     navController.navigate(Screen.NewsDetail.createRoute(newsId))
                 },
                 onPlaceDetailClick = { placeId ->
                     navController.navigate(Screen.PlaceDetail.createRoute(placeId))
                 },
-                onNavigate = { route -> navController.navigateTab(route) },
-                onNotificationClick = { navController.navigate(Screen.Notification.route) },
+                onNavigate = { route -> navController.navigateTab(route) }
             )
         }
 
@@ -452,18 +527,46 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val myApp = myContext.applicationContext as SiheungGagaeApp
             val myScope = rememberCoroutineScope()
             val myAuthRepo = remember { AuthRepository(myApp.tokenManager, myApp.fcmTokenManager) }
+            val myViewModel: MyViewModel = viewModel(factory = MyViewModel.Factory(UserRepository()))
+            val myLifecycle = LocalLifecycleOwner.current.lifecycle
+            val localImageUri by myApp.tokenManager.localProfileImageUri.collectAsState()
+
+            // 다른 화면에서 돌아올 때마다 데이터 새로고침
+            LaunchedEffect(myLifecycle) {
+                myLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    myViewModel.fetchData()
+                }
+            }
 
             MyScreen(
+                viewModel = myViewModel,
+                localImageUri = localImageUri,
                 onNavigate = { route -> navController.navigateTab(route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
+                onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
+                onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
+                onFavoriteStoresClick = { navController.navigate(Screen.FavoriteStores.route) },
+                onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onLogout = {
-                    myScope.launch { myAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                    myScope.launch { myAuthRepo.logout() }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+            )
+        }
+
+        composable(Screen.ProfileEdit.route) {
+            val peContext = LocalContext.current
+            val peApp = peContext.applicationContext as SiheungGagaeApp
+            val peViewModel: ProfileEditViewModel = viewModel(
+                factory = ProfileEditViewModel.Factory(UserRepository(), peApp.tokenManager)
+            )
+            ProfileEditScreen(
+                viewModel = peViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -472,46 +575,109 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val settingsApp = settingsContext.applicationContext as SiheungGagaeApp
             val settingsScope = rememberCoroutineScope()
             val settingsAuthRepo = remember { AuthRepository(settingsApp.tokenManager, settingsApp.fcmTokenManager) }
+            val notifViewModel: NotificationSettingsViewModel = viewModel(
+                factory = NotificationSettingsViewModel.Factory(UserRepository()),
+            )
+            val locationViewModel: LocationSettingsViewModel = viewModel(
+                factory = LocationSettingsViewModel.Factory(UserRepository()),
+            )
+            val accountViewModel: AccountSettingsViewModel = viewModel(
+                factory = AccountSettingsViewModel.Factory(UserRepository()),
+            )
 
             SettingsScreen(
                 onBack = { navController.popBackStack() },
+                onProfileEditClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
-                onLogout = {
-                    settingsScope.launch { settingsAuthRepo.logout() }  // 로컬 삭제 + 서버 무효화
+                onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
+                onBlockManageClick = { navController.navigate(Screen.BlockManage.route) },
+                onHelpClick = { navController.navigate(Screen.Help.route) },
+                onAccountDeleted = {
+                    settingsScope.launch { settingsAuthRepo.logout() }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                notifViewModel = notifViewModel,
+                locationViewModel = locationViewModel,
+                accountViewModel = accountViewModel,
             )
         }
+
 
         composable(Screen.PetList.route) {
-            val api = com.example.siheunggagae.data.network.RetrofitClient.api
-            val requestViewModel: com.example.siheunggagae.ui.viewmodel.RequestViewModel = viewModel(
-                factory = com.example.siheunggagae.ui.viewmodel.RequestViewModel.Factory(api)
+            val petListViewModel: PetListViewModel = viewModel(
+                factory = PetListViewModel.Factory(UserRepository())
             )
-
+            val petListLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(petListLifecycle) {
+                petListLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    petListViewModel.fetchPets()
+                }
+            }
             PetListScreen(
-                viewModel = requestViewModel, // 뷰모델 연결
+                viewModel = petListViewModel,
                 onBack = { navController.popBackStack() },
-                onAddPet = { navController.navigate(Screen.PetAdd.route) }
+                onAddPet = { navController.navigate(Screen.PetAdd.route) },
+                onEditPet = { petId -> navController.navigate(Screen.PetAdd.editRoute(petId)) },
             )
         }
 
-        composable(Screen.PetAdd.route) {
-            val api = com.example.siheunggagae.data.network.RetrofitClient.api
-            val petAddViewModel: com.example.siheunggagae.ui.viewmodel.PetAddViewModel = viewModel(
-                factory = com.example.siheunggagae.ui.viewmodel.PetAddViewModel.Factory(api)
+        composable(
+            route = Screen.PetAdd.route,
+            arguments = listOf(navArgument("petId") {
+                type = NavType.IntType
+                defaultValue = -1
+            }),
+        ) { backStackEntry ->
+            val petId = backStackEntry.arguments?.getInt("petId")?.takeIf { it != -1 }
+            val petAddContext = LocalContext.current
+            val petAddViewModel: PetAddViewModel = viewModel(
+                factory = PetAddViewModel.Factory(
+                    petAddContext.applicationContext as android.app.Application,
+                    UserRepository(),
+                    petId,
+                    (petAddContext.applicationContext as SiheungGagaeApp).localNotificationStore,
+                )
             )
-
             PetAddScreen(
-                viewModel = petAddViewModel, // 뷰모델 연결
-                onBack = { navController.popBackStack() }
+                viewModel = petAddViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
 
         composable(Screen.VolunteerApply.route) {
-            VolunteerApplyScreen(onBack = { navController.popBackStack() })
+            val volunteerApplyViewModel: com.example.siheunggagae.ui.viewmodel.VolunteerApplyViewModel = viewModel(
+                factory = com.example.siheunggagae.ui.viewmodel.VolunteerApplyViewModel.Factory(UserRepository())
+            )
+            VolunteerApplyScreen(
+                viewModel = volunteerApplyViewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.VolunteerBadgeList.route) {
+            val badgeViewModel: VolunteerBadgeViewModel = viewModel(
+                factory = VolunteerBadgeViewModel.Factory(UserRepository())
+            )
+            VolunteerBadgeListScreen(
+                viewModel = badgeViewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.VolunteerHistory.route) {
+            val historyViewModel: VolunteerHistoryViewModel = viewModel(
+                factory = VolunteerHistoryViewModel.Factory(UserRepository())
+            )
+            VolunteerHistoryScreen(
+                viewModel = historyViewModel,
+                onBack = { navController.popBackStack() },
+                onMatchClick = { matchId ->
+                    navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
+                },
+                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+            )
         }
 
         composable(
@@ -524,6 +690,37 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onRelatedClick = { id -> navController.navigate(Screen.NewsDetail.createRoute(id)) },
             )
+        }
+
+        composable(Screen.FavoriteStores.route) {
+            val favViewModel: FavoriteStoresViewModel = viewModel(
+                factory = FavoriteStoresViewModel.Factory(UserRepository())
+            )
+            FavoriteStoresScreen(
+                viewModel = favViewModel,
+                onBack = { navController.popBackStack() },
+                onPlaceDetailClick = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
+                },
+            )
+        }
+
+        composable(Screen.BlockManage.route) {
+            val blockViewModel: BlockManageViewModel = viewModel(
+                factory = BlockManageViewModel.Factory(UserRepository())
+            )
+            BlockManageScreen(
+                viewModel = blockViewModel,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Screen.Help.route) {
+            HelpScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.Privacy.route) {
+            PrivacyPolicyScreen(onBack = { navController.popBackStack() })
         }
     }
 }

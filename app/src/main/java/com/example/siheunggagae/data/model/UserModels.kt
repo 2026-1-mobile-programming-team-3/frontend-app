@@ -73,18 +73,40 @@ data class VolunteerStatsResponse(
 )
 
 data class VolunteerBadge(
-    val tier: String? = null,
+    val tier: VolunteerBadgeTier? = null,
     val count: Int? = null,
-    val nextTier: String? = null,
+    val nextTier: VolunteerBadgeTier? = null,
     val nextThreshold: Int? = null,
     val progressPct: Int? = null,
 )
+
+typealias VolunteerBadgeInfo = VolunteerBadge
 
 data class ActivityStatsResponse(
     val myMatchCount: Int? = null,
     val volunteerCompletedCount: Int? = null,
     val favoriteCount: Int? = null,
     val badge: VolunteerBadge? = null,
+)
+
+// ── 내 매칭 목록 ─────────────────────────────────────────────────────────────
+
+data class MyMatchResponse(
+    val id: Int,
+    val title: String,
+    val status: MatchStatus,
+    val scheduledAt: String?,
+    val regionDong: String?,
+    val petTypes: List<String> = emptyList(),
+    val myRating: Double?,
+)
+
+data class MyMatchListResponse(
+    val content: List<MyMatchResponse>,
+    val totalElements: Int,
+    val totalPages: Int,
+    val page: Int,
+    val size: Int,
 )
 
 // ── 즐겨찾기 매장 ─────────────────────────────────────────────────────────────
@@ -128,12 +150,16 @@ data class BlockCreateResponse(
     val createdAt: String? = null,
 )
 
+typealias BlockCreatedResponse = BlockCreateResponse
+
 data class BlockItem(
     val blockId: Int? = null,
     val targetUserId: Int? = null,
     val targetNickname: String? = null,
     val createdAt: String? = null,
 )
+
+typealias BlockListItem = BlockItem
 
 data class BlockListResponse(
     val items: List<BlockItem>? = null,
@@ -153,6 +179,8 @@ data class ReportCreateResponse(
     val reason: String? = null,
     val createdAt: String? = null,
 )
+
+typealias ReportCreatedResponse = ReportCreateResponse
 
 data class ChatReportCreateRequest(
     val chatId: Int,

@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check // main의 변경사항 반영
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
@@ -418,12 +419,17 @@ private fun PetCard(pet: PetResponse, isSelected: Boolean, onClick: () -> Unit) 
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.align(Alignment.TopEnd).size(24.dp).clip(CircleShape).background(Orange500F)
             ) {
-                Icon(painter = painterResource(R.drawable.ic_check), contentDescription = "선택됨", tint = Color.White, modifier = Modifier.size(14.dp))
+                // main의 변경사항인 Icons.Default.Check 사용
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "선택됨",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
             }
         }
     }
 }
-
 @Composable
 private fun AddPetCard(onAddPet: () -> Unit = {}) {
     Column(

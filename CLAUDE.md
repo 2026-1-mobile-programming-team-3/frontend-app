@@ -6,7 +6,26 @@
 - Kotlin + Jetpack Compose
 - 최소 API 26
 - 아이콘: `androidx.compose.material:material-icons-extended` (Material Symbols)
-- 폰트: Pretendard Variable (`res/font/pretendardvariable.ttf`) — SUIT 대체 완료
+- 폰트: Pretendard Variable (`res/font/pretendardvariable.ttf`)
+
+## 코드 작성 공통 규칙
+- 모든 파일은 실행 가능한 완성 형태로 작성
+- `@Preview` 어노테이션 항상 포함 (showBackground=true)
+- data class + 더미 데이터 포함해서 바로 실행되게
+- 지도는 민트 그라디언트 Box로 placeholder 처리
+- 화면 간 이동: `(onNavigate: (String) -> Unit)` 파라미터로 처리
+
+## URL을 curl같은 명령어로 직접 들어가서 하면 노션도 가능
+api 명세서: 에러코드같은걸 저장하는거
+https://www.notion.so/69e13e2ffd0e416285eb9358480c3673?v=f626631ddc034730aa6e48b53c9bcdfa
+
+노션 체크리스트:
+https://www.notion.so/362f3270da67808eaaa9db68e207ed24
+
+Swagger도 참고해줘.
+https://backend-production-f6c0.up.railway.app/docs
+
+
 
 ---
 
@@ -399,22 +418,9 @@ TopBar: "마이" 24sp Bold + Settings 아이콘 우측
 
 ---
 
-## 코드 작성 공통 규칙
-- 모든 파일은 실행 가능한 완성 형태로 작성
-- `@Preview` 어노테이션 항상 포함 (showBackground=true)
-- data class + 더미 데이터 포함해서 바로 실행되게
-- 지도는 민트 그라디언트 Box로 placeholder 처리
-- 화면 간 이동: `(onNavigate: (String) -> Unit)` 파라미터로 처리
 
-
-# CLAUDE.md 추가 내용 — 빠진 화면 스펙
-
-기존 CLAUDE.md 파일 맨 아래에 이 내용을 붙여넣으세요.
 
 ---
-
-
-
 ---
 
 ## 추가 화면 스펙

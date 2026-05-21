@@ -8,7 +8,7 @@ import com.example.siheunggagae.data.model.ApplicationCreateRequest
 import com.example.siheunggagae.data.model.ApplicationCreateResponse
 import com.example.siheunggagae.data.model.ApplicationListResponse
 import com.example.siheunggagae.data.model.BlockCreateRequest
-import com.example.siheunggagae.data.model.BlockCreateResponse
+import com.example.siheunggagae.data.model.BlockCreatedResponse
 import com.example.siheunggagae.data.model.BlockListResponse
 import com.example.siheunggagae.data.model.CalendarResponse
 import com.example.siheunggagae.data.model.ChatReportCreateRequest
@@ -18,6 +18,7 @@ import com.example.siheunggagae.data.model.ChatMessageCreatedResponse
 import com.example.siheunggagae.data.model.ChatMessageListResponse
 import com.example.siheunggagae.data.model.ChatThreadListResponse
 import com.example.siheunggagae.data.model.DailyCalendarResponse
+import com.example.siheunggagae.data.model.DashboardResponse
 import com.example.siheunggagae.data.model.DeviceRegisterRequest
 import com.example.siheunggagae.data.model.DeviceRegisteredResponse
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
@@ -37,6 +38,7 @@ import com.example.siheunggagae.data.model.MatchStatusUpdateRequest
 import com.example.siheunggagae.data.model.MatchStatusUpdateResponse
 import com.example.siheunggagae.data.model.MatchUpdateRequest
 import com.example.siheunggagae.data.model.MessageResponse
+import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.NewsDetailResponse
 import com.example.siheunggagae.data.model.NewsListResponse
 import com.example.siheunggagae.data.model.NotificationCategory
@@ -49,7 +51,7 @@ import com.example.siheunggagae.data.model.PetCreate
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.ReportCreateRequest
-import com.example.siheunggagae.data.model.ReportCreateResponse
+import com.example.siheunggagae.data.model.ReportCreatedResponse
 import com.example.siheunggagae.data.model.ReverseGeocodeResponse
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
@@ -68,7 +70,6 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
-import com.example.siheunggagae.data.model.DashboardResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -100,6 +101,20 @@ interface AuthApiService {
     @GET("api/v1/users/me")
     suspend fun getMe(): Response<UserMeResponse>
 
+    @GET("api/v1/users/me/activity-stats")
+    suspend fun getActivityStats(): Response<ActivityStatsResponse>
+
+    @GET("api/v1/users/me/volunteer-stats")
+    suspend fun getVolunteerStats(): Response<VolunteerStatsResponse>
+
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatches(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String = "DONE",
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MyMatchListResponse>
+
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
 
@@ -109,14 +124,10 @@ interface AuthApiService {
     @PUT("api/v1/users/me/password")
     suspend fun changePassword(@Body body: PasswordChangeRequest): Response<MessageResponse>
 
-    @GET("api/v1/users/me/volunteer-stats")
-    suspend fun getVolunteerStats(): Response<VolunteerStatsResponse>
-
-    @GET("api/v1/users/me/activity-stats")
-    suspend fun getActivityStats(): Response<ActivityStatsResponse>
-
     @POST("api/v1/users/me/volunteer-request")
-    suspend fun requestVolunteerRole(@Body body: VolunteerRequestCreate): Response<VolunteerRequestResponse>
+    suspend fun submitVolunteerRequest(
+        @Body body: VolunteerRequestCreate,
+    ): Response<VolunteerRequestResponse>
 
     // ── Pets ──────────────────────────────────────────────────────────────────────
 
@@ -137,13 +148,20 @@ interface AuthApiService {
     // ── Blocks ────────────────────────────────────────────────────────────────────
 
     @GET("api/v1/users/me/blocks")
-    suspend fun getBlocks(): Response<BlockListResponse>
+    suspend fun getBlocks(
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 50,
+    ): Response<BlockListResponse>
 
     @POST("api/v1/users/me/blocks")
-    suspend fun blockUser(@Body body: BlockCreateRequest): Response<BlockCreateResponse>
+    suspend fun createBlock(
+        @Body body: BlockCreateRequest,
+    ): Response<BlockCreatedResponse>
 
     @DELETE("api/v1/users/me/blocks/{blockId}")
-    suspend fun unblockUser(@Path("blockId") blockId: Int): Response<MessageResponse>
+    suspend fun deleteBlock(
+        @Path("blockId") blockId: Int,
+    ): Response<Unit>
 
     // ── Favorites ─────────────────────────────────────────────────────────────────
 
@@ -157,7 +175,9 @@ interface AuthApiService {
     suspend fun addFavoriteStore(@Body body: FavoriteStoreCreateRequest): Response<FavoriteStoreCreateResponse>
 
     @DELETE("api/v1/users/me/favorites/stores/{storeId}")
-    suspend fun removeFavoriteStore(@Path("storeId") storeId: Int): Response<MessageResponse>
+    suspend fun deleteFavoriteStore(
+        @Path("storeId") storeId: Int,
+    ): Response<Unit>
 
     // ── Matches ───────────────────────────────────────────────────────────────────
 
@@ -191,14 +211,6 @@ interface AuthApiService {
         @Path("matchId") matchId: Int,
         @Body body: MatchStatusUpdateRequest,
     ): Response<MatchStatusUpdateResponse>
-
-    @GET("api/v1/users/me/matches")
-    suspend fun getMyMatches(
-        @Query("role") role: String,
-        @Query("status") status: String? = null,
-        @Query("page") page: Int? = null,
-        @Query("size") size: Int? = null,
-    ): Response<MatchListResponse>
 
     // ── Applications ──────────────────────────────────────────────────────────────
 
@@ -352,7 +364,9 @@ interface AuthApiService {
     // ── Reports ───────────────────────────────────────────────────────────────────
 
     @POST("api/v1/reports")
-    suspend fun reportUser(@Body body: ReportCreateRequest): Response<ReportCreateResponse>
+    suspend fun createReport(
+        @Body body: ReportCreateRequest,
+    ): Response<ReportCreatedResponse>
 
     @POST("api/v1/reports/chat")
     suspend fun reportChatUser(@Body body: ChatReportCreateRequest): Response<ChatReportCreateResponse>

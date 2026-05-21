@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,13 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
-import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchDetailResponse
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
@@ -32,7 +33,7 @@ import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
 
 // 스펙 컬러
 private val Brown700D = Color(0xFF8A6E58)
-private val BrownBorderD = Color(0xFFE8D3C2)
+private val Brown400D = Color(0xFFC4A882)
 private val Orange500D = Color(0xFFF7A35B)
 private val Pink500D = Color(0xFFF04268)
 private val MintLightD = Color(0xFFD0FEE1)
@@ -53,12 +54,7 @@ fun MatchingDetailScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
-    // 진입 시 서버 데이터 로드
-    LaunchedEffect(requestId) {
-        viewModel.fetchDetail(requestId)
-    }
-
-    // 삭제 완료 처리
+    LaunchedEffect(requestId) { viewModel.fetchDetail(requestId) }
     LaunchedEffect(uiState) {
         if (uiState is MatchDetailUiState.DeleteSuccess) {
             Toast.makeText(context, "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
@@ -79,21 +75,12 @@ fun MatchingDetailScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState) {
-                is MatchDetailUiState.Loading -> {
-                    CircularProgressIndicator(color = Orange500D, modifier = Modifier.align(Alignment.Center))
-                }
-                is MatchDetailUiState.Error -> {
-                    Text(text = state.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
-                }
+                is MatchDetailUiState.Loading -> CircularProgressIndicator(color = Orange500D, modifier = Modifier.align(Alignment.Center))
+                is MatchDetailUiState.Error -> Text(text = state.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
                 is MatchDetailUiState.Success -> {
                     val request = state.detail
-                    Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
+                    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             StatusBannerD(statusText = request.status ?: "상태 없음")
                             RequestInfoCardD(request = request)
                         }
@@ -105,93 +92,38 @@ fun MatchingDetailScreen(
     }
 }
 
-// ── TopBar ───────────────────────────────────────────────────
-
+// ── TopBar ──
 @Composable
-private fun MatchingDetailTopBar(
-    onBack: () -> Unit,
-    onDelete: () -> Unit,
-    onEdit: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(40.dp)
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .clickable { onBack() },
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "뒤로",
-                tint = TextBlackD,
-                modifier = Modifier.size(22.dp)
-            )
+private fun MatchingDetailTopBar(onBack: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "뒤로", tint = TextBlackD)
         }
+        Text("내 봉사 상세", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextBlackD, modifier = Modifier.align(Alignment.Center))
 
-        Text(
-            text = "내 봉사 상세",
-            fontFamily = PretendardFamily,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = TextBlackD,
-            modifier = Modifier.align(Alignment.Center)
-        )
-
-        Row(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // 수정 버튼
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(40.dp)
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White)
-                    .clickable { onEdit() },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "수정",
-                    tint = Brown700D,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // 삭제 버튼
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(40.dp)
-                    .shadow(2.dp, RoundedCornerShape(12.dp))
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White)
-                    .clickable { onDelete() },
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "삭제",
-                    tint = Pink500D,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+        Row(modifier = Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // 수정/삭제 (질문자님 기능)
+            TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
+            TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
+            // 더보기/공유 (main 브랜치 기능)
+            TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
+            TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
         }
     }
 }
 
-// ── 컴포넌트 ───────────────────────────────────────────────────────────────────
+@Composable
+private fun TopBarIconD(iconRes: Int? = null, imageVector: ImageVector? = null, desc: String, onClick: () -> Unit = {}, tint: Color = TextBlackD) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onClick() },
+    ) {
+        if (imageVector != null) Icon(imageVector, desc, tint = tint, modifier = Modifier.size(20.dp))
+        else if (iconRes != null) Icon(painterResource(iconRes), desc, tint = tint, modifier = Modifier.size(20.dp))
+    }
+}
 
+// ── 컴포넌트 ──
 @Composable
 private fun StatusBannerD(statusText: String) {
     Row(
@@ -219,7 +151,6 @@ private fun RequestInfoCardD(request: MatchDetailResponse) {
         HorizontalDivider(color = Gray300D)
         InfoRowD(MintLightD, R.drawable.ic_location_on, Green600D, "목적지", request.address ?: "미정")
         HorizontalDivider(color = Gray300D)
-
         InfoRowD(Gray300D, R.drawable.ic_chat_bubble, TextBlackD, "요청 메모", request.content ?: "메모 없음")
     }
 }

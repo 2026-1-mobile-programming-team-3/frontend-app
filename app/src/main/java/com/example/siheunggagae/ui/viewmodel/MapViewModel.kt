@@ -108,7 +108,7 @@ class MapViewModel(
         viewModelScope.launch {
             val ok = runCatching {
                 val resp = if (newFavorited) api.addFavoriteStore(FavoriteStoreCreateRequest(storeId))
-                           else api.removeFavoriteStore(storeId)
+                           else api.deleteFavoriteStore(storeId)
                 Log.d("MapFavorite", "${if (newFavorited) "ADD" else "REMOVE"} storeId=$storeId → HTTP ${resp.code()} ${resp.message()}")
                 // 409: 이미 즐겨찾기됨 → ADD 목표 달성으로 간주
                 // 404: 즐겨찾기 없음  → REMOVE 목표 달성으로 간주
