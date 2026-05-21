@@ -357,7 +357,11 @@ private fun MatchingRequestCard(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             // 3행: 지역·희망일
-            val subInfo = listOfNotNull(request.address?.split(" ")?.getOrNull(2) ?: request.address, request.desiredDate?.take(10)).joinToString(" · ")
+            val timePart = request.desiredTime?.take(5) ?: ""
+            val subInfo = listOfNotNull(
+                request.address?.split(" ")?.getOrNull(2) ?: request.address,
+                if(timePart.isNotEmpty()) "${request.desiredDate?.take(10)} $timePart" else request.desiredDate?.take(10)
+            ).joinToString(" · ")
             if (subInfo.isNotEmpty()) {
                 Spacer(Modifier.height(5.dp))
                 Text(text = subInfo, fontFamily = PretendardFamily, fontSize = 13.sp, lineHeight = 18.sp, color = Brown700M)

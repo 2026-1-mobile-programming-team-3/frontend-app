@@ -20,7 +20,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.data.model.MatchListItem
+import com.example.siheunggagae.data.model.MatchStatus
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.bgColor
+import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.MyRequestsUiState
 import com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel
 
@@ -133,6 +136,8 @@ private fun MyRequestsTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
+    val matchStatus = MatchStatus.entries.find { it.name == request.status } ?: MatchStatus.WAITING
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,6 +148,20 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 👈 상태 레이블 표시 칩 추가
+                Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(matchStatus.bgColor).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                    Text(text = matchStatus.label, fontFamily = PretendardFamily, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = matchStatus.textColor)
+                }
+                if (request.createdAt != null) {
+                    Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700M)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = request.title ?: "제목 없음",
                 fontFamily = PretendardFamily,
@@ -152,9 +171,15 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
+
+            // 👈 시간 결합 데이터 파싱 개선 (날짜와 실시간 시간 데이터 노출)
+            val datePart = request.desiredDate?.take(10) ?: "날짜 미정"
+            val timePart = request.desiredTime?.take(5) ?: "시간 미정"
+            val townPart = request.address?.split(" ")?.getOrNull(2) ?: request.address ?: "주소 없음"
+
             Text(
-                text = request.address ?: "주소 없음",
+                text = "$townPart · $datePart $timePart",
                 fontFamily = PretendardFamily,
                 fontSize = 13.sp,
                 color = Brown700M

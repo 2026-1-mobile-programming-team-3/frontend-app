@@ -52,6 +52,8 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
+
+
     fun resetState() {
         _uiState.value = MatchDetailUiState.Loading
     }
