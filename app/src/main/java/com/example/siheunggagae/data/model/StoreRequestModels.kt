@@ -58,6 +58,7 @@ data class StoreRequestItem(
     @SerializedName(value = "target_store_id", alternate = ["targetStoreId"])
     val targetStoreId: Int?,
     val payload: StoreRequestPayload,
+    // 응답에서는 서버가 항상 배열로 내려주므로 non-null. 요청(SubmitRequest.proofUrls)에서는 null=생략 의미라 nullable인 점 주의.
     @SerializedName(value = "proof_urls", alternate = ["proofUrls"])
     val proofUrls: List<String>,
     val message: String?,
