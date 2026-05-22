@@ -161,8 +161,8 @@ private fun ChipFilter(label: String, isSelected: Boolean, onClick: () -> Unit) 
             .background(bg)
             .then(if (!isSelected) Modifier.border(1.dp, BorderBeigeQ, RoundedCornerShape(50.dp)) else Modifier)
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-    ) { Text(label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Medium) }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) { Text(label, color = fg, fontSize = 14.sp, fontWeight = FontWeight.Medium) }
 }
 
 @Composable
@@ -213,12 +213,16 @@ private fun StoreRequestCard(item: StoreRequestItem, onClick: () -> Unit) {
 
 @Composable
 private fun TypePill(type: StoreRequestType) {
+    val label = when (type) {
+        StoreRequestType.ADD -> "추가"
+        StoreRequestType.UPDATE -> "수정"
+    }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
             .background(OrangeSandQ)
             .padding(horizontal = 8.dp, vertical = 2.dp),
-    ) { Text(type.name, color = Brown900Q, fontSize = 10.sp, fontWeight = FontWeight.SemiBold) }
+    ) { Text(label, color = Brown900Q, fontSize = 10.sp, fontWeight = FontWeight.SemiBold) }
 }
 
 @Composable
@@ -302,7 +306,7 @@ private fun TopBarStoreRequests(title: String, onBack: () -> Unit) {
             }
         }
         Spacer(Modifier.weight(1f))
-        Text(title, color = TextBlackQ, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = TextBlackQ, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.weight(1f))
         Spacer(Modifier.size(40.dp))
     }
