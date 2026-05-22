@@ -69,6 +69,8 @@ import com.example.siheunggagae.ui.util.bgColor
 import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.MatchingUiState
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 
 // 스펙 컬러
 private val Brown900M     = Color(0xFF614B3A)
@@ -107,6 +109,12 @@ fun MatchingScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
     val bottomBarHeight = 80.dp
+    val context = LocalContext.current
+
+
+    val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", Context.MODE_PRIVATE) }
+    val myNickname = remember { prefs.getString("nickname", "") ?: "" }
+
     var showActionsSheet by remember { mutableStateOf(false) }
     var longPressedRequest by remember { mutableStateOf<MatchListItem?>(null) }
     val actionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -123,7 +131,7 @@ fun MatchingScreen(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
 
-    ) { innerPadding ->
+        ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier
@@ -166,8 +174,12 @@ fun MatchingScreen(
                             }
                         } else {
                             items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
+                                // ─── 🌟 [하드코딩 격파] 위에서 기기 데이터로 땡겨온 실제 내 닉네임과 매핑 분기 완료! ───
+                                val isMine = request.authorNickname == myNickname
+
                                 MatchingRequestCard(
                                     request = request,
+                                    isMine = isMine,
                                     onCardClick = { request.matchId?.let { onCardClick(it) } },
                                     onCardLongClick = {
                                         longPressedRequest = request
@@ -319,10 +331,12 @@ private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
 @Composable
 private fun MatchingRequestCard(
     request: MatchListItem,
+    isMine: Boolean,
     onCardClick: () -> Unit = {},
     onCardLongClick: () -> Unit = {}
 ) {
     val matchStatus = MatchStatus.entries.find { it.name == request.status } ?: MatchStatus.WAITING
+
 
     Card(
         modifier = Modifier
@@ -331,10 +345,18 @@ private fun MatchingRequestCard(
             .combinedClickable(
                 onClick = { onCardClick() },
                 onLongClick = { onCardLongClick() }
+            )
+            // 🌟 [차별화 1] 내가 쓴 글이면 우리 스펙인 따뜻한 브라운 테두리 선(1.5.dp)을 둘러서 강조합니다.
+            .then(
+                if (isMine) Modifier.border(1.5.dp, BrownBorderM, RoundedCornerShape(16.dp))
+                else Modifier
             ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            // 🌟 [차별화 2] 내가 쓴 글은 살짝 더 포근하고 고급스러운 아이보리 계열(#FFFDFB) 배경을 깔아줍니다.
+            containerColor = if (isMine) Color(0xFFFFFDFB) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isMine) 1.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(
@@ -342,7 +364,32 @@ private fun MatchingRequestCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatusChipM(status = matchStatus)
+                // 상단 칩 구역
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    StatusChipM(status = matchStatus)
+
+                    // 🌟 [차별화 3] 내가 쓴 글일 때만 상태 칩 오른쪽에 앙증맞은 '내 요청' 핑크 배지를 띄웁니다.
+                    if (isMine) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(PinkSurfaceM)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "내 요청",
+                                fontFamily = PretendardFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Pink500M
+                            )
+                        }
+                    }
+                }
+
                 if (request.createdAt != null) {
                     Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700M)
                 }
@@ -365,7 +412,15 @@ private fun MatchingRequestCard(
             if (request.applicationsCount != null && request.applicationsCount > 0) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "신청 ${request.applicationsCount}건", fontFamily = PretendardFamily, fontSize = 12.sp, lineHeight = 16.sp, color = Brown700M)
+                    // 내가 작성한 글이면 신청 건수를 더 선명하게 보여줍니다.
+                    Text(
+                        text = "신청 ${request.applicationsCount}건",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = if (isMine) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isMine) Pink500M else Brown700M
+                    )
                 }
             }
         }

@@ -68,6 +68,9 @@ import com.example.siheunggagae.ui.viewmodel.RequestViewModel
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.YearMonth
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 
 private val Brown900F    = Color(0xFF614B3A)
 private val Brown700F    = Color(0xFF8A6E58)
@@ -176,9 +179,9 @@ fun RequestFlowScreen(
                         val dayStr = selectedDay.toString().padStart(2, '0')
                         viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
 
-                        // 👈 [시간 저장 로직 핵심 변경!] 어떤 방식으로 입력했든 HH:mm:00 포맷으로 강제 정렬합니다.
                         val rawTime = if (timeInput.isNotBlank()) timeInput else selectedTime ?: "12:00"
                         val formattedTime = when {
+                            rawTime.matches(Regex("^\\d{4}$")) -> "${rawTime.take(2)}:${rawTime.drop(2)}:00"
                             rawTime.matches(Regex("^\\d{2}:\\d{2}$")) -> "$rawTime:00"
                             rawTime.matches(Regex("^\\d{1}:\\d{2}$")) -> "0$rawTime:00"
                             rawTime.contains("오전") -> {
@@ -231,10 +234,19 @@ fun RequestFlowScreen(
                     onAddPet = onAddPet
                 )
                 2 -> Step2Content(
-                    currentMonth = currentMonth, onMonthChange = { currentMonth = it },
-                    selectedDay = selectedDay, onSelectDay = { selectedDay = it },
-                    timeInput = timeInput, onTimeChange = { timeInput = it; selectedTime = null },
-                    selectedTime = selectedTime, onSelectTime = { selectedTime = it; timeInput = it } // 👈 퀵 선택 시 입력창도 같이 채워지도록 연동!
+                    currentMonth = currentMonth,
+                    onMonthChange = { currentMonth = it },
+                    selectedDay = selectedDay,
+                    onSelectDay = { selectedDay = it },
+
+                    timeInput = timeInput,
+                    onTimeChange = { input ->
+                        timeInput = input.filter { it.isDigit() }.take(4)
+                        selectedTime = null
+                    },
+
+                    selectedTime = selectedTime,
+                    onSelectTime = { selectedTime = it; timeInput = it }
                 )
                 3 -> Step3Content(
                     title = titleInput, onTitleChange = { titleInput = it },
@@ -531,7 +543,7 @@ private fun Step2Content(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "예: 14:30",
+                    text = "예: 1430 (오후 2시 30분)",
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp,
                     color = Brown400F
@@ -541,6 +553,12 @@ private fun Step2Content(
                 Icon(painter = painterResource(R.drawable.ic_schedule), contentDescription = null, tint = Orange500F)
             },
             singleLine = true,
+
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number, // 혹은 위에서 임포트했다면 KeyboardType.Number
+                imeAction = ImeAction.Done
+            ),
+
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Orange500F,
                 unfocusedBorderColor = BrownBorderF,
