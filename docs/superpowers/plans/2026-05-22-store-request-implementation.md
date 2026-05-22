@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-05-22-store-request-design.md`
 
+**필드 명명 규약 (모든 task 공통)**: 모든 DTO와 필드 접근은 **camelCase Kotlin + `@SerializedName(value="snake_case", alternate=["camelCase"])`** 패턴. 기존 `MapModels.kt` 일관성. 예: `item.requestId`, `payload.isPetAllowed`, `submitReq.targetStoreId`. 후속 task의 ViewModel/Screen 코드에서 plan 본문에 `snake_case`로 적힌 필드 참조가 있다면 camelCase로 바꿔 읽을 것 (예: `p.is_pet_allowed` → `p.isPetAllowed`).
+
 ---
 
 ## File Structure
