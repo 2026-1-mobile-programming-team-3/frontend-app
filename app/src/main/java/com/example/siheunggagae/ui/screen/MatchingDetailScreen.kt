@@ -71,9 +71,11 @@ fun MatchingDetailScreen(
         requestData?.let { detail ->
             if (detail.status?.trim()?.uppercase() == "DONE" &&
                 viewModel.currentUserId == detail.author?.userId &&
-                !viewModel.isReviewWritten
+                detail.isReviewed != true // 후기를 아직 작성하지 않았을 때만
             ) {
                 showReviewDialog = true
+            } else {
+                showReviewDialog = false
             }
         }
     }
@@ -123,6 +125,7 @@ fun MatchingDetailScreen(
         )
     }
 
+
     if (showReviewDialog) {
         AlertDialog(
             onDismissRequest = { showReviewDialog = false },
@@ -131,6 +134,9 @@ fun MatchingDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showReviewDialog = false
+
+                    viewModel.resetState()
+
                     onNavigate("match_review?matchId=$requestId&status=DONE")
                 }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
             },
@@ -156,11 +162,18 @@ fun MatchingDetailScreen(
                 currentStatus = currentStatus
             )
         },
+        // ─── 🌟 [재호님 통찰 반영 완료] 중복 및 409 유발 버튼 완전 도려내기 ───
         bottomBar = {
             val successState = uiState as? MatchDetailUiState.Success
             successState?.let {
                 val currentStatus = it.detail.status?.trim()?.uppercase() ?: ""
                 val isMenuOwner = viewModel.currentUserId == it.detail.author?.userId
+
+                // [안전 가드] 내가 요청자인데 아직 매칭 대기(WAITING/MATCHING) 상태라면
+                // 하단에 굳이 버튼 공간을 차지할 필요가 없으므로 영역을 그리지 않고 조기 리턴합니다.
+                if (isMenuOwner && (currentStatus == "WAITING" || currentStatus == "MATCHING")) {
+                    return@let
+                }
 
                 Box(
                     modifier = Modifier
@@ -170,15 +183,12 @@ fun MatchingDetailScreen(
                         .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     if (isMenuOwner) {
-                        if (currentStatus == "MATCHING" || currentStatus == "PROGRESS" || currentStatus == "WAITING") {
+                        // 1️⃣ 진행 중인 상태일 때는 오직 [완료 처리하기] 버튼만 깔끔하게 노출
+                        if (currentStatus == "PROGRESS") {
                             Button(
                                 onClick = {
-                                    if (currentStatus == "MATCHING" || currentStatus == "WAITING") {
-                                        viewModel.updateMatchStatus(requestId, "PROGRESS")
-                                    } else if (currentStatus == "PROGRESS") {
-                                        viewModel.updateMatchStatus(requestId, "DONE") {
-                                            showReviewDialog = true
-                                        }
+                                    viewModel.updateMatchStatus(requestId, "DONE") {
+                                        showReviewDialog = true
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -186,17 +196,18 @@ fun MatchingDetailScreen(
                                 shape = RoundedCornerShape(26.dp)
                             ) {
                                 Text(
-                                    text = if (currentStatus == "MATCHING" || currentStatus == "WAITING") "진행중으로 전환" else "완료 처리하기",
+                                    text = "완료 처리하기",
                                     fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
                                 )
                             }
                         } else if (currentStatus == "DONE") {
+                            // 2️⃣ 완료된 상태일 때 후기 분기 처리 매핑 구역
                             Button(
                                 onClick = {
                                     if (!viewModel.isReviewWritten) {
                                         onNavigate("match_review?matchId=$requestId&status=DONE")
                                     } else {
-                                        Toast.makeText(context, "작성하신 후기 조회 화면으로 이동합니다 (준비중)", Toast.LENGTH_SHORT).show()
+                                        onNavigate("my_review_detail?matchId=$requestId")
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -212,6 +223,7 @@ fun MatchingDetailScreen(
                             }
                         }
                     } else {
+                        // 3️⃣ 봉사자(남이 쓴 글) 시점일 때의 기존 흐름 가드는 무결하므로 완벽 유지
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
@@ -228,7 +240,6 @@ fun MatchingDetailScreen(
                             }
                         } else {
                             val cleanAppStatus = viewModel.myApplicationStatus?.trim()?.uppercase() ?: ""
-
                             when (cleanAppStatus) {
                                 "ACCEPTED" -> {
                                     Button(

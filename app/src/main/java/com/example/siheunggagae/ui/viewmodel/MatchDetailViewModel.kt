@@ -26,7 +26,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
     var isApplied by mutableStateOf(false)
     var myApplicationId by mutableStateOf<Int?>(null)
     var currentUserId by mutableStateOf<Int?>(null)
-    var isReviewWritten by mutableStateOf(false)
+    var isReviewWritten by mutableStateOf(false) // 👈 하단 바 후기 분기용 변수
     var myApplicationStatus by mutableStateOf<String?>(null)
 
     // 글 작성자가 화면 하단에서 볼 수 있는 전체 지원자 명단 상태 변수
@@ -39,11 +39,14 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
             myApplicationId = null
             myApplicationStatus = null
             applicantList = emptyList()
-            isReviewWritten = false
+            isReviewWritten = false // 초기화
             try {
                 val response = api.getMatchDetail(matchId)
                 if (response.isSuccessful && response.body() != null) {
                     val detail = response.body()!!
+
+                    // ─── 🌟 [신규 매핑 완료] 백엔드가 추가해 준 후기 작성 여부 값을 프론트 상태 변수에 동기화 ───
+                    isReviewWritten = detail.isReviewed ?: false
 
                     val meResponse = api.getMe()
                     val appsResponse = api.getApplications(matchId)
@@ -58,12 +61,11 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                             it.applicant?.applicantId == myUserId
                         }
 
-                        // ─── 🌟 [범인 검거 및 수정] 추출한 상태값을 변수에 확실하게 대입 마감 ───
                         val rawStatus = myApp?.status?.trim()?.uppercase()
 
                         isApplied = myApp != null && (rawStatus == "PENDING" || rawStatus == "ACCEPTED")
                         myApplicationId = myApp?.applicationId
-                        myApplicationStatus = rawStatus // 👈 이 대입문이 누락되어 버그가 발생했습니다.
+                        myApplicationStatus = rawStatus
                     }
 
                     _uiState.value = MatchDetailUiState.Success(detail)
@@ -139,7 +141,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                 if (response.isSuccessful) {
                     isApplied = true
                     myApplicationId = response.body()?.applicationId
-                    myApplicationStatus = "PENDING" // 👈 신청 즉시 버튼 상태를 대기중으로 전환
+                    myApplicationStatus = "PENDING"
                     onResult(true, "봉사 신청이 완료되었습니다.")
                 } else {
                     if (response.code() == 409) {

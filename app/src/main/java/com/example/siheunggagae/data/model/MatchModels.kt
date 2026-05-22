@@ -80,6 +80,7 @@ data class MatchDetailResponse(
     val longitude: Double? = null,
     val desiredDate: String? = null,
     @SerializedName("desired_time") val desiredTime: String? = null,
+    @SerializedName("is_reviewed") val isReviewed: Boolean? = null,
     val status: String? = null,
     val applicationsCount: Int? = null,
     val createdAt: String? = null,

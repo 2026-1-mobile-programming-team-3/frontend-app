@@ -71,7 +71,7 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
-import com.example.siheunggagae.data.model.MatchCancelResponse // 👈 [2단계 추가] 취소 응답 모델 임포트
+import com.example.siheunggagae.data.model.MatchCancelResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -230,7 +230,6 @@ interface AuthApiService {
         @Body body: ApplicationActionRequest,
     ): Response<ApplicationActionResponse>
 
-    // ─── 👈 [2단계 추가] 매칭 중도 취소를 위한 POST 엔드포인트 연동 ───
     @POST("api/v1/matches/{matchId}/applications/{applicationId}/cancel")
     suspend fun cancelMatching(
         @Path("matchId") matchId: Int,
@@ -385,5 +384,7 @@ interface AuthApiService {
     ): Response<ReportCreatedResponse>
 
     @POST("api/v1/reports/chat")
-    suspend fun reportChatUser(@Body body: ChatReportCreateRequest): Response<ChatReportCreateResponse>
+    suspend fun reportChatMessage(
+        @Body body: ChatReportCreateRequest
+    ): Response<ChatReportCreateResponse>
 }

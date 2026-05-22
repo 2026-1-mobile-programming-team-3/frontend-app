@@ -190,10 +190,10 @@ data class ReportCreateResponse(
 typealias ReportCreatedResponse = ReportCreateResponse
 
 data class ChatReportCreateRequest(
-    val chatId: Int,
+    val applicationId: Int,
     val targetUserId: Int,
     val messageId: Int,
-    val reason: String,
+    val reason: String
 )
 
 data class ChatReportCreateResponse(

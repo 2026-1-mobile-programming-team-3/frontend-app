@@ -21,7 +21,8 @@ sealed class ChatUiState {
         val messages: List<ChatMessageItem>,
         val matchDetail: MatchDetailResponse?,
         val opponentNickname: String,
-        val isMyRequest: Boolean
+        val isMyRequest: Boolean,
+        val hasMore: Boolean = false
     ) : ChatUiState()
     data class Error(val message: String) : ChatUiState()
 }
@@ -38,6 +39,9 @@ class ChatViewModel(
     private var matchDetail: MatchDetailResponse? = null
     private var opponentNickname: String = "상대방"
     private var isMyRequest: Boolean = false
+
+    private var hasMore: Boolean = false
+    private var isLoadingMore: Boolean = false
 
     private var mId: Int = -1
     private var appId: Int = -1
@@ -75,10 +79,12 @@ class ChatViewModel(
                         matchDetail?.author?.nickname ?: "요청자"
                     }
 
+                    hasMore = msgResponse.body()?.hasMore ?: false
+
                     currentMessages.clear()
                     currentMessages.addAll(msgResponse.body()?.items?.reversed() ?: emptyList())
 
-                    _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest)
+                    _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest, hasMore)
 
                     wsManager.connect(applicationId)
                     observeWebSocket()
@@ -91,6 +97,36 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * ─── 🌟 [태은-6.7 수정 완료] 확장된 오버로딩 파라미터를 사용하여 정밀 과거 페이징 수행 ───
+     */
+    fun loadMoreMessages() {
+        if (isLoadingMore || !hasMore || currentMessages.isEmpty()) return
+        isLoadingMore = true
+
+        viewModelScope.launch {
+            try {
+                val oldestMessageId = currentMessages.first().id
+                // 수정한 api.getChatMessages 파이프라인에 최상단 커서 ID 주입
+                val response = api.getChatMessages(mId, appId, beforeId = oldestMessageId)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val pageData = response.body()!!
+                    hasMore = pageData.hasMore
+
+                    val oldMessages = pageData.items.reversed()
+                    currentMessages.addAll(0, oldMessages)
+
+                    _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest, hasMore)
+                }
+            } catch (e: Exception) {
+                println("과거 메시지 페이징 로드 실패: ${e.message}")
+            } finally {
+                isLoadingMore = false
+            }
+        }
+    }
+
     private fun observeWebSocket() {
         viewModelScope.launch {
             wsManager.events.collect { event ->
@@ -98,7 +134,7 @@ class ChatViewModel(
                     is WsEvent.Message -> {
                         if (currentMessages.none { it.id == event.message.id }) {
                             currentMessages.add(event.message)
-                            _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest)
+                            _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest, hasMore)
                         }
                     }
                     is WsEvent.Unauthorized -> {
@@ -127,7 +163,7 @@ class ChatViewModel(
                     )
                     if (currentMessages.none { it.id == newMessage.id }) {
                         currentMessages.add(newMessage)
-                        _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest)
+                        _uiState.value = ChatUiState.Success(currentMessages.toList(), matchDetail, opponentNickname, isMyRequest, hasMore)
                     }
                 }
             } catch (e: Exception) {
@@ -135,7 +171,24 @@ class ChatViewModel(
         }
     }
 
-    // [수락 피드]
+
+    fun reportMessage(messageId: Int, targetUserId: Int, reason: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = com.example.siheunggagae.data.model.ChatReportCreateRequest(
+                    applicationId = this@ChatViewModel.appId,
+                    targetUserId = targetUserId,
+                    messageId = messageId,
+                    reason = reason
+                )
+                val response = api.reportChatMessage(body)
+                onComplete(response.isSuccessful)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
     fun acceptVolunteer(onComplete: () -> Unit) {
         viewModelScope.launch {
             try {
@@ -149,17 +202,13 @@ class ChatViewModel(
         }
     }
 
-    // ─── 🌟 [3단계 수정 완료] 새롭게 정의된 매칭 중도 취소 전용 엔드포인트 연동 ───
     fun cancelVolunteer(onComplete: () -> Unit) {
         viewModelScope.launch {
             try {
-                // 422 에러를 유발하던 respondToApplication 대신 신규 개방된 cancelMatching API 직접 호출
                 val response = api.cancelMatching(mId, appId)
-
                 if (response.isSuccessful) {
                     onComplete()
                 } else {
-                    // 예외 발생 시 디버깅을 위한 상태 추적 콘솔로그 확보
                     println("매칭 취소 실패: 코드 ${response.code()}, 메시지: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
