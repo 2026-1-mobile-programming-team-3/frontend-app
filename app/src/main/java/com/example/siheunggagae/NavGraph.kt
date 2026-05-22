@@ -181,6 +181,49 @@ sealed class Screen(val route: String) {
     object BlockManage     : Screen("block_manage")
     object Help            : Screen("help")
     object Privacy         : Screen("privacy")
+
+    object MyStoreRequests : Screen("my_store_requests")
+
+    object StoreRequestForm : Screen(
+        "store_request_form?type={type}&storeId={storeId}&requestId={requestId}",
+    ) {
+        const val ARG_TYPE = "type"
+        const val ARG_STORE_ID = "storeId"
+        const val ARG_REQUEST_ID = "requestId"
+
+        fun createRoute(
+            type: com.example.siheunggagae.data.model.StoreRequestType,
+            storeId: Int? = null,
+            requestId: Int? = null,
+        ): String {
+            val sb = StringBuilder("store_request_form?type=$type")
+            storeId?.let { sb.append("&storeId=$it") }
+            requestId?.let { sb.append("&requestId=$it") }
+            return sb.toString()
+        }
+    }
+
+    object StoreRequestDetail : Screen("store_request_detail/{requestId}") {
+        const val ARG_REQUEST_ID = "requestId"
+        fun createRoute(requestId: Int): String = "store_request_detail/$requestId"
+    }
+
+    object MapPinPicker : Screen("map_pin_picker?lat={lat}&lng={lng}") {
+        const val ARG_LAT = "lat"
+        const val ARG_LNG = "lng"
+        const val RESULT_LAT = "picked_lat"
+        const val RESULT_LNG = "picked_lng"
+        const val RESULT_ADDRESS = "picked_address"
+
+        fun createRoute(lat: Double? = null, lng: Double? = null): String {
+            if (lat == null && lng == null) return "map_pin_picker"
+            val parts = buildList {
+                lat?.let { add("lat=$it") }
+                lng?.let { add("lng=$it") }
+            }
+            return "map_pin_picker?" + parts.joinToString("&")
+        }
+    }
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -975,6 +1018,59 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 
         composable(Screen.Privacy.route) {
             PrivacyPolicyScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Screen.MyStoreRequests.route) {
+            androidx.compose.material3.Text("MyStoreRequests TODO")
+        }
+
+        composable(
+            route = Screen.StoreRequestForm.route,
+            arguments = listOf(
+                navArgument(Screen.StoreRequestForm.ARG_TYPE) {
+                    type = NavType.StringType
+                    defaultValue = "ADD"
+                },
+                navArgument(Screen.StoreRequestForm.ARG_STORE_ID) {
+                    type = NavType.IntType
+                    defaultValue = -1
+                },
+                navArgument(Screen.StoreRequestForm.ARG_REQUEST_ID) {
+                    type = NavType.IntType
+                    defaultValue = -1
+                },
+            ),
+        ) {
+            androidx.compose.material3.Text("StoreRequestForm TODO")
+        }
+
+        composable(
+            route = Screen.StoreRequestDetail.route,
+            arguments = listOf(
+                navArgument(Screen.StoreRequestDetail.ARG_REQUEST_ID) {
+                    type = NavType.IntType
+                },
+            ),
+        ) {
+            androidx.compose.material3.Text("StoreRequestDetail TODO")
+        }
+
+        composable(
+            route = Screen.MapPinPicker.route,
+            arguments = listOf(
+                navArgument(Screen.MapPinPicker.ARG_LAT) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument(Screen.MapPinPicker.ARG_LNG) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+            ),
+        ) {
+            androidx.compose.material3.Text("MapPinPicker TODO")
         }
     }
 
