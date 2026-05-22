@@ -71,6 +71,7 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
+import com.example.siheunggagae.data.model.MatchCancelResponse // 👈 [2단계 추가] 취소 응답 모델 임포트
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -111,7 +112,7 @@ interface AuthApiService {
     @GET("api/v1/users/me/matches")
     suspend fun getMyMatches(
         @Query("role") role: String = "applicant",
-        @Query("status") status: String? = null, // 모든 상태를 볼 수 있게 null 허용
+        @Query("status") status: String? = null,
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20,
     ): Response<MatchListResponse>
@@ -141,9 +142,7 @@ interface AuthApiService {
         @Body body: PetUpdate,
     ): Response<PetResponse>
 
-    // MessageResponse -> Unit 으로 변경  (204 No Content 처리)
     @DELETE("api/v1/users/me/pets/{petId}")
-
     suspend fun deletePet(@Path("petId") petId: Int): Response<Unit>
 
     // ── Blocks ────────────────────────────────────────────────────────────────────
@@ -230,6 +229,13 @@ interface AuthApiService {
         @Path("applicationId") applicationId: Int,
         @Body body: ApplicationActionRequest,
     ): Response<ApplicationActionResponse>
+
+    // ─── 👈 [2단계 추가] 매칭 중도 취소를 위한 POST 엔드포인트 연동 ───
+    @POST("api/v1/matches/{matchId}/applications/{applicationId}/cancel")
+    suspend fun cancelMatching(
+        @Path("matchId") matchId: Int,
+        @Path("applicationId") applicationId: Int
+    ): Response<MatchCancelResponse>
 
     @POST("api/v1/matches/{matchId}/review")
     suspend fun submitMatchReview(

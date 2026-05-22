@@ -149,22 +149,21 @@ class ChatViewModel(
         }
     }
 
-    // ChatViewModel.kt 내부의 cancelVolunteer 함수를 수정합니다.
-
+    // ─── 🌟 [3단계 수정 완료] 새롭게 정의된 매칭 중도 취소 전용 엔드포인트 연동 ───
     fun cancelVolunteer(onComplete: () -> Unit) {
         viewModelScope.launch {
             try {
-                val body = com.example.siheunggagae.data.model.ApplicationActionRequest(action = "CANCEL")
-                val response = api.respondToApplication(mId, appId, body)
+                // 422 에러를 유발하던 respondToApplication 대신 신규 개방된 cancelMatching API 직접 호출
+                val response = api.cancelMatching(mId, appId)
 
                 if (response.isSuccessful) {
                     onComplete()
                 } else {
-                    // 409 등 실패 시 로그캣에서 원인을 바로 확인할 수 있도록 콘솔 로그를 남겨둡니다.
+                    // 예외 발생 시 디버깅을 위한 상태 추적 콘솔로그 확보
                     println("매칭 취소 실패: 코드 ${response.code()}, 메시지: ${response.errorBody()?.string()}")
                 }
             } catch (e: Exception) {
-                // 네트워크 예외 처리
+                println("매칭 취소 통신 중 네트워크 에러 발생: ${e.message}")
             }
         }
     }

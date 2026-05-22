@@ -11,7 +11,7 @@ data class MatchCreateRequest(
     val longitude: Float,
     val address: String? = null,
     val desiredDate: String? = null,
-    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
+    @SerializedName("desired_time") val desiredTime: String? = null,
     val petId: Int? = null,
 )
 
@@ -39,7 +39,7 @@ data class MatchListItem(
     val latitude: Double? = null,
     val longitude: Double? = null,
     @SerializedName("desired_date") val desiredDate: String? = null,
-    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
+    @SerializedName("desired_time") val desiredTime: String? = null,
     val status: String? = null,
     @SerializedName("author_nickname") val authorNickname: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
@@ -79,7 +79,7 @@ data class MatchDetailResponse(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val desiredDate: String? = null,
-    @SerializedName("desired_time") val desiredTime: String? = null, // 추가
+    @SerializedName("desired_time") val desiredTime: String? = null,
     val status: String? = null,
     val applicationsCount: Int? = null,
     val createdAt: String? = null,
@@ -102,11 +102,11 @@ data class ApplicationCreateRequest(
 )
 
 data class ApplicationCreateResponse(
-    val applicationId: Int? = null,
-    val matchId: Int? = null,
-    val applicantId: Int? = null,
+    @SerializedName("application_id") val applicationId: Int? = null,
+    @SerializedName("match_id") val matchId: Int? = null,
+    @SerializedName("applicant_id") val applicantId: Int? = null,
     val status: String? = null,
-    val createdAt: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
 )
 
 data class ApplicationActionRequest(
@@ -114,27 +114,34 @@ data class ApplicationActionRequest(
 )
 
 data class ApplicationActionResponse(
-    val applicationId: Int? = null,
+    @SerializedName("application_id") val applicationId: Int? = null,
     val status: String? = null,
-    val matchStatus: String? = null,
+    @SerializedName("match_status") val matchStatus: String? = null,
 )
 
 data class ApplicationApplicant(
-    val applicantId: Int? = null,
+    @SerializedName("applicant_id") val applicantId: Int? = null,     //  핵심 버그 해결 포인트!
     val nickname: String? = null,
 )
 
 data class ApplicationItem(
-    val applicationId: Int? = null,
+    @SerializedName("application_id") val applicationId: Int? = null, //  핵심 버그 해결 포인트!
     val applicant: ApplicationApplicant? = null,
     val message: String? = null,
     val status: String? = null,
-    val createdAt: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,       //  추가
 )
 
 data class ApplicationListResponse(
     val items: List<ApplicationItem>? = null,
     val total: Int? = null,
+)
+
+data class MatchCancelResponse(
+    @SerializedName("application_id") val applicationId: Int,
+    @SerializedName("status") val status: String,
+    @SerializedName("match_status") val matchStatus: String,
+    @SerializedName("reopened_to_applicant_ids") val reopenedToApplicantIds: List<Int>
 )
 
 // ── 봉사 완료 후기 (Reviews) ───────────────────────────────────────────────────

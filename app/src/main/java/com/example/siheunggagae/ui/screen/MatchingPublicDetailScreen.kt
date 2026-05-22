@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -58,8 +57,9 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.ui.Alignment
 
-// ─── 스펙 컬러 ────────────────────────────────────────────────────────────
+// 스펙 컬러
 private val Brown700P     = Color(0xFF8A6E58)
 private val Brown400P     = Color(0xFFC4A882)
 private val BrownBorderP  = Color(0xFFE8D3C2)
@@ -73,8 +73,6 @@ private val Gray300P      = Color(0xFFE8E8E8)
 private val TextBlackP    = Color(0xFF1E120A)
 private val Green600P     = Color(0xFF00A63E)
 private val Brown900C    = Color(0xFF614C3B)
-
-// ─── 메인 화면 ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun MatchingPublicDetailScreen(
@@ -99,7 +97,6 @@ fun MatchingPublicDetailScreen(
         containerColor = BackgroundP,
         topBar = { PublicDetailTopBar(onBack = onBack) },
         bottomBar = {
-            // 👈 [해결] 데이터 로딩이 완전히 성공했을 때만 하단 바를 띄워 차단합니다 (세번째 사진 버그 해결)
             if (uiState is MatchDetailUiState.Success) {
                 val state = uiState as MatchDetailUiState.Success
                 val authorId = state.detail.author?.userId
@@ -109,6 +106,7 @@ fun MatchingPublicDetailScreen(
                 PublicDetailBottomBar(
                     isMyRequest = isMyRequest,
                     isApplied = viewModel?.isApplied ?: false,
+                    myApplicationStatus = viewModel?.myApplicationStatus ?: "", // 👈 뷰모델의 원본 상태 전달
                     onApply = { showApplyDialog = true },
                     onChat = {
                         if (viewModel?.isApplied == true) {
@@ -119,7 +117,6 @@ fun MatchingPublicDetailScreen(
                         }
                     },
                     onManageRequest = {
-                        // 내가 요청한 글일 경우 내 상세 관리 화면(MatchingDetailScreen)으로 라우팅 이동
                         onNavigate(Screen.MatchingDetail.createRoute(requestId))
                     }
                 )
@@ -129,27 +126,17 @@ fun MatchingPublicDetailScreen(
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val state = uiState) {
                 is MatchDetailUiState.Loading -> {
-                    CircularProgressIndicator(
-                        color = Orange500P,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    CircularProgressIndicator(color = Orange500P, modifier = Modifier.align(Alignment.Center))
                 }
                 is MatchDetailUiState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = Pink500P,
-                        fontFamily = PretendardFamily,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Text(text = state.message, color = Pink500P, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
                 }
                 is MatchDetailUiState.Success -> {
                     val request = state.detail
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
                             PublicStatusBanner(statusText = request.status ?: "모집 중")
@@ -157,9 +144,7 @@ fun MatchingPublicDetailScreen(
                         }
 
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             PublicRouteRow(destination = request.address ?: "목적지 미정")
@@ -167,19 +152,10 @@ fun MatchingPublicDetailScreen(
                         }
 
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 24.dp, top = 8.dp, end = 24.dp, bottom = 16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, top = 8.dp, end = 24.dp, bottom = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Text(
-                                text = "요청자 정보",
-                                fontFamily = PretendardFamily,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Normal,
-                                lineHeight = 20.sp,
-                                color = Brown700P,
-                            )
+                            Text(text = "요청자 정보", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700P)
                             RequesterCard(
                                 authorNickname = request.author?.nickname ?: "요청자",
                                 onChat = {
@@ -214,11 +190,7 @@ fun MatchingPublicDetailScreen(
                     TextButton(onClick = {
                         viewModel?.applyForMatch(requestId, applyMessage) { success, msg ->
                             showApplyDialog = false
-                            android.widget.Toast.makeText(
-                                context,
-                                msg,
-                                android.widget.Toast.LENGTH_SHORT
-                            ).show()
+                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }) { Text("신청하기") }
                 },
@@ -235,36 +207,17 @@ fun MatchingPublicDetailScreen(
 @Composable
 private fun PublicDetailTopBar(onBack: () -> Unit) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(40.dp)
-                .shadow(2.dp, RoundedCornerShape(12.dp))
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White)
-                .clickable { onBack() },
+            modifier = Modifier.align(Alignment.CenterStart).size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onBack() },
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "뒤로",
-                tint = TextBlackP,
-                modifier = Modifier.size(22.dp),
-            )
+            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "뒤로", tint = TextBlackP, modifier = Modifier.size(22.dp))
         }
         Text(
             text = "이동 지원 요청",
-            fontFamily = PretendardFamily,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 32.sp,
-            color = TextBlackP,
+            fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlackP,
             modifier = Modifier.align(Alignment.Center),
         )
         Row(
@@ -281,12 +234,7 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
 private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(40.dp)
-            .shadow(2.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
-            .clickable { },
+        modifier = Modifier.size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { },
     ) {
         Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
     }
@@ -297,22 +245,11 @@ private fun PublicTopBarIcon(iconRes: Int, desc: String) {
 @Composable
 private fun PublicStatusBanner(statusText: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(50.dp))
-            .background(PinkSurfaceP)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50.dp)).background(PinkSurfaceP).padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = statusText,
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            lineHeight = 20.sp,
-            color = TextBlackP,
-        )
+        Text(text = statusText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextBlackP)
     }
 }
 
@@ -321,21 +258,10 @@ private fun PublicStatusBanner(statusText: String) {
 @Composable
 private fun PublicRequestInfoCard(request: MatchDetailResponse) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color.White)
-            .padding(20.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Color.White).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = request.title ?: "제목 없음",
-            fontFamily = PretendardFamily,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 28.sp,
-            color = TextBlackP,
-        )
+        Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextBlackP)
 
         val dateValue = request.desiredDate ?: "일정 미정"
         val timeValue = request.desiredTime?.take(5) ?: "시간 미정"
@@ -356,17 +282,12 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
                 Icon(painter = painterResource(R.drawable.ic_pets), null, tint = Brown700P, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "반려동물", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700P)
+                Text(text = "반려동물", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
                 Spacer(Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(OrangeSandP)
-                        .padding(horizontal = 12.dp, vertical = 3.dp),
-                ) {
+                Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(OrangeSandP).padding(horizontal = 12.dp, vertical = 3.dp)) {
                     val petName = request.pet?.name ?: "이름 없음"
                     val petSpecies = request.pet?.species ?: "종 미정"
-                    Text(text = "$petName · $petSpecies", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, color = Brown700P)
+                    Text(text = "$petName · $petSpecies", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
                 }
             }
         }
@@ -381,23 +302,16 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
                 Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = TextBlackP, modifier = Modifier.size(20.dp))
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "요청 메모", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700P)
+                Text(text = "요청 메모", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
                 Spacer(Modifier.height(4.dp))
-                Text(text = request.content ?: "메모 없음", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = TextBlackP)
+                Text(text = request.content ?: "메모 없음", fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP)
             }
         }
     }
 }
 
 @Composable
-private fun PublicInfoRow(
-    iconBg: Color,
-    iconRes: Int,
-    iconTint: Color,
-    label: String,
-    value: String,
-    valueFontWeight: FontWeight = FontWeight.Medium,
-) {
+private fun PublicInfoRow(iconBg: Color, iconRes: Int, iconTint: Color, label: String, value: String, valueFontWeight: FontWeight = FontWeight.Medium) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -407,22 +321,16 @@ private fun PublicInfoRow(
             Icon(painter = painterResource(iconRes), null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700P)
+            Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
             Spacer(Modifier.height(2.dp))
-            Text(text = value, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = valueFontWeight, lineHeight = 24.sp, color = TextBlackP)
+            Text(text = value, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = valueFontWeight, color = TextBlackP)
         }
     }
 }
 
 @Composable
 private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(bg),
-    ) { content() }
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(bg)) { content() }
 }
 
 // ─── 경로 Row ──────────────────────────────────────────────────────────────────
@@ -430,18 +338,14 @@ private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
 @Composable
 private fun PublicRouteRow(destination: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(50.dp))
-            .background(Color.White)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50.dp)).background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(16.dp))
-        Text(text = "출발지 인근", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = TextBlackP)
+        Text(text = "출발지 인근", fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP)
         Text(text = "→", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown400P)
-        Text(text = destination, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = TextBlackP, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = destination, fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -450,30 +354,18 @@ private fun PublicRouteRow(destination: String) {
 @Composable
 private fun PublicMapCard() {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(192.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(MintLightP, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))),
+        modifier = Modifier.fillMaxWidth().height(192.dp).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(MintLightP, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))),
     ) {
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P,
-            modifier = Modifier.size(28.dp).align(Alignment.Center).offset((-40).dp, (-20).dp))
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P,
-            modifier = Modifier.size(28.dp).align(Alignment.Center).offset(40.dp, 20.dp))
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P, modifier = Modifier.size(28.dp).align(Alignment.Center).offset((-40).dp, (-20).dp))
+        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(28.dp).align(Alignment.Center).offset(40.dp, 20.dp))
 
         Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(12.dp)
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.White)
-                .clickable { }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(RoundedCornerShape(50.dp)).background(Color.White).clickable { }.padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(painter = painterResource(R.drawable.ic_map), null, tint = TextBlackP, modifier = Modifier.size(14.dp))
-            Text(text = "지도에서 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, color = TextBlackP)
+            Text(text = "지도에서 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextBlackP)
         }
     }
 }
@@ -483,49 +375,36 @@ private fun PublicMapCard() {
 @Composable
 private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(48.dp).clip(CircleShape).background(MintLightP),
-        ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp).clip(CircleShape).background(MintLightP)) {
             Text(text = authorNickname.firstOrNull()?.toString() ?: "요", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackP)
         }
-
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = authorNickname, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackP)
+            Text(text = authorNickname, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackP)
             Spacer(Modifier.height(2.dp))
-            Text(text = "⭐ 4.9 · 시흥개개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700P)
+            Text(text = "⭐ 4.9 · 시흥개개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
         }
-
         Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.White)
-                .border(1.dp, BrownBorderP, RoundedCornerShape(50.dp))
-                .clickable { onChat() }
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(Color.White).border(1.dp, BrownBorderP, RoundedCornerShape(50.dp)).clickable { onChat() }.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = Brown700P, modifier = Modifier.size(14.dp))
-            Text(text = "채팅", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, color = Brown700P)
+            Text(text = "채팅", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
         }
     }
 }
 
-// ─── 하단 고정 버튼 바 ─────────────────────────────────────────────────────────
+// ─── 🌟 하단 고정 버튼 바 [수정 완료 구역] ─────────────────────────────────────────
 
 @Composable
 private fun PublicDetailBottomBar(
     isMyRequest: Boolean,
     isApplied: Boolean,
+    myApplicationStatus: String, // 👈 추가된 파라미터
     onApply: () -> Unit,
     onChat: () -> Unit,
     onManageRequest: () -> Unit
@@ -540,61 +419,58 @@ private fun PublicDetailBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
-            // 1️⃣ Case A: [내가 쓴 게시글일 때]
-            // 굳이 쓸모없는 신청 폼 대신 내 요청 관리용 '지원 현황 보기' 버튼으로 매핑 (첫번째 사진 예외 완벽 대응)
+            // 1️⃣ 내가 요청자(글쓴이)일 때의 제어 바
             isMyRequest -> {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Brown900C)
-                        .clickable { onManageRequest() },
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Brown900C).clickable { onManageRequest() },
                 ) {
                     Text(text = "지원 현황 및 목록 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
 
-            // 2️⃣ Case B: [지원자 시점 - 아직 신청 안 했을 때]
-            // 작은 대화 말풍선 아이콘 + 넓은 [봉사 신청하기] 버튼 세트로 노출
+            // 2️⃣ 🌟 [신규 방어] 뷰모델에서 인지한 거절(REJECTED) 유저 차단 마감
+            myApplicationStatus == "REJECTED" -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Color(0xFFF2F2F2)),
+                ) {
+                    Text(text = "매칭이 무산되었습니다", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+            }
+
+            // 3️⃣ 🌟 [신규 방어] 뷰모델에서 인지한 취소(CANCELED) 유저 차단 마감
+            myApplicationStatus == "CANCELED" -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Color(0xFFF2F2F2)),
+                ) {
+                    Text(text = "신청이 취소되었습니다", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+            }
+
+            // 4️⃣ 아직 신청하지 않은 깨끗한 봉사자 시점
             !isApplied -> {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .border(1.dp, BrownBorderP, CircleShape)
-                        .clickable { onChat() },
+                    modifier = Modifier.size(44.dp).clip(CircleShape).background(Color.White).border(1.dp, BrownBorderP, CircleShape).clickable { onChat() },
                 ) {
                     Icon(painter = painterResource(R.drawable.ic_chat_bubble), contentDescription = "채팅", tint = Brown700P, modifier = Modifier.size(20.dp))
                 }
 
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Pink500P)
-                        .clickable { onApply() },
+                    modifier = Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(50.dp)).background(Pink500P).clickable { onApply() },
                 ) {
                     Text(text = "봉사 신청하기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                 }
             }
 
-            // 3️⃣ Case C: [지원자 시점 - 이미 신청을 마쳤을 때]
-            // 더 이상 신청폼을 열지 않고 가로 전체를 채우는 든든한 핑크색 [요청자와 채팅하기] 큰 버튼으로 트랜지션!
+            // 5️⃣ 정상 수락 대기중(PENDING)이거나 확정(ACCEPTED)된 봉사자 시점
             else -> {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(50.dp))
-                        .background(Pink500P)
-                        .clickable { onChat() },
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Pink500P).clickable { onChat() },
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
