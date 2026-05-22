@@ -6,6 +6,7 @@ import com.example.siheunggagae.ui.viewmodel.NotiTab
 import com.example.siheunggagae.ui.viewmodel.NotificationState
 import com.example.siheunggagae.ui.viewmodel.NotificationViewModel
 
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -107,6 +108,7 @@ private fun formatRelativeTime(createdAt: String): String {
 fun NotificationScreen(
     viewModel: NotificationViewModel? = null,
     onBack: () -> Unit = {},
+    onItemClick: (NotificationItem) -> Unit = {},
 ) {
     val state by remember(viewModel) {
         viewModel?.state ?: MutableStateFlow(NotificationState())
@@ -174,7 +176,10 @@ fun NotificationScreen(
                         items(displayItems, key = { it.id }) { item ->
                             NotificationItemRow(
                                 item = item,
-                                onClick = { if (!item.isRead) viewModel?.markRead(item.id) },
+                                onClick = {
+                                    if (!item.isRead) viewModel?.markRead(item.id)
+                                    onItemClick(item)
+                                },
                             )
                         }
                         if (state.isLoadingMore) {

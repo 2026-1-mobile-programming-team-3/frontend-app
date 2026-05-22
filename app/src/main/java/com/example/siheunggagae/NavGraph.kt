@@ -115,6 +115,7 @@ import com.example.siheunggagae.ui.screen.HelpScreen
 import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
 import com.example.siheunggagae.ui.screen.MapPinPickerScreen
 import com.example.siheunggagae.ui.screen.MyStoreRequestsScreen
+import com.example.siheunggagae.ui.screen.StoreRequestDetailScreen
 import com.example.siheunggagae.ui.screen.StoreRequestFormScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
@@ -122,6 +123,7 @@ import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
 import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
 import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
+import com.example.siheunggagae.ui.viewmodel.StoreRequestDetailViewModel
 import com.example.siheunggagae.ui.viewmodel.StoreRequestFormViewModel
 import com.example.siheunggagae.data.model.StoreRequestType
 import com.example.siheunggagae.data.repository.StoreRequestRepository
@@ -596,6 +598,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             NotificationScreen(
                 viewModel = notifViewModel,
                 onBack = { navController.popBackStack() },
+                onItemClick = { item ->
+                    handleNotificationDeeplink(item.link, navController)
+                },
             )
         }
 
@@ -1111,8 +1116,24 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     type = NavType.IntType
                 },
             ),
-        ) {
-            androidx.compose.material3.Text("StoreRequestDetail TODO")
+        ) { backStackEntry ->
+            val reqId = backStackEntry.arguments?.getInt(Screen.StoreRequestDetail.ARG_REQUEST_ID)
+                ?: return@composable
+            val vm: StoreRequestDetailViewModel = viewModel(
+                factory = StoreRequestDetailViewModel.Factory(StoreRequestRepository(), reqId),
+            )
+            StoreRequestDetailScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onSeeStore = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
+                },
+                onRetryRequest = { sourceId, type ->
+                    navController.navigate(
+                        Screen.StoreRequestForm.createRoute(type = type, requestId = sourceId),
+                    )
+                },
+            )
         }
 
         composable(
@@ -1173,6 +1194,33 @@ private fun NavHostController.navigateTab(route: String) {
         restoreState = true
         popUpTo(Screen.Home.route) { saveState = true }
     }
+}
+
+/** 알림 link 필드의 deeplink를 파싱해 적절한 화면으로 이동한다.
+ *  처리된 경우 true, 알 수 없는 link이면 false 반환. */
+private fun handleNotificationDeeplink(link: String?, navController: NavHostController): Boolean {
+    if (link.isNullOrBlank()) return false
+    // 매장 요청 상세: siheunggagae://store-request/<requestId>
+    if (link.startsWith("siheunggagae://store-request/")) {
+        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+        navController.navigate(Screen.StoreRequestDetail.createRoute(id))
+        return true
+    }
+    // 매칭 상세: siheunggagae://matching/<requestId>
+    if (link.startsWith("siheunggagae://matching/")) {
+        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+        navController.navigate(Screen.MatchingDetail.createRoute(id))
+        return true
+    }
+    // 채팅: siheunggagae://chat/<matchId>/<applicationId>
+    if (link.startsWith("siheunggagae://chat/")) {
+        val parts = link.removePrefix("siheunggagae://chat/").split("/")
+        val matchId = parts.getOrNull(0)?.toIntOrNull() ?: return false
+        val appId = parts.getOrNull(1)?.toIntOrNull() ?: return false
+        navController.navigate(Screen.Chat.createRoute(matchId, appId))
+        return true
+    }
+    return false
 }
 
 // ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────
