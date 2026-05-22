@@ -115,7 +115,24 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
             }
         }
     }
+    fun updateMatchStatus(matchId: Int, status: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                // 팀원이 정의한 MatchStatusUpdateRequest 모델 클래스를 생성합니다.
+                val requestBody = com.example.siheunggagae.data.model.MatchStatusUpdateRequest(status = status)
+                val response = api.updateMatchStatus(matchId, requestBody)
 
+                if (response.isSuccessful) {
+                    // 상태 변경에 성공하면, 상세 데이터를 다시 호출(fetchDetail)하여
+                    // 화면의 상단 배너 칩을 '검토중'으로 실시간 동기화합니다.
+                    fetchDetail(matchId)
+                    onComplete() // 성공 후 화면 이동 등 후속 처리를 위한 콜백 실행
+                }
+            } catch (e: Exception) {
+                // 네트워크 오류 등 예외 처리 구역
+            }
+        }
+    }
     fun resetState() {
         _uiState.value = MatchDetailUiState.Loading
     }

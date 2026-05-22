@@ -52,7 +52,6 @@ fun ChatScreen(
     matchId: Int,
     applicationId: Int,
     viewModel: ChatViewModel,
-    // ❌ 삭제: myUserId: Int = 31 (하드코딩 파라미터 완전 차단)
     onBack: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
 ) {
@@ -60,7 +59,6 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
-    // 채팅방 진입 시 비동기 파이프라인 가동 트리거
     LaunchedEffect(matchId, applicationId) {
         viewModel.initChatRoom(matchId, applicationId)
     }
@@ -69,12 +67,22 @@ fun ChatScreen(
         containerColor = BgC,
         topBar = {
             val state = uiState as? ChatUiState.Success
+
+            // 👈 [버그 수정 1] 서버가 내려주는 status 원본 값은 한글이 아니라 "WAITING" 영문입니다!
+            val isAlreadyAccepted = state?.matchDetail?.status != null && state.matchDetail.status != "WAITING"
+
             ChatTopBar(
                 title = state?.opponentNickname ?: "대화방",
                 showAcceptBtn = state?.isMyRequest ?: false,
+                isAlreadyAccepted = isAlreadyAccepted,
                 onBack = onBack,
                 onAcceptClick = {
                     viewModel.acceptVolunteer {
+                        onBack()
+                    }
+                },
+                onCancelClick = {
+                    viewModel.cancelVolunteer {
                         onBack()
                     }
                 }
@@ -106,7 +114,6 @@ fun ChatScreen(
                     Text(text = state.message, color = Pink500C, modifier = Modifier.align(Alignment.Center), fontFamily = PretendardFamily)
                 }
                 is ChatUiState.Success -> {
-                    // 새 메시지 도달 시 하단 자동 스크롤 보증 로직
                     LaunchedEffect(state.messages.size) {
                         if (state.messages.isNotEmpty()) {
                             listState.animateScrollToItem(state.messages.lastIndex + 1)
@@ -127,9 +134,7 @@ fun ChatScreen(
                             item { Spacer(Modifier.height(4.dp)) }
                             item { DateDivider(label = "오늘") }
 
-                            // 정렬: 내 메시지는 우측 갈색, 상대는 좌측 회색
                             items(state.messages) { msg ->
-                                // 👈 [변경] 뷰모델에서 인증 완료한 내 진짜 유저 ID와 메시지 발송자 ID 대조
                                 val isMe = msg.senderId == viewModel.myUserId
                                 if (isMe) {
                                     SentMessageItem(msg)
@@ -147,7 +152,14 @@ fun ChatScreen(
 }
 
 @Composable
-private fun ChatTopBar(title: String, showAcceptBtn: Boolean, onBack: () -> Unit, onAcceptClick: () -> Unit) {
+private fun ChatTopBar(
+    title: String,
+    showAcceptBtn: Boolean,
+    isAlreadyAccepted: Boolean,
+    onBack: () -> Unit,
+    onAcceptClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,15 +189,30 @@ private fun ChatTopBar(title: String, showAcceptBtn: Boolean, onBack: () -> Unit
             Text(text = "⭐ 4.9 · 동네 매칭 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700C)
         }
         if (showAcceptBtn) {
+            // ─── [버그 수정 2] 수락 상태에 따라 스타일 변경 및 클릭 기능 활성화 ───
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Pink500C)
-                    .clickable { onAcceptClick() }
+                    // 수락 완료 상태면 배경을 투명하게 하고 빨간 테두리 적용, 대기 상태면 핑크색 배경
+                    .background(if (isAlreadyAccepted) Color.Transparent else Pink500C)
+                    .then(
+                        if (isAlreadyAccepted) Modifier.border(1.dp, Color(0xFFBA1A1A), RoundedCornerShape(50.dp))
+                        else Modifier
+                    )
+                    // 클릭 차단을 해제하고, 클릭 시 조건에 맞춰 각각의 ViewModel 함수를 트리거합니다.
+                    .clickable {
+                        if (isAlreadyAccepted) onCancelClick() else onAcceptClick()
+                    }
                     .padding(horizontal = 17.dp, vertical = 7.dp),
             ) {
-                Text(text = "수락", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.White)
+                Text(
+                    text = if (isAlreadyAccepted) "매칭 취소" else "수락",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isAlreadyAccepted) Color(0xFFBA1A1A) else Color.White // 글자색 동적 변경
+                )
             }
         }
     }

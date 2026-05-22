@@ -163,6 +163,7 @@ fun MatchingDetailScreen(
                                         }
 
                                         // 1:1 웹소켓 채팅방 연동 버튼 (매칭 글 ID와 해당 봉사자의 신청 고유 ID 바인딩)
+                                        // 1:1 웹소켓 채팅방 연동 버튼 (매칭 글 ID와 해당 봉사자의 신청 고유 ID 바인딩)
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
@@ -170,6 +171,8 @@ fun MatchingDetailScreen(
                                                 .background(Pink500D)
                                                 .clickable {
                                                     val appId = appItem.applicationId ?: 0
+
+                                                    //[수정] 백엔드가 MATCHING 변경을 거부하므로, 불필요한 API 호출 없이 바로 채팅방으로 진입합니다!
                                                     onNavigate(Screen.Chat.createRoute(requestId, appId))
                                                 }
                                                 .padding(horizontal = 14.dp, vertical = 6.dp)

@@ -88,7 +88,7 @@ private val FABBrown      = Color(0xFF9A7B5E)
 enum class MatchingTab(val label: String, val status: MatchStatus?) {
     ALL("전체", null),
     WAITING("모집중", MatchStatus.WAITING),
-    MATCHING("검토중", MatchStatus.MATCHING),
+    //MATCHING("검토중", MatchStatus.MATCHING),
     PROGRESS("진행중", MatchStatus.PROGRESS),
     DONE("완료", MatchStatus.DONE),
 }
