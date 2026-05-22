@@ -130,8 +130,19 @@ application = 한 봉사자가 특정 매칭에 보낸 신청 1건.
 | POST | `/maps/stores/{storeId}/reviews` | `createStoreReview(StoreReviewCreateRequest)` | `StoreReviewCreateResponse` |
 | DELETE | `/maps/stores/{storeId}/reviews/{reviewId}` | `deleteStoreReview` | `MessageResponse` |
 | GET | `/maps/volunteers` | `getVolunteerMarkers` | `List<VolunteerMarkerDto>` (지도 봉사 요청 핀) |
+| POST | `/maps/store-requests` | `submitStoreRequest` | `StoreRequestSubmitResponse` |
+| GET | `/maps/store-requests` | `getMyStoreRequests` | `StoreRequestListResponse` |
+| GET | `/maps/store-requests/{requestId}` | `getStoreRequest` | `StoreRequestItem` |
+| DELETE | `/maps/store-requests/{requestId}` | `cancelStoreRequest` | `Unit` |
 
 `category`(쿼리) 값: `CAFE` / `RESTAURANT` / `PARK` / `HOSPITAL` / `GROOMING` (대문자, `MapFilterStore.DEFAULT_CATEGORIES`).
+
+**store-requests 엔드포인트 추가 안내:**
+- 인증: 모든 store-requests 엔드포인트 인증 필요 (`Authorization: Bearer`).
+- 요청 본문 카테고리: `CAFE` / `RESTAURANT` / `PARK` / `PET_HOTEL`.
+- PET_HOTEL 전용 `plans` 배열 (각 항목 `planName`, `priceKrw`, `displayOrder?`).
+- `proof_urls` / `proofUrls` 최대 10개. `photoUrls` 최대 5개.
+- 사용자 측 알림 발송: 승인/거부 처리 시 백엔드가 SYSTEM 카테고리 알림 발송. `link` 필드에 `siheunggagae://store-request/{id}` deeplink가 박힘.
 
 ### Geo
 

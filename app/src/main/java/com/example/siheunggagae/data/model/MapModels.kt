@@ -51,6 +51,10 @@ data class StoreDetailResponse(
     val isFavorited: Boolean? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    @SerializedName(value = "is_owner", alternate = ["isOwner"])
+    val isOwner: Boolean = false,
+    @SerializedName(value = "owner_user_id", alternate = ["ownerUserId"])
+    val ownerUserId: Int? = null,
 )
 
 data class StoreReview(

@@ -113,10 +113,20 @@ import com.example.siheunggagae.ui.screen.BlockManageScreen
 import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
 import com.example.siheunggagae.ui.screen.HelpScreen
 import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
+import com.example.siheunggagae.ui.screen.MapPinPickerScreen
+import com.example.siheunggagae.ui.screen.MyStoreRequestsScreen
+import com.example.siheunggagae.ui.screen.StoreRequestDetailScreen
+import com.example.siheunggagae.ui.screen.StoreRequestFormScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
+import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
+import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
+import com.example.siheunggagae.ui.viewmodel.StoreRequestDetailViewModel
+import com.example.siheunggagae.ui.viewmodel.StoreRequestFormViewModel
+import com.example.siheunggagae.data.model.StoreRequestType
+import com.example.siheunggagae.data.repository.StoreRequestRepository
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
 import com.example.siheunggagae.ui.viewmodel.AccountSettingsViewModel
 import com.example.siheunggagae.ui.viewmodel.LocationSettingsViewModel
@@ -181,6 +191,49 @@ sealed class Screen(val route: String) {
     object BlockManage     : Screen("block_manage")
     object Help            : Screen("help")
     object Privacy         : Screen("privacy")
+
+    object MyStoreRequests : Screen("my_store_requests")
+
+    object StoreRequestForm : Screen(
+        "store_request_form?type={type}&storeId={storeId}&requestId={requestId}",
+    ) {
+        const val ARG_TYPE = "type"
+        const val ARG_STORE_ID = "storeId"
+        const val ARG_REQUEST_ID = "requestId"
+
+        fun createRoute(
+            type: com.example.siheunggagae.data.model.StoreRequestType,
+            storeId: Int? = null,
+            requestId: Int? = null,
+        ): String {
+            val sb = StringBuilder("store_request_form?type=$type")
+            storeId?.let { sb.append("&storeId=$it") }
+            requestId?.let { sb.append("&requestId=$it") }
+            return sb.toString()
+        }
+    }
+
+    object StoreRequestDetail : Screen("store_request_detail/{requestId}") {
+        const val ARG_REQUEST_ID = "requestId"
+        fun createRoute(requestId: Int): String = "store_request_detail/$requestId"
+    }
+
+    object MapPinPicker : Screen("map_pin_picker?lat={lat}&lng={lng}") {
+        const val ARG_LAT = "lat"
+        const val ARG_LNG = "lng"
+        const val RESULT_LAT = "picked_lat"
+        const val RESULT_LNG = "picked_lng"
+        const val RESULT_ADDRESS = "picked_address"
+
+        fun createRoute(lat: Double? = null, lng: Double? = null): String {
+            if (lat == null && lng == null) return "map_pin_picker"
+            val parts = buildList {
+                lat?.let { add("lat=$it") }
+                lng?.let { add("lng=$it") }
+            }
+            return "map_pin_picker?" + parts.joinToString("&")
+        }
+    }
 }
 
 // ─── 공유 BottomNavigationBar ──────────────────────────────────────────────────
@@ -545,6 +598,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             NotificationScreen(
                 viewModel = notifViewModel,
                 onBack = { navController.popBackStack() },
+                onItemClick = { item ->
+                    handleNotificationDeeplink(item.link, navController)
+                },
             )
         }
 
@@ -760,6 +816,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
+                onEditRequestClick = { sid ->
+                    navController.navigate(
+                        Screen.StoreRequestForm.createRoute(
+                            type = StoreRequestType.UPDATE,
+                            storeId = sid,
+                        ),
+                    )
+                },
             )
         }
 
@@ -788,6 +852,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
                 onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
                 onFavoriteStoresClick = { navController.navigate(Screen.FavoriteStores.route) },
+                onMyStoreRequestsClick = { navController.navigate(Screen.MyStoreRequests.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onNotifSettingsClick = { navController.navigate("${Screen.Settings.route}?section=notifications") },
@@ -976,6 +1041,137 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         composable(Screen.Privacy.route) {
             PrivacyPolicyScreen(onBack = { navController.popBackStack() })
         }
+
+        composable(Screen.MyStoreRequests.route) {
+            val vm: MyStoreRequestsViewModel = viewModel(
+                factory = MyStoreRequestsViewModel.Factory(StoreRequestRepository()),
+            )
+            val myStoreRequestsLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(myStoreRequestsLifecycle) {
+                myStoreRequestsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    vm.refresh()
+                }
+            }
+            MyStoreRequestsScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
+            )
+        }
+
+        composable(
+            route = Screen.StoreRequestForm.route,
+            arguments = listOf(
+                navArgument(Screen.StoreRequestForm.ARG_TYPE) {
+                    type = NavType.StringType
+                    defaultValue = "ADD"
+                },
+                navArgument(Screen.StoreRequestForm.ARG_STORE_ID) {
+                    type = NavType.IntType
+                    defaultValue = -1
+                },
+                navArgument(Screen.StoreRequestForm.ARG_REQUEST_ID) {
+                    type = NavType.IntType
+                    defaultValue = -1
+                },
+            ),
+        ) { backStackEntry ->
+            val typeStr = backStackEntry.arguments?.getString(Screen.StoreRequestForm.ARG_TYPE) ?: "ADD"
+            val storeId = backStackEntry.arguments?.getInt(Screen.StoreRequestForm.ARG_STORE_ID, -1)
+                ?.takeIf { it >= 0 }
+            val reqId = backStackEntry.arguments?.getInt(Screen.StoreRequestForm.ARG_REQUEST_ID, -1)
+                ?.takeIf { it >= 0 }
+            val mode = StoreRequestType.valueOf(typeStr)
+            val vm: StoreRequestFormViewModel = viewModel(
+                factory = StoreRequestFormViewModel.Factory(
+                    StoreRequestRepository(), mode, storeId, reqId,
+                ),
+            )
+
+            // 위치 선택기 결과 핸들링 (SavedStateHandle StateFlow 방식)
+            val handle = backStackEntry.savedStateHandle
+            val pickedLat by handle.getStateFlow<Double?>(Screen.MapPinPicker.RESULT_LAT, null)
+                .collectAsState()
+            LaunchedEffect(pickedLat) {
+                val lat = pickedLat ?: return@LaunchedEffect
+                val lng = handle.get<Double>(Screen.MapPinPicker.RESULT_LNG) ?: return@LaunchedEffect
+                val addr = handle.get<String>(Screen.MapPinPicker.RESULT_ADDRESS)
+                vm.applyPickedLocation(lat, lng, addr)
+                handle.remove<Double>(Screen.MapPinPicker.RESULT_LAT)
+                handle.remove<Double>(Screen.MapPinPicker.RESULT_LNG)
+                handle.remove<String>(Screen.MapPinPicker.RESULT_ADDRESS)
+            }
+
+            StoreRequestFormScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onPickLocation = { lat, lng ->
+                    navController.navigate(Screen.MapPinPicker.createRoute(lat, lng))
+                },
+                onSubmitted = { id ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.StoreRequestDetail.createRoute(id))
+                },
+            )
+        }
+
+        composable(
+            route = Screen.StoreRequestDetail.route,
+            arguments = listOf(
+                navArgument(Screen.StoreRequestDetail.ARG_REQUEST_ID) {
+                    type = NavType.IntType
+                },
+            ),
+        ) { backStackEntry ->
+            val reqId = backStackEntry.arguments?.getInt(Screen.StoreRequestDetail.ARG_REQUEST_ID)
+                ?: return@composable
+            val vm: StoreRequestDetailViewModel = viewModel(
+                factory = StoreRequestDetailViewModel.Factory(StoreRequestRepository(), reqId),
+            )
+            StoreRequestDetailScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onSeeStore = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
+                },
+                onRetryRequest = { sourceId, type ->
+                    navController.navigate(
+                        Screen.StoreRequestForm.createRoute(type = type, requestId = sourceId),
+                    )
+                },
+            )
+        }
+
+        composable(
+            route = Screen.MapPinPicker.route,
+            arguments = listOf(
+                navArgument(Screen.MapPinPicker.ARG_LAT) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.MapPinPicker.ARG_LNG) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+            ),
+        ) { backStackEntry ->
+            val argLat = backStackEntry.arguments?.getString(Screen.MapPinPicker.ARG_LAT)?.toDoubleOrNull()
+            val argLng = backStackEntry.arguments?.getString(Screen.MapPinPicker.ARG_LNG)?.toDoubleOrNull()
+            val initLat = argLat ?: 37.3799   // 시흥시청
+            val initLng = argLng ?: 126.8030
+            val vm: MapPinPickerViewModel = viewModel(
+                factory = MapPinPickerViewModel.Factory(initLat, initLng),
+            )
+            MapPinPickerScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onConfirm = { lat, lng, addr ->
+                    val handle = navController.previousBackStackEntry?.savedStateHandle
+                    handle?.set(Screen.MapPinPicker.RESULT_LAT, lat)
+                    handle?.set(Screen.MapPinPicker.RESULT_LNG, lng)
+                    handle?.set(Screen.MapPinPicker.RESULT_ADDRESS, addr)
+                    navController.popBackStack()
+                },
+            )
+        }
     }
 
         AnimatedVisibility(
@@ -1004,6 +1200,33 @@ private fun NavHostController.navigateTab(route: String) {
         restoreState = true
         popUpTo(Screen.Home.route) { saveState = true }
     }
+}
+
+/** 알림 link 필드의 deeplink를 파싱해 적절한 화면으로 이동한다.
+ *  처리된 경우 true, 알 수 없는 link이면 false 반환. */
+private fun handleNotificationDeeplink(link: String?, navController: NavHostController): Boolean {
+    if (link.isNullOrBlank()) return false
+    // 매장 요청 상세: siheunggagae://store-request/<requestId>
+    if (link.startsWith("siheunggagae://store-request/")) {
+        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+        navController.navigate(Screen.StoreRequestDetail.createRoute(id))
+        return true
+    }
+    // 매칭 상세: siheunggagae://matching/<requestId>
+    if (link.startsWith("siheunggagae://matching/")) {
+        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+        navController.navigate(Screen.MatchingDetail.createRoute(id))
+        return true
+    }
+    // 채팅: siheunggagae://chat/<matchId>/<applicationId>
+    if (link.startsWith("siheunggagae://chat/")) {
+        val parts = link.removePrefix("siheunggagae://chat/").split("/")
+        val matchId = parts.getOrNull(0)?.toIntOrNull() ?: return false
+        val appId = parts.getOrNull(1)?.toIntOrNull() ?: return false
+        navController.navigate(Screen.Chat.createRoute(matchId, appId))
+        return true
+    }
+    return false
 }
 
 // ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────

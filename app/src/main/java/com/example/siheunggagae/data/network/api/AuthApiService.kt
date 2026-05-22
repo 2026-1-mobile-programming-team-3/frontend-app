@@ -56,6 +56,10 @@ import com.example.siheunggagae.data.model.ReverseGeocodeResponse
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreListResponse
+import com.example.siheunggagae.data.model.StoreRequestItem
+import com.example.siheunggagae.data.model.StoreRequestListResponse
+import com.example.siheunggagae.data.model.StoreRequestSubmitRequest
+import com.example.siheunggagae.data.model.StoreRequestSubmitResponse
 import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.model.StoreReviewCreateResponse
 import com.example.siheunggagae.data.model.StoreReviewListResponse
@@ -328,6 +332,28 @@ interface AuthApiService {
 
     @GET("api/v1/maps/volunteers")
     suspend fun getVolunteerMarkers(): Response<List<VolunteerMarkerDto>>
+
+    @POST("api/v1/maps/store-requests")
+    suspend fun submitStoreRequest(
+        @Body body: StoreRequestSubmitRequest,
+    ): Response<StoreRequestSubmitResponse>
+
+    @GET("api/v1/maps/store-requests")
+    suspend fun getMyStoreRequests(
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<StoreRequestListResponse>
+
+    @GET("api/v1/maps/store-requests/{requestId}")
+    suspend fun getStoreRequest(
+        @Path("requestId") requestId: Int,
+    ): Response<StoreRequestItem>
+
+    @DELETE("api/v1/maps/store-requests/{requestId}")
+    suspend fun cancelStoreRequest(
+        @Path("requestId") requestId: Int,
+    ): Response<Unit>
 
     // ── Geo ───────────────────────────────────────────────────────────────────────
 

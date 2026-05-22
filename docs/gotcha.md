@@ -48,6 +48,10 @@ Kotlin 필드 `userId` ↔ JSON `user_id` 자동 매핑. **수동으로 `@Serial
 
 `deletePet`, `deleteBlock`, `deleteFavoriteStore` 등. `response.body()` 가 `Unit` 또는 null 일 수 있어서 `.isSuccessful` 만 확인. body 추출하려 들면 NPE.
 
+### 매장 요청 사진/증빙 업로드는 stub
+
+- **매장 요청 사진/증빙 업로드는 stub**: `StoreRequestFormViewModel.makeStubUrl()` 이 `https://placeholder.local/uploads/<uuid>` 형태 URL을 생성한다. 백엔드는 URL 형식만 통과시키므로 실제 파일이 전달되지 않음. 진짜 업로드 엔드포인트(예: `POST /maps/files`) 도입 시 교체 필요.
+
 ### 422 Validation 만 백엔드 메시지 그대로 사용
 
 다른 상태코드(400/401/...)는 한국어 고정 메시지(`koreanMessage()`). 422만 `detail` 필드(string 또는 array)를 파싱해서 사용자에게 보여줌. 백엔드가 메시지 바꾸면 즉시 노출되니 검수 필요.

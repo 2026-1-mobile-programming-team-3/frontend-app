@@ -181,4 +181,8 @@ object FavoriteStores       : Screen("favorite_stores")
 object BlockManage          : Screen("block_manage")
 object Help                 : Screen("help")
 object Privacy              : Screen("privacy")              // WebView
+object MyStoreRequests      : Screen("my_store_requests")
+object StoreRequestForm     : Screen("store_request_form?type&storeId&requestId")
+object StoreRequestDetail   : Screen("store_request_detail/{requestId}")
+object MapPinPicker         : Screen("map_pin_picker?lat&lng")
 ```
