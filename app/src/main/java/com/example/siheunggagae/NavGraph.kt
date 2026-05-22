@@ -1227,10 +1227,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 }
 
 private fun NavHostController.navigateTab(route: String) {
-    navigate(route) {
-        launchSingleTop = true
-        restoreState = true
-        popUpTo(Screen.Home.route) { saveState = true }
+    if (isTopLevelTabRoute(route)) {
+        navigate(route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(Screen.Home.route) { saveState = true }
+        }
+    } else {
+        navigate(route)
     }
 }
 
