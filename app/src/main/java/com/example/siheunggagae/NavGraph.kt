@@ -113,11 +113,13 @@ import com.example.siheunggagae.ui.screen.BlockManageScreen
 import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
 import com.example.siheunggagae.ui.screen.HelpScreen
 import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
+import com.example.siheunggagae.ui.screen.MapPinPickerScreen
 import com.example.siheunggagae.ui.screen.MyStoreRequestsScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
+import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
 import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
 import com.example.siheunggagae.data.repository.StoreRequestRepository
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
@@ -1070,18 +1072,31 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             route = Screen.MapPinPicker.route,
             arguments = listOf(
                 navArgument(Screen.MapPinPicker.ARG_LAT) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
+                    type = NavType.StringType; nullable = true; defaultValue = null
                 },
                 navArgument(Screen.MapPinPicker.ARG_LNG) {
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
+                    type = NavType.StringType; nullable = true; defaultValue = null
                 },
             ),
-        ) {
-            androidx.compose.material3.Text("MapPinPicker TODO")
+        ) { backStackEntry ->
+            val argLat = backStackEntry.arguments?.getString(Screen.MapPinPicker.ARG_LAT)?.toDoubleOrNull()
+            val argLng = backStackEntry.arguments?.getString(Screen.MapPinPicker.ARG_LNG)?.toDoubleOrNull()
+            val initLat = argLat ?: 37.3799   // 시흥시청
+            val initLng = argLng ?: 126.8030
+            val vm: MapPinPickerViewModel = viewModel(
+                factory = MapPinPickerViewModel.Factory(initLat, initLng),
+            )
+            MapPinPickerScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onConfirm = { lat, lng, addr ->
+                    val handle = navController.previousBackStackEntry?.savedStateHandle
+                    handle?.set(Screen.MapPinPicker.RESULT_LAT, lat)
+                    handle?.set(Screen.MapPinPicker.RESULT_LNG, lng)
+                    handle?.set(Screen.MapPinPicker.RESULT_ADDRESS, addr)
+                    navController.popBackStack()
+                },
+            )
         }
     }
 
