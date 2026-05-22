@@ -128,7 +128,7 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
 - 내 반려동물 섹션: "내 반려동물" 라벨 / Pets 아이콘(40dp, 강아지=OrangeSand+Orange500 / 고양이=PinkSurface+Pink500) + 이름 16sp Bold + "[종류] · [나이] · [성별]" 12sp + "전체 보기" Outline (→ PetList)
 - 활동 통계 Row 3개(equal weight): 숫자 30sp Bold (내요청=Pink500 / 봉사=Green500 / 즐겨찾기=Orange500) + 라벨 12sp
 - 봉사 뱃지 Card: "봉사 등급" 라벨 + 뱃지 4개 Row(새싹/꽃/열매/나무, 등급별 색)
-- 내 기록 섹션: "봉사 활동 이력" (→ VolunteerHistory) / "즐겨찾기 매장" (→ FavoriteStores) — 아이콘+텍스트+화살표
+- 내 기록 섹션: "내 매장 요청" (→ MyStoreRequests) / "봉사 활동 이력" (→ VolunteerHistory) / "즐겨찾기 매장" (→ FavoriteStores) — 아이콘+텍스트+화살표
 - 설정 섹션: 알림 설정 / 지역 설정 / 개인정보 및 보안 / 앱 정보(v3.0.0) / "봉사자 자격 신청"(Green500, → VolunteerApply)
 - 하단: "로그아웃" Outline 버튼(Brown700 border)
 - ViewModel: MyViewModel
@@ -149,6 +149,7 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
   - 제목 16sp Bold + 본문 14sp (2줄) + 우상단 시간(12sp, "방금 전"=Pink500 그 외=Brown400)
 - LazyColumn: 무한 스크롤 (`loadNextPage`)
 - 시간 포맷: `formatRelativeTime()` — ISO timestamp → "N분 전" 등
+- 알림 클릭 시 `item.link` deeplink 파서 (`handleNotificationDeeplink`): `siheunggagae://store-request/{id}` → StoreRequestDetail
 - ViewModel: NotificationViewModel — `selectTab`, `markRead`, `markAllRead`, `loadNextPage`, `refresh`
 
 ### [RequestFlowScreen] 도움 요청하기 (3단계, 신규+수정 공용)
@@ -291,6 +292,59 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
 - 하단: "저장하기" Brown900 fullWidth height=56dp (비활성=40% alpha + 저장 중 스피너)
 - ViewModel: PetAddViewModel (isEditMode 자동 판단)
 
+### [MyStoreRequestsScreen] 내 매장 요청
+
+- 라우트: `my_store_requests` (인자 없음). 마이페이지 "내 기록" 섹션 "내 매장 요청" 항목에서 진입.
+- TopBar: 뒤로가기 카드(40×40dp shadow=2dp) + "내 매장 요청" 18sp SemiBold
+- 서브헤더: "전체 N건" 14sp SemiBold Brown700
+- 필터 칩: 전체 / 대기(PENDING) / 승인(APPROVED) / 반려(REJECTED) — 14sp Medium, h=16dp v=8dp
+- 카드 row (radius=16dp elev=1dp): 카테고리 아이콘 + "추가"/"수정" pill(OrangeSand) + 상태 태그(검토중/승인/반려) + 매장명(15sp Bold) + "[카테고리] · [date] 신청|처리" 12sp Brown700 + ic_chevron_right
+- FAB: 56dp FABBrown(#9A7B5E) + ic_plus → StoreRequestForm(ADD)
+- 빈 상태: 80dp OrangeSand 원형 + ic_store 40dp + "아직 요청이 없어요" + "+ 매장 추가 요청" CTA
+- 무한 스크롤 (page 1부터 size=20)
+- ViewModel: MyStoreRequestsViewModel — refresh, loadMore, setFilter
+
+### [StoreRequestFormScreen] 매장 추가/수정 요청
+
+- 라우트: `store_request_form?type={ADD/UPDATE}&storeId={?}&requestId={?}` — type=ADD/UPDATE 필수. storeId=UPDATE 대상, requestId=재제출 prefill 소스.
+- TopBar: 뒤로가기 + 제목 (ADD="매장 추가 요청" / UPDATE="매장 정보 수정")
+- 본문 (단일 스크롤): 헤더 22sp ExtraBold + 안내 → 매장명 TextField → 카테고리 2×2 grid (ic_coffee/ic_utensils/ic_trees/ic_hotel) → 위치 큰 미리보기(140dp, ic_map_pin, 탭 시 MapPinPicker 진입) → 동반 가능 Switch → (PET_HOTEL일 때만) 가격 플랜 행 리스트 → 전화/영업시간 → 매장 사진 가로스크롤 (0/5) → 증빙 자료 (0/10, 필수) → 관리자 메모(0/1000)
+- 사진/증빙: GetMultipleContents 런처. 사진 image/*, 증빙 */*. 실제 업로드 없이 placeholder URL stub (`https://placeholder.local/uploads/<uuid>`).
+- 검증(엄격): proof_urls 1개 이상 필수, PET_HOTEL은 plans 1개 이상 + planName 중복/공백/0가격 차단.
+- 하단 CTA: "요청 제출하기" 56dp Brown900 / 비활성 시 alpha 0.4
+- 결과: POST /maps/store-requests. 성공 시 popBackStack → StoreRequestDetail 이동.
+- prefill: UPDATE 모드 → GET /maps/stores/{id}로 매장 정보 → 폼 채움(카테고리는 백엔드 응답에 없어 사용자가 재선택). 재제출 모드 → GET /maps/store-requests/{id}로 이전 payload 가져와서 채움.
+- 위치 결과 회수: SavedStateHandle (RESULT_LAT, RESULT_LNG, RESULT_ADDRESS).
+- ViewModel: StoreRequestFormViewModel — submit, applyPickedLocation, addPlan/updatePlanName/updatePlanPrice/removePlan, addPhotos/removePhoto, addProofs/removeProof, setName/setCategory/setIsPetAllowed/setPhone/setHours/setMessage
+
+### [StoreRequestDetailScreen] 매장 요청 상세
+
+- 라우트: `store_request_detail/{requestId}`. 마이 목록 또는 SYSTEM 알림 deeplink에서 진입.
+- TopBar: 뒤로가기 + "요청 상세" 18sp SemiBold
+- 상태 헤더 카드 (그라디언트 bg + border 1dp):
+  - PENDING: #FEF3C7→#FFEDD4 / Orange500 border / ic_clock + "검토 중" #CA8A04 + 안내 + 신청일
+  - APPROVED: #F0FDF4→#D0FEE1 / Green600 border / ic_check_circle + "승인되었어요" #16A34A + 안내 + 처리일 + 관리자 메모
+  - REJECTED: #FEE7EC→#FEFEFE / Pink500 border / ic_alert_circle + "반려되었어요" #E84B6A + 사유 White 카드 + 처리일
+- (APPROVED) 등록된 매장 미니 카드: 카테고리 그라디언트 박지 + 매장명 + chevron → PlaceDetail
+- (REJECTED) 안내 박스: ic_lightbulb + "다시 작성하면 기존 내용이 채워진 채로 폼이 열려요"
+- 제출 내용 카드: 유형/매장명/카테고리/주소/사진 수/증빙 수/(PET_HOTEL이면) 가격 플랜 수
+- 하단 CTA:
+  - PENDING: "요청 취소" Pink500 Outline → AlertDialog → DELETE
+  - APPROVED: "매장 상세 보기" Brown900 → PlaceDetail
+  - REJECTED: "다시 작성하기" Brown900 → StoreRequestForm(prefill from this requestId)
+- ViewModel: StoreRequestDetailViewModel — refresh, cancelRequest (Idle/Cancelling/Cancelled/Failed)
+
+### [MapPinPickerScreen] 위치 핀 선택
+
+- 라우트: `map_pin_picker?lat={?}&lng={?}` — 초기 좌표 옵션. 없으면 시흥시청 기본.
+- 풀스크린 KakaoMap (MapViewWrapper 재사용) + 중앙 고정 핀(ic_map_pin Orange500)
+- 상단: 투명 그라디언트 TopBar + 뒤로가기 카드 + "위치 선택" 18sp SemiBold
+- 하단 시트: "선택된 위치" 라벨 + ic_map_pin 박지 + 주소(reverse geocode `/api/v1/geo/reverse`) + 좌표 + "이 위치로 설정" Brown900 CTA
+- Reverse geocode debounce 200ms. 실패 시 "주소를 가져올 수 없어요".
+- 카메라 이동 종료 시 `setOnCameraMoveEndListener`에서 viewModel.onCameraIdle(lat, lng)
+- 결과 반환: previousBackStackEntry.savedStateHandle에 `picked_lat`, `picked_lng`, `picked_address` 저장 후 popBackStack
+- ViewModel: MapPinPickerViewModel — onCameraIdle, 자동 reverse geocode
+
 ### [ProfileEditScreen] 프로필 편집
 
 - TopBar: 뒤로가기 카드(40×40dp shadow=2dp) + "프로필 편집" 18sp SemiBold
@@ -331,6 +385,7 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
      - 리뷰 Card: 40dp 컬러 아바타(닉네임 길이 기반) + 닉네임 14sp SemiBold + 별점 + 날짜(우, 12sp) + 본문 + 반려동물 출입 chip
      - "리뷰 더 보기"(border=1dp BrownBorder) — 더 있을 때만
 - **ReviewWriteSheet** ModalBottomSheet: 별 5개(StarYellow) + 반려동물 출입 토글(가능/불가) + 본문 OutlinedTextField 120dp + 카운터 + "등록"(Pink500, 별점=0 또는 본문 빈 경우 비활성, 제출 중 스피너)
+- "정보 수정 요청" Outline 버튼: 로그인 + (is_owner=true OR owner_user_id=null) 일 때만 활성. 매장 owner 클레임 또는 정보 수정 요청 진입 (→ StoreRequestForm UPDATE)
 - ViewModel 없음 — `LaunchedEffect` 안에서 `RetrofitClient` 직접 호출
 
 ---
