@@ -811,6 +811,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
                 },
+                onEditRequestClick = { sid ->
+                    navController.navigate(
+                        Screen.StoreRequestForm.createRoute(
+                            type = StoreRequestType.UPDATE,
+                            storeId = sid,
+                        ),
+                    )
+                },
             )
         }
 

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -40,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -87,6 +89,7 @@ import kotlinx.coroutines.launch
 
 // ─── Colors ────────────────────────────────────────────────────────────────────
 private val TextBlackPL  = Color(0xFF1F130B)
+private val Brown900PL   = Color(0xFF614B3A)
 private val Brown700PL   = Color(0xFF8B6F59)
 private val Brown400PL   = Color(0xFFC4A882)
 private val BrownBorderPL = Color(0xFFE8D3C2)
@@ -111,6 +114,7 @@ fun PlaceDetailScreen(
     initialLng: Double = 0.0,
     onBack: () -> Unit = {},
     onNavigateToMap: (lat: Double, lng: Double, storeId: Int) -> Unit = { _, _, _ -> },
+    onEditRequestClick: (storeId: Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -477,6 +481,44 @@ fun PlaceDetailScreen(
                             ) {
                                 Text("위치 정보 없음", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700PL)
                             }
+                        }
+                    }
+                }
+
+                item { Spacer(Modifier.height(8.dp)) }
+
+                // 정보 수정 요청 / 클레임 버튼
+                if (myUserId != null && (s.isOwner || s.ownerUserId == null || s.ownerUserId != myUserId)) {
+                    item {
+                        val enabled = s.isOwner || s.ownerUserId == null
+                        val label = when {
+                            s.isOwner -> "내 매장 정보 수정"
+                            s.ownerUserId == null -> "이 매장 클레임하기"
+                            else -> "본인 명의 매장만 수정 요청 가능"
+                        }
+                        OutlinedButton(
+                            onClick = { if (enabled) s.storeId?.let { onEditRequestClick(it) } },
+                            enabled = enabled,
+                            border = BorderStroke(1.dp, Brown900PL),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp, vertical = 8.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_pencil),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (enabled) Brown900PL else Brown700PL,
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = label,
+                                fontFamily = PretendardFamily,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (enabled) Brown900PL else Brown700PL,
+                            )
                         }
                     }
                 }

@@ -8,6 +8,7 @@ import com.example.siheunggagae.data.model.StorePricingPlanInput
 import com.example.siheunggagae.data.model.StoreRequestPayload
 import com.example.siheunggagae.data.model.StoreRequestSubmitRequest
 import com.example.siheunggagae.data.model.StoreRequestType
+import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.data.repository.StoreRequestRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,6 +75,54 @@ class StoreRequestFormViewModel(
 
     private val _submit = MutableStateFlow<SubmitState>(SubmitState.Idle)
     val submit: StateFlow<SubmitState> = _submit
+
+    init {
+        if (sourceRequestId != null) {
+            // Re-submission from a rejected/canceled request — prefill from that request's payload
+            viewModelScope.launch {
+                val resp = repository.detail(sourceRequestId)
+                if (resp.isSuccessful) {
+                    val item = resp.body() ?: return@launch
+                    val p = item.payload
+                    _form.value = _form.value.copy(
+                        name = p.name.orEmpty(),
+                        category = p.category,
+                        address = p.address.orEmpty(),
+                        isPetAllowed = p.isPetAllowed ?: true,
+                        latitude = p.latitude,
+                        longitude = p.longitude,
+                        phone = p.phone.orEmpty(),
+                        operatingHours = p.operatingHours.orEmpty(),
+                        plans = p.plans.orEmpty().map { PlanInput(it.planName, it.priceKrw) },
+                        photoStubUrls = p.photoUrls.orEmpty(),
+                        proofUrls = item.proofUrls,
+                        message = item.message.orEmpty(),
+                    )
+                }
+            }
+        } else if (mode == StoreRequestType.UPDATE && targetStoreId != null) {
+            // UPDATE — fetch the existing store and prefill what we can.
+            // Note: StoreDetailResponse does NOT carry `category`; user must re-select category in the form.
+            viewModelScope.launch {
+                val resp = RetrofitClient.api.getStoreDetail(targetStoreId)
+                if (resp.isSuccessful) {
+                    val d = resp.body() ?: return@launch
+                    _form.value = _form.value.copy(
+                        name = d.name.orEmpty(),
+                        address = d.address.orEmpty(),
+                        isPetAllowed = d.isPetAllowed ?: true,
+                        latitude = d.latitude,
+                        longitude = d.longitude,
+                        phone = d.phone.orEmpty(),
+                        operatingHours = d.operatingHours.orEmpty(),
+                        photoStubUrls = d.photoUrls.orEmpty(),
+                        // category is intentionally left null — user must select.
+                        // proofUrls intentionally NOT carried over from previous data.
+                    )
+                }
+            }
+        }
+    }
 
     fun setName(v: String) { _form.value = _form.value.copy(name = v) }
     fun setCategory(v: String) { _form.value = _form.value.copy(category = v) }
