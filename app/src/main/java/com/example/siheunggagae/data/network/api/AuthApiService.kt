@@ -345,14 +345,14 @@ interface AuthApiService {
         @Query("size") size: Int = 20,
     ): Response<StoreRequestListResponse>
 
-    @GET("api/v1/maps/store-requests/{request_id}")
+    @GET("api/v1/maps/store-requests/{requestId}")
     suspend fun getStoreRequest(
-        @Path("request_id") requestId: Int,
+        @Path("requestId") requestId: Int,
     ): Response<StoreRequestItem>
 
-    @DELETE("api/v1/maps/store-requests/{request_id}")
+    @DELETE("api/v1/maps/store-requests/{requestId}")
     suspend fun cancelStoreRequest(
-        @Path("request_id") requestId: Int,
+        @Path("requestId") requestId: Int,
     ): Response<Unit>
 
     // ── Geo ───────────────────────────────────────────────────────────────────────
