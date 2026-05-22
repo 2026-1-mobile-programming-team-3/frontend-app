@@ -132,6 +132,7 @@ fun MyScreen(
     onBadgeListClick: () -> Unit = {},
     onVolunteerHistoryClick: () -> Unit = {},
     onFavoriteStoresClick: () -> Unit = {},
+    onMyStoreRequestsClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onVolunteerApplyClick: () -> Unit = {},
     onNotifSettingsClick: () -> Unit = {},
@@ -231,6 +232,7 @@ fun MyScreen(
                     MyRecordsSection(
                         onVolunteerHistoryClick = onVolunteerHistoryClick,
                         onFavoriteStoresClick = onFavoriteStoresClick,
+                        onMyStoreRequestsClick = onMyStoreRequestsClick,
                     )
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("설정")
@@ -773,6 +775,7 @@ private fun BadgeItem(
 private fun MyRecordsSection(
     onVolunteerHistoryClick: () -> Unit = {},
     onFavoriteStoresClick: () -> Unit = {},
+    onMyStoreRequestsClick: () -> Unit = {},
 ) {
     SectionCard {
         RecordItem(
@@ -781,6 +784,13 @@ private fun MyRecordsSection(
             title = "봉사 활동 이력",
             showDivider = true,
             onClick = onVolunteerHistoryClick,
+        )
+        RecordItem(
+            iconRes = R.drawable.ic_store,
+            iconTint = Orange500My,
+            title = "내 매장 요청",
+            showDivider = true,
+            onClick = onMyStoreRequestsClick,
         )
         RecordItem(
             iconRes = R.drawable.ic_favorite,

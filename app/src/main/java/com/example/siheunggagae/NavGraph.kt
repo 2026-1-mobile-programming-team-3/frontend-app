@@ -113,10 +113,13 @@ import com.example.siheunggagae.ui.screen.BlockManageScreen
 import com.example.siheunggagae.ui.screen.FavoriteStoresScreen
 import com.example.siheunggagae.ui.screen.HelpScreen
 import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
+import com.example.siheunggagae.ui.screen.MyStoreRequestsScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
+import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
+import com.example.siheunggagae.data.repository.StoreRequestRepository
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
 import com.example.siheunggagae.ui.viewmodel.AccountSettingsViewModel
 import com.example.siheunggagae.ui.viewmodel.LocationSettingsViewModel
@@ -831,6 +834,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },
                 onVolunteerHistoryClick = { navController.navigate(Screen.VolunteerHistory.route) },
                 onFavoriteStoresClick = { navController.navigate(Screen.FavoriteStores.route) },
+                onMyStoreRequestsClick = { navController.navigate(Screen.MyStoreRequests.route) },
                 onEditProfileClick = { navController.navigate(Screen.ProfileEdit.route) },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onNotifSettingsClick = { navController.navigate("${Screen.Settings.route}?section=notifications") },
@@ -1021,7 +1025,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.MyStoreRequests.route) {
-            androidx.compose.material3.Text("MyStoreRequests TODO")
+            val vm: MyStoreRequestsViewModel = viewModel(
+                factory = MyStoreRequestsViewModel.Factory(StoreRequestRepository()),
+            )
+            MyStoreRequestsScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onNavigate = { route -> navController.navigate(route) },
+            )
         }
 
         composable(
