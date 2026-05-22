@@ -3,6 +3,8 @@ package com.example.siheunggagae
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.annotation.ColorInt
 import com.kakao.vectormap.KakaoMap
@@ -87,13 +89,15 @@ class MapViewWrapper(private val mapView: MapView) {
         lat: Double,
         lng: Double,
         @ColorInt markerColor: Int? = null,
+        category: String? = null,
+        name: String? = null,
         onTap: (() -> Unit)? = null,
     ) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
 
         val style = if (markerColor != null) {
-            LabelStyles.from(LabelStyle.from(createCircleBitmap(markerColor)))
+            LabelStyles.from(LabelStyle.from(createPinBitmap(markerColor, category, name)))
         } else {
             LabelStyles.from(LabelStyle.from())
         }
@@ -139,17 +143,21 @@ class MapViewWrapper(private val mapView: MapView) {
     private fun createClusterBitmap(count: Int, sizePx: Int = 56): Bitmap {
         val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF614B3A.toInt() }
+        val cx = sizePx / 2f
+        canvas.drawCircle(cx, cx, cx, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+        })
+        canvas.drawCircle(cx, cx, cx - 3.5f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF614B3A.toInt()
+        })
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
-            textSize = sizePx * 0.35f
+            textSize = sizePx * 0.32f
             textAlign = Paint.Align.CENTER
             typeface = Typeface.DEFAULT_BOLD
         }
-        canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, bgPaint)
         val text = if (count > 99) "99+" else count.toString()
-        val textY = sizePx / 2f - (textPaint.descent() + textPaint.ascent()) / 2
-        canvas.drawText(text, sizePx / 2f, textY, textPaint)
+        canvas.drawText(text, cx, cx - (textPaint.descent() + textPaint.ascent()) / 2, textPaint)
         return bitmap
     }
 
@@ -161,12 +169,71 @@ class MapViewWrapper(private val mapView: MapView) {
         }
     }
 
-    private fun createCircleBitmap(@ColorInt color: Int, sizePx: Int = 48): Bitmap {
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+    private fun createPinBitmap(@ColorInt color: Int, category: String? = null, name: String? = null): Bitmap {
+        val r  = 22f   // 원 반지름
+        val cx = r + 3f
+        val cy = r + 3f
+
+        // 매장명을 5자 기준으로 2줄 분리
+        val line1 = name?.take(5) ?: ""
+        val line2 = if ((name?.length ?: 0) > 5) name!!.drop(5).take(6) else ""
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            this.color = 0xFF1E120A.toInt()
+        }
+        val lineH   = textPaint.descent() - textPaint.ascent()
+        val textGap = 4f
+        val lines   = listOfNotNull(line1.ifEmpty { null }, line2.ifEmpty { null })
+        val textBlockH = lines.size * lineH + (lines.size - 1).coerceAtLeast(0) * textGap
+
+        val totalW = maxOf((cx + r + 3f) * 2, lines.maxOfOrNull { textPaint.measureText(it) + 8f } ?: 0f)
+        val totalH = cy + r + 3f + textGap + textBlockH + 4f
+
+        val bitmap = Bitmap.createBitmap(totalW.toInt(), totalH.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
-        val radius = sizePx / 2f
-        canvas.drawCircle(radius, radius, radius, paint)
+        val pinCx = totalW / 2f
+
+        // 흰 테두리 원
+        canvas.drawCircle(pinCx, cy, r + 3f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = android.graphics.Color.WHITE })
+        // 카테고리 컬러 원
+        canvas.drawCircle(pinCx, cy, r,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+
+        // 카테고리 이모지 or 별
+        val icon = when (category?.uppercase()) {
+            "CAFE"       -> "☕"
+            "PARK"       -> "🌳"
+            "HOSPITAL"   -> "🏥"
+            "GROOMING"   -> "✂"
+            "RESTAURANT" -> "🍽"
+            else         -> "★"
+        }
+        val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = r * 0.95f
+            textAlign = Paint.Align.CENTER
+            this.color = android.graphics.Color.WHITE
+        }
+        canvas.drawText(icon, pinCx, cy + r * 0.32f, iconPaint)
+
+        // 매장명 텍스트 (원 아래) — 흰 테두리 → 검정 채움 순서로 2회 드로우
+        val strokePaint = Paint(textPaint).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 5f
+            strokeJoin = Paint.Join.ROUND
+            this.color = android.graphics.Color.WHITE
+        }
+        textPaint.style = Paint.Style.FILL
+        var nameY = cy + r + 3f + textGap - textPaint.ascent()
+        lines.forEach { line ->
+            canvas.drawText(line, pinCx, nameY, strokePaint)
+            canvas.drawText(line, pinCx, nameY, textPaint)
+            nameY += lineH + textGap
+        }
+
         return bitmap
     }
 }
