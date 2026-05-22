@@ -325,7 +325,7 @@ fun MatchingDetailScreen(
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             StatusBannerD(statusText = request.status ?: "상태 없음")
                             RequestInfoCardD(request = request)
-
+                            PublicMapCard(latitude = request.latitude, longitude = request.longitude)
                             Spacer(Modifier.height(8.dp))
                             Text(
                                 text = if (request.status?.trim()?.uppercase() == "DONE") "함께 이동한 봉사자" else "지원자 현황 (${displayList.size}명)",

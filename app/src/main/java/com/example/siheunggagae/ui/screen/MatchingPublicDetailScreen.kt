@@ -58,7 +58,11 @@ import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
-
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.viewinterop.AndroidView
+import com.kakao.vectormap.MapView as KakaoNativeMapView
+import com.example.siheunggagae.MapViewWrapper
+import androidx.compose.runtime.DisposableEffect
 // 스펙 컬러
 private val Brown700P     = Color(0xFF8A6E58)
 private val Brown400P     = Color(0xFFC4A882)
@@ -148,7 +152,7 @@ fun MatchingPublicDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             PublicRouteRow(destination = request.address ?: "목적지 미정")
-                            PublicMapCard()
+                            PublicMapCard(latitude = request.latitude, longitude = request.longitude)
                         }
 
                         Column(
@@ -352,15 +356,81 @@ private fun PublicRouteRow(destination: String) {
 // ─── 경로 지도 Card ────────────────────────────────────────────────────────────
 
 @Composable
-private fun PublicMapCard() {
-    Box(
-        modifier = Modifier.fillMaxWidth().height(192.dp).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(MintLightP, Color(0xFFE8FAF0), Color(0xFFF4FDFB)))),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Pink500P, modifier = Modifier.size(28.dp).align(Alignment.Center).offset((-40).dp, (-20).dp))
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(28.dp).align(Alignment.Center).offset(40.dp, 20.dp))
+fun PublicMapCard(
+    latitude: Double?,
+    longitude: Double?,
+    placeName: String? = "목적지"
+) {
+    // 1. 서버에서 좌표가 누락되어 올 경우를 대비한 시흥시청 안전빵(Fallback) 좌표 지정
+    val lat = latitude ?: 37.3801
+    val lng = longitude ?: 126.8029
 
+    val context = LocalContext.current
+
+    // 2. 컴포즈 생명주기 동안 단 한 번만 생성되도록 Native MapView와 병화님 래퍼를 기억(remember)합니다.
+    val nativeMapView = remember { KakaoNativeMapView(context) }
+    val mapWrapper = remember(nativeMapView) { MapViewWrapper(nativeMapView) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(192.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFFF4F4F4)),
+        contentAlignment = Alignment.Center
+    ) {
+        // 3. 🌟 [핵심] 네이티브 카카오 지도 뷰를 콤포즈 레이아웃 구조 내에 바인딩
+        AndroidView(
+            factory = { nativeMapView },
+            modifier = Modifier.fillMaxSize(),
+            update = { _ ->
+                // 지도가 아직 초기화되지 않았다면 병화님이 만든 세션 시스템 가동
+                if (!mapWrapper.hasBeenInitialized) {
+                    mapWrapper.init { kakaoMap ->
+                        // 지도 준비가 완료되면 카메라를 목적지로 슥 밀어주고 핀 꽂기
+                        mapWrapper.moveCamera(lat, lng, zoomLevel = 16)
+                        mapWrapper.clearMarkers()
+                        mapWrapper.addMarker(
+                            id = "destination_marker",
+                            lat = lat,
+                            lng = lng,
+                            markerColor = 0xFFF04268.toInt(), // 우리 스펙인 Pink500D 색상 전달
+                            category = "HOSPITAL",           // 병화님 코드에 기재된 🏥 아이콘 강제 매핑
+                            name = placeName ?: "목적지"
+                        )
+                    }
+                } else {
+                    // 이미 지도가 켜진 상태에서 뒤늦게 데이터가 갱신되어 들어올 때의 방어선
+                    mapWrapper.moveCamera(lat, lng, zoomLevel = 16)
+                    mapWrapper.clearMarkers()
+                    mapWrapper.addMarker(
+                        id = "destination_marker",
+                        lat = lat,
+                        lng = lng,
+                        markerColor = 0xFFF04268.toInt(),
+                        category = "HOSPITAL",
+                        name = placeName ?: "목적지"
+                    )
+                }
+            }
+        )
+
+        // 4. 컴포저블 화면이 완전히 파괴되거나 빠져나갈 때 메모리 누수 방지 처리
+        DisposableEffect(nativeMapView) {
+            onDispose {
+                runCatching { mapWrapper.pause() }
+            }
+        }
+
+        // 좌하단 기존 "지도에서 보기" 안내 레이어 오버레이 유지
         Row(
-            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp).clip(RoundedCornerShape(50.dp)).background(Color.White).clickable { }.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(12.dp)
+                .clip(RoundedCornerShape(50.dp))
+                .background(Color.White)
+                .clickable { /* 탭 시 병화님의 풀스크린 지도 화면으로 넘겨주는 내비게이션 연동 가능 */ }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
