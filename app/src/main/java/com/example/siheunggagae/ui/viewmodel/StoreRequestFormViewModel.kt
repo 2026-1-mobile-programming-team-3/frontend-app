@@ -40,15 +40,13 @@ fun StoreRequestFormState.validateForSubmit(): Pair<Boolean, Map<String, String>
     if (latitude == null || longitude == null) errors["location"] = "지도에서 위치를 선택해주세요"
     if (proofUrls.isEmpty()) errors["proof"] = "증빙 자료를 1개 이상 첨부해주세요"
     if (category == "PET_HOTEL") {
-        if (plans.isEmpty()) {
-            errors["plans"] = "가격 플랜을 1개 이상 추가해주세요"
-        } else {
-            if (plans.any { it.planName.isBlank() || it.priceKrw <= 0 }) {
+        when {
+            plans.isEmpty() ->
+                errors["plans"] = "가격 플랜을 1개 이상 추가해주세요"
+            plans.any { it.planName.isBlank() || it.priceKrw <= 0 } ->
                 errors["plans"] = "플랜명과 가격(0보다 큰 값)을 입력해주세요"
-            }
-            if (plans.map { it.planName }.toSet().size != plans.size) {
+            plans.map { it.planName }.toSet().size != plans.size ->
                 errors["plans"] = "플랜명이 중복되었어요"
-            }
         }
     }
     return errors.isEmpty() to errors
