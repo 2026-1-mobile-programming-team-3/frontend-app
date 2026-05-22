@@ -207,14 +207,16 @@ fun StoreRequestFormScreen(
 
             // 매장 사진
             PhotosSection(
-                photoUris = state.photoUris,
+                photoStubUrls = state.photoStubUrls,
+                photoUrisByUrl = state.photoUrisByUrl,
                 onAddPhotos = { photoLauncher.launch("image/*") },
                 onRemovePhoto = viewModel::removePhoto,
             )
 
             // 증빙 자료
             ProofsSection(
-                proofUris = state.proofUris,
+                proofUrls = state.proofUrls,
+                proofUrisByUrl = state.proofUrisByUrl,
                 error = errors["proof"],
                 onAddProofs = { proofLauncher.launch("*/*") },
                 onRemoveProof = viewModel::removeProof,
@@ -630,7 +632,7 @@ private fun PlansSection(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(OrangeSandF)
+                    .background(PinkSurfaceF)
                     .padding(horizontal = 8.dp, vertical = 3.dp),
             ) {
                 Text(
@@ -639,7 +641,7 @@ private fun PlansSection(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     lineHeight = 14.sp,
-                    color = Brown900F,
+                    color = Pink500F,
                 )
             }
         },
@@ -938,12 +940,13 @@ private fun OptionalInfoSection(
 
 @Composable
 private fun PhotosSection(
-    photoUris: List<Uri>,
+    photoStubUrls: List<String>,
+    photoUrisByUrl: Map<String, Uri>,
     onAddPhotos: () -> Unit,
     onRemovePhoto: (Int) -> Unit,
 ) {
     FormSection(
-        label = "매장 사진 (${photoUris.size}/5)",
+        label = "매장 사진 (${photoStubUrls.size}/5)",
         sublabel = "매장 외관·내부를 보여주는 사진을 추가하세요",
     ) {
         Row(
@@ -952,8 +955,11 @@ private fun PhotosSection(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // 기존 사진들
-            photoUris.forEachIndexed { index, uri ->
+            // 사진 목록: photoStubUrls가 source of truth
+            // 신규 추가 항목은 photoUrisByUrl[url]에 로컬 Uri가 있음
+            // 프리필된 항목은 Uri 없이 서버 URL로 Coil 로드
+            photoStubUrls.forEachIndexed { index, url ->
+                val localUri = photoUrisByUrl[url]
                 Box(
                     modifier = Modifier
                         .size(96.dp)
@@ -961,9 +967,10 @@ private fun PhotosSection(
                         .border(1.dp, BorderBeigeF, RoundedCornerShape(14.dp)),
                 ) {
                     AsyncImage(
-                        model = uri,
+                        model = localUri ?: url,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        error = painterResource(R.drawable.ic_image),
                         modifier = Modifier.fillMaxSize(),
                     )
                     // 삭제 버튼 (상단 오른쪽)
@@ -988,7 +995,7 @@ private fun PhotosSection(
             }
 
             // 추가 버튼 (5장 미만일 때)
-            if (photoUris.size < 5) {
+            if (photoStubUrls.size < 5) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -1027,7 +1034,8 @@ private fun PhotosSection(
 
 @Composable
 private fun ProofsSection(
-    proofUris: List<Uri>,
+    proofUrls: List<String>,
+    proofUrisByUrl: Map<String, Uri>,
     error: String?,
     onAddProofs: () -> Unit,
     onRemoveProof: (Int) -> Unit,
@@ -1089,11 +1097,21 @@ private fun ProofsSection(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-            // 기존 파일 목록
-            proofUris.forEachIndexed { index, uri ->
-                val (name, size) = remember(uri) { fileNameAndSize(uri) }
+            // 파일 목록: proofUrls가 source of truth
+            // 신규 추가 항목은 proofUrisByUrl[url]에 로컬 Uri가 있음
+            // 프리필된 항목은 Uri 없이 제네릭 라벨로 표시
+            proofUrls.forEachIndexed { index, url ->
+                val localUri = proofUrisByUrl[url]
+                val (name, size) = if (localUri != null) {
+                    remember(localUri) { fileNameAndSize(localUri) }
+                } else {
+                    null to null
+                }
                 val ext = fileExtension(name)
-                val displayName = name ?: uri.lastPathSegment ?: "파일 ${index + 1}"
+                val displayName = when {
+                    localUri != null -> name ?: localUri.lastPathSegment ?: "파일 ${index + 1}"
+                    else -> "기존 첨부 자료 #${index + 1}"
+                }
 
                 Row(
                     modifier = Modifier
@@ -1113,6 +1131,7 @@ private fun ProofsSection(
                             .clip(RoundedCornerShape(8.dp))
                             .background(
                                 when {
+                                    localUri == null -> Color(0xFFF2F2F2) // 프리필 항목
                                     isImageExt(ext) -> Color(0xFFD0FEE1)
                                     ext == "PDF"    -> Color(0xFFFEE7EC)
                                     ext in setOf("DOC", "DOCX") -> Color(0xFFDBEAFE)
@@ -1120,27 +1139,39 @@ private fun ProofsSection(
                                 }
                             ),
                     ) {
-                        if (isImageExt(ext)) {
-                            AsyncImage(
-                                model = uri,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
-                            )
-                        } else {
-                            Text(
-                                text = ext.take(3).ifEmpty { "FILE" },
-                                fontFamily = PretendardFamily,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                lineHeight = 12.sp,
-                                color = when {
-                                    ext == "PDF"                -> Color(0xFFE84B6A)
-                                    ext in setOf("DOC", "DOCX") -> Color(0xFF2563EB)
-                                    else                        -> Color(0xFF6B7280)
-                                },
-                                textAlign = TextAlign.Center,
-                            )
+                        when {
+                            localUri != null && isImageExt(ext) -> {
+                                AsyncImage(
+                                    model = localUri,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                                )
+                            }
+                            localUri == null -> {
+                                // 프리필된 항목: 클립 아이콘으로 표시
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_paperclip),
+                                    contentDescription = null,
+                                    tint = Color(0xFF6B7280),
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            else -> {
+                                Text(
+                                    text = ext.take(3).ifEmpty { "FILE" },
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    lineHeight = 12.sp,
+                                    color = when {
+                                        ext == "PDF"                -> Color(0xFFE84B6A)
+                                        ext in setOf("DOC", "DOCX") -> Color(0xFF2563EB)
+                                        else                        -> Color(0xFF6B7280)
+                                    },
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                         }
                     }
 
@@ -1159,7 +1190,7 @@ private fun ProofsSection(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        if (size != null && size > 0) {
+                        if (localUri != null && size != null && size > 0) {
                             Text(
                                 text = formatSize(size),
                                 fontFamily = PretendardFamily,
@@ -1189,7 +1220,7 @@ private fun ProofsSection(
             }
 
             // 파일 추가 버튼
-            if (proofUris.size < 10) {
+            if (proofUrls.size < 10) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier

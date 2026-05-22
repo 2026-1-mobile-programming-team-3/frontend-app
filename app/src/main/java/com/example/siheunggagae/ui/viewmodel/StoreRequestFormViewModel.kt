@@ -27,10 +27,14 @@ data class StoreRequestFormState(
     val phone: String = "",
     val operatingHours: String = "",
     val plans: List<PlanInput> = emptyList(),
-    val photoUris: List<Uri> = emptyList(),
+    // photoStubUrls: source of truth for which photos will be submitted (ordered).
+    // photoUrisByUrl: local preview Uri keyed by stub URL — populated only for newly-added photos.
     val photoStubUrls: List<String> = emptyList(),
-    val proofUris: List<Uri> = emptyList(),
+    val photoUrisByUrl: Map<String, Uri> = emptyMap(),
+    // proofUrls: source of truth for which proofs will be submitted (ordered).
+    // proofUrisByUrl: local preview Uri keyed by stub URL — populated only for newly-added proofs.
     val proofUrls: List<String> = emptyList(),
+    val proofUrisByUrl: Map<String, Uri> = emptyMap(),
     val message: String = "",
 )
 
@@ -167,27 +171,39 @@ class StoreRequestFormViewModel(
     private fun makeStubUrl(): String = "https://placeholder.local/uploads/" + UUID.randomUUID()
 
     fun addPhotos(uris: List<Uri>) {
-        val newUris = (_form.value.photoUris + uris).take(5)
-        val newStubs = (_form.value.photoStubUrls + uris.map { makeStubUrl() }).take(5)
-        _form.value = _form.value.copy(photoUris = newUris, photoStubUrls = newStubs)
+        val current = _form.value
+        val remaining = 5 - current.photoStubUrls.size
+        if (remaining <= 0) return
+        val toAdd = uris.take(remaining)
+        val newStubs = current.photoStubUrls + toAdd.map { makeStubUrl() }
+        val newUriMap = current.photoUrisByUrl + newStubs.takeLast(toAdd.size).zip(toAdd).toMap()
+        _form.value = current.copy(photoStubUrls = newStubs, photoUrisByUrl = newUriMap)
     }
     fun removePhoto(index: Int) {
-        val u = _form.value.photoUris.toMutableList()
-        val s = _form.value.photoStubUrls.toMutableList()
-        if (index in u.indices) { u.removeAt(index); s.removeAt(index) }
-        _form.value = _form.value.copy(photoUris = u, photoStubUrls = s)
+        val current = _form.value
+        val stubs = current.photoStubUrls.toMutableList()
+        if (index !in stubs.indices) return
+        val removedUrl = stubs.removeAt(index)
+        val newUriMap = current.photoUrisByUrl - removedUrl
+        _form.value = current.copy(photoStubUrls = stubs, photoUrisByUrl = newUriMap)
     }
 
     fun addProofs(uris: List<Uri>) {
-        val newUris = (_form.value.proofUris + uris).take(10)
-        val newUrls = (_form.value.proofUrls + uris.map { makeStubUrl() }).take(10)
-        _form.value = _form.value.copy(proofUris = newUris, proofUrls = newUrls)
+        val current = _form.value
+        val remaining = 10 - current.proofUrls.size
+        if (remaining <= 0) return
+        val toAdd = uris.take(remaining)
+        val newUrls = current.proofUrls + toAdd.map { makeStubUrl() }
+        val newUriMap = current.proofUrisByUrl + newUrls.takeLast(toAdd.size).zip(toAdd).toMap()
+        _form.value = current.copy(proofUrls = newUrls, proofUrisByUrl = newUriMap)
     }
     fun removeProof(index: Int) {
-        val u = _form.value.proofUris.toMutableList()
-        val s = _form.value.proofUrls.toMutableList()
-        if (index in u.indices) { u.removeAt(index); s.removeAt(index) }
-        _form.value = _form.value.copy(proofUris = u, proofUrls = s)
+        val current = _form.value
+        val urls = current.proofUrls.toMutableList()
+        if (index !in urls.indices) return
+        val removedUrl = urls.removeAt(index)
+        val newUriMap = current.proofUrisByUrl - removedUrl
+        _form.value = current.copy(proofUrls = urls, proofUrisByUrl = newUriMap)
     }
 
     fun submit() {
