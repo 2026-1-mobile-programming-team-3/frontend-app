@@ -115,12 +115,15 @@ import com.example.siheunggagae.ui.screen.HelpScreen
 import com.example.siheunggagae.ui.screen.PrivacyPolicyScreen
 import com.example.siheunggagae.ui.screen.MapPinPickerScreen
 import com.example.siheunggagae.ui.screen.MyStoreRequestsScreen
+import com.example.siheunggagae.ui.screen.StoreRequestFormScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
 import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
 import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
+import com.example.siheunggagae.ui.viewmodel.StoreRequestFormViewModel
+import com.example.siheunggagae.data.model.StoreRequestType
 import com.example.siheunggagae.data.repository.StoreRequestRepository
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
 import com.example.siheunggagae.ui.viewmodel.AccountSettingsViewModel
@@ -1053,8 +1056,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     defaultValue = -1
                 },
             ),
-        ) {
-            androidx.compose.material3.Text("StoreRequestForm TODO")
+        ) { backStackEntry ->
+            val typeStr = backStackEntry.arguments?.getString(Screen.StoreRequestForm.ARG_TYPE) ?: "ADD"
+            val storeId = backStackEntry.arguments?.getInt(Screen.StoreRequestForm.ARG_STORE_ID, -1)
+                ?.takeIf { it >= 0 }
+            val reqId = backStackEntry.arguments?.getInt(Screen.StoreRequestForm.ARG_REQUEST_ID, -1)
+                ?.takeIf { it >= 0 }
+            val mode = StoreRequestType.valueOf(typeStr)
+            val vm: StoreRequestFormViewModel = viewModel(
+                factory = StoreRequestFormViewModel.Factory(
+                    StoreRequestRepository(), mode, storeId, reqId,
+                ),
+            )
+
+            // 위치 선택기 결과 핸들링 (SavedStateHandle StateFlow 방식)
+            val handle = backStackEntry.savedStateHandle
+            val pickedLat by handle.getStateFlow<Double?>(Screen.MapPinPicker.RESULT_LAT, null)
+                .collectAsState()
+            LaunchedEffect(pickedLat) {
+                val lat = pickedLat ?: return@LaunchedEffect
+                val lng = handle.get<Double>(Screen.MapPinPicker.RESULT_LNG) ?: return@LaunchedEffect
+                val addr = handle.get<String>(Screen.MapPinPicker.RESULT_ADDRESS)
+                vm.applyPickedLocation(lat, lng, addr)
+                handle.remove<Double>(Screen.MapPinPicker.RESULT_LAT)
+                handle.remove<Double>(Screen.MapPinPicker.RESULT_LNG)
+                handle.remove<String>(Screen.MapPinPicker.RESULT_ADDRESS)
+            }
+
+            StoreRequestFormScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onPickLocation = { lat, lng ->
+                    navController.navigate(Screen.MapPinPicker.createRoute(lat, lng))
+                },
+                onSubmitted = { id ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.StoreRequestDetail.createRoute(id))
+                },
+            )
         }
 
         composable(
