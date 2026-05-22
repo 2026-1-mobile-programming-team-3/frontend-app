@@ -106,7 +106,7 @@ fun MatchingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
-
+    val bottomBarHeight = 80.dp
     var showActionsSheet by remember { mutableStateOf(false) }
     var longPressedRequest by remember { mutableStateOf<MatchListItem?>(null) }
     val actionsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -122,76 +122,79 @@ fun MatchingScreen(
     Scaffold(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
-        floatingActionButton = {
+
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
+            ){
+                item { SummaryCards(onMyRequests = onMyRequests, requestCount = requestCount) }
+
+                item {
+                    MatchingTabRow(selected = selectedTab, onSelect = { tab ->
+                        selectedTab = tab
+                        viewModel.fetchMatches(tab.status?.name)
+                    })
+                }
+                item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
+                item { Spacer(Modifier.height(12.dp)) }
+
+                when (val state = uiState) {
+                    is MatchingUiState.Loading -> {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = Orange500M)
+                            }
+                        }
+                    }
+                    is MatchingUiState.Error -> {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                Text(text = state.message, color = Pink500M, fontFamily = PretendardFamily)
+                            }
+                        }
+                    }
+                    is MatchingUiState.Success -> {
+                        if (state.matches.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text(text = "조건에 맞는 봉사 요청이 없습니다.", color = Brown700M, fontFamily = PretendardFamily)
+                                }
+                            }
+                        } else {
+                            items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
+                                MatchingRequestCard(
+                                    request = request,
+                                    onCardClick = { request.matchId?.let { onCardClick(it) } },
+                                    onCardLongClick = {
+                                        longPressedRequest = request
+                                        showActionsSheet = true
+                                    }
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
+                        }
+                    }
+                }
+                item { Spacer(Modifier.height(80.dp)) }
+            }
             FloatingActionButton(
                 onClick = onRequestFlowClick,
                 containerColor = FABBrown,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd) // 우하단 고정
+                    .padding(end = 20.dp, bottom = (bottomBarHeight + 42.dp)) //
+                    .size(56.dp)
             ) {
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "새 요청", modifier = Modifier.size(24.dp))
             }
         }
-    ) { innerPadding ->
-        LazyColumn(
-            // 👈 [충돌 해결 완료] 충돌 마커를 걷어내고, 팀원의 하단 패딩 및 간격 설정을 안전하게 적용했습니다.
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            item { SummaryCards(onMyRequests = onMyRequests, requestCount = requestCount) }
 
-            item {
-                MatchingTabRow(selected = selectedTab, onSelect = { tab ->
-                    selectedTab = tab
-                    viewModel.fetchMatches(tab.status?.name)
-                })
-            }
-            item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
-            item { Spacer(Modifier.height(12.dp)) }
-
-            when (val state = uiState) {
-                is MatchingUiState.Loading -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Orange500M)
-                        }
-                    }
-                }
-                is MatchingUiState.Error -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            Text(text = state.message, color = Pink500M, fontFamily = PretendardFamily)
-                        }
-                    }
-                }
-                is MatchingUiState.Success -> {
-                    if (state.matches.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                Text(text = "조건에 맞는 봉사 요청이 없습니다.", color = Brown700M, fontFamily = PretendardFamily)
-                            }
-                        }
-                    } else {
-                        items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
-                            MatchingRequestCard(
-                                request = request,
-                                onCardClick = { request.matchId?.let { onCardClick(it) } },
-                                onCardLongClick = {
-                                    longPressedRequest = request
-                                    showActionsSheet = true
-                                }
-                            )
-                            Spacer(Modifier.height(12.dp))
-                        }
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(80.dp)) }
-        }
     }
 
     if (showActionsSheet) {
