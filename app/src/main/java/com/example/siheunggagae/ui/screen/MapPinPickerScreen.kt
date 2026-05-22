@@ -74,12 +74,15 @@ fun MapPinPickerScreen(
     val mapWrapper = remember { MapViewWrapper(mapView) }
     var mapReady by remember { mutableStateOf(false) }
 
-    // MapView 라이프사이클 연동
+    // MapView 라이프사이클 연동.
+    // 카카오 MapView 는 start() 호출 후 KakaoMapReadyCallback 가 발화하기 전에 pause/resume 을 부르면
+    // 내부 IMapSurfaceView 가 null 이라 NPE — 빠른 popBackStack 직후 onPause 가 그 사이에 끼는 경우가 있다.
+    // mapReady 플래그로 gate 한다.
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> mapWrapper.resume()
-                Lifecycle.Event.ON_PAUSE  -> mapWrapper.pause()
+                Lifecycle.Event.ON_RESUME -> if (mapReady) mapWrapper.resume()
+                Lifecycle.Event.ON_PAUSE  -> if (mapReady) mapWrapper.pause()
                 else -> {}
             }
         }
