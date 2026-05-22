@@ -287,7 +287,7 @@ private fun EmptyState(onAddClick: () -> Unit) {
 @Composable
 private fun TopBarStoreRequests(title: String, onBack: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(

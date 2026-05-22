@@ -1046,6 +1046,12 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val vm: MyStoreRequestsViewModel = viewModel(
                 factory = MyStoreRequestsViewModel.Factory(StoreRequestRepository()),
             )
+            val myStoreRequestsLifecycle = LocalLifecycleOwner.current.lifecycle
+            LaunchedEffect(myStoreRequestsLifecycle) {
+                myStoreRequestsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    vm.refresh()
+                }
+            }
             MyStoreRequestsScreen(
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
