@@ -59,6 +59,9 @@ fun MatchingDetailScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
+    // 🌟 [신규 장치] MatchingScreen과 동일한 로컬 프리퍼런스 장부 연결
+    val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showReviewDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
@@ -135,7 +138,6 @@ fun MatchingDetailScreen(
                 TextButton(onClick = {
                     showReviewDialog = false
                     viewModel.resetState()
-                    // 🌟 [수정 1] 요청자가 완료 팝업을 통해 작성하러 갈 때 (수정 권한 부여)
                     onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                 }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
             },
@@ -199,10 +201,8 @@ fun MatchingDetailScreen(
                             Button(
                                 onClick = {
                                     if (!viewModel.isReviewWritten) {
-                                        // 🌟 [수정 2] 요청자가 새로 작성하러 갈 때 (수정 권한 부여)
                                         onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                                     } else {
-                                        // 🌟 [수정 3] 요청자가 자기가 쓴 글 보러 갈 때 (수정 권한 부여)
                                         onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = true))
                                     }
                                 },
@@ -222,7 +222,6 @@ fun MatchingDetailScreen(
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
-                                    // 🌟 [수정 4] 봉사자가 요청자 후기 구경하러 갈 때 (수정 권한 박탈 및 읽기 전용 강제 고정)
                                     onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = false))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -308,7 +307,11 @@ fun MatchingDetailScreen(
                 is MatchDetailUiState.Success -> {
                     val request = detailState.detail
 
-                    val displayList = if (request.status?.trim()?.uppercase() == "DONE") {
+                    // 🌟 [양방향 차단 핵심 변경 기믹]
+                    val blockedUsers = prefs.getStringSet("blocked_users", emptySet()) ?: emptySet()
+
+                    // 기존 지원자 목록 가져오기 파이프라인
+                    val originalList = if (request.status?.trim()?.uppercase() == "DONE") {
                         viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
                     } else {
                         viewModel.applicantList.filter {
@@ -316,6 +319,9 @@ fun MatchingDetailScreen(
                             s != "CANCELED" && s != "REJECTED"
                         }
                     }
+
+                    // 🌟 [필터 연동] 내가 차단 장부에 넣은 '봉사자'의 신청서는 명단에서 흔적도 없이 삭제!
+                    val displayList = originalList.filter { it.applicant?.nickname !in blockedUsers }
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
