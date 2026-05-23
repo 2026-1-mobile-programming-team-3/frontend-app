@@ -135,7 +135,8 @@ fun MatchingDetailScreen(
                 TextButton(onClick = {
                     showReviewDialog = false
                     viewModel.resetState()
-                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false))
+                    // 🌟 [수정 1] 요청자가 완료 팝업을 통해 작성하러 갈 때 (수정 권한 부여)
+                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                 }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -198,9 +199,11 @@ fun MatchingDetailScreen(
                             Button(
                                 onClick = {
                                     if (!viewModel.isReviewWritten) {
-                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false))
+                                        // 🌟 [수정 2] 요청자가 새로 작성하러 갈 때 (수정 권한 부여)
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                                     } else {
-                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
+                                        // 🌟 [수정 3] 요청자가 자기가 쓴 글 보러 갈 때 (수정 권한 부여)
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = true))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -219,14 +222,15 @@ fun MatchingDetailScreen(
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
-                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
+                                    // 🌟 [수정 4] 봉사자가 요청자 후기 구경하러 갈 때 (수정 권한 박탈 및 읽기 전용 강제 고정)
+                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = false))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
-                                colors = ButtonDefaults.buttonColors(containerColor = Brown700D), // 브라운 톤 컴포넌트 매핑
+                                colors = ButtonDefaults.buttonColors(containerColor = Brown700D),
                                 shape = RoundedCornerShape(26.dp)
                             ) {
                                 Text(
-                                    text = "요청자가 작성한 후기 보기", // 텍스트도 스펙에 맞게 정형화
+                                    text = "요청자가 작성한 후기 보기",
                                     fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
                                 )
                             }
