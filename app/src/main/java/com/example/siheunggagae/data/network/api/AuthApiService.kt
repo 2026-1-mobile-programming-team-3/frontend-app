@@ -246,6 +246,16 @@ interface AuthApiService {
         @Body body: MatchReviewRequest,
     ): Response<MatchReviewResponse>
 
+    @GET("api/v1/matches/{matchId}/review")
+    suspend fun getMatchReview(
+        @Path("matchId") matchId: Int
+    ): Response<MatchReviewResponse>
+
+    @PATCH("api/v1/matches/{matchId}/review")
+    suspend fun updateMatchReview(
+        @Path("matchId") matchId: Int,
+        @Body body: MatchReviewRequest
+    ): Response<MatchReviewResponse>
     // ── Chat ──────────────────────────────────────────────────────────────────────
 
     @GET("api/v1/matches/{matchId}/chats")

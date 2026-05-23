@@ -154,8 +154,10 @@ data class MatchReviewRequest(
 )
 
 data class MatchReviewResponse(
-    val reviewId: Int? = null,
-    val matchId: Int? = null,
-    val rating: Int? = null,
-    val createdAt: String? = null,
+    @SerializedName("review_id") val reviewId: Int? = null,
+    @SerializedName("match_id") val matchId: Int? = null,
+    @SerializedName("rating") val rating: Int? = null,
+    @SerializedName("content") val content: String? = null,
+    @SerializedName("proof_image_urls") val proofImageUrls: List<String>? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
 )

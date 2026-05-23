@@ -71,7 +71,7 @@ fun MatchingDetailScreen(
         requestData?.let { detail ->
             if (detail.status?.trim()?.uppercase() == "DONE" &&
                 viewModel.currentUserId == detail.author?.userId &&
-                detail.isReviewed != true // 후기를 아직 작성하지 않았을 때만
+                detail.isReviewed != true
             ) {
                 showReviewDialog = true
             } else {
@@ -134,10 +134,8 @@ fun MatchingDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showReviewDialog = false
-
                     viewModel.resetState()
-
-                    onNavigate("match_review?matchId=$requestId&status=DONE")
+                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false))
                 }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -162,15 +160,12 @@ fun MatchingDetailScreen(
                 currentStatus = currentStatus
             )
         },
-        // ─── 🌟 [재호님 통찰 반영 완료] 중복 및 409 유발 버튼 완전 도려내기 ───
         bottomBar = {
             val successState = uiState as? MatchDetailUiState.Success
             successState?.let {
                 val currentStatus = it.detail.status?.trim()?.uppercase() ?: ""
                 val isMenuOwner = viewModel.currentUserId == it.detail.author?.userId
 
-                // [안전 가드] 내가 요청자인데 아직 매칭 대기(WAITING/MATCHING) 상태라면
-                // 하단에 굳이 버튼 공간을 차지할 필요가 없으므로 영역을 그리지 않고 조기 리턴합니다.
                 if (isMenuOwner && (currentStatus == "WAITING" || currentStatus == "MATCHING")) {
                     return@let
                 }
@@ -183,7 +178,6 @@ fun MatchingDetailScreen(
                         .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     if (isMenuOwner) {
-                        // 1️⃣ 진행 중인 상태일 때는 오직 [완료 처리하기] 버튼만 깔끔하게 노출
                         if (currentStatus == "PROGRESS") {
                             Button(
                                 onClick = {
@@ -201,13 +195,12 @@ fun MatchingDetailScreen(
                                 )
                             }
                         } else if (currentStatus == "DONE") {
-                            // 2️⃣ 완료된 상태일 때 후기 분기 처리 매핑 구역
                             Button(
                                 onClick = {
                                     if (!viewModel.isReviewWritten) {
-                                        onNavigate("match_review?matchId=$requestId&status=DONE")
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false))
                                     } else {
-                                        onNavigate("my_review_detail?matchId=$requestId")
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -223,18 +216,17 @@ fun MatchingDetailScreen(
                             }
                         }
                     } else {
-                        // 3️⃣ 봉사자(남이 쓴 글) 시점일 때의 기존 흐름 가드는 무결하므로 완벽 유지
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
-                                    Toast.makeText(context, "상대방이 남긴 후기 상세 페이지로 이동합니다 (준비중)", Toast.LENGTH_SHORT).show()
+                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E120A)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Brown700D), // 브라운 톤 컴포넌트 매핑
                                 shape = RoundedCornerShape(26.dp)
                             ) {
                                 Text(
-                                    text = "상대방이 남긴 후기 보기",
+                                    text = "요청자가 작성한 후기 보기", // 텍스트도 스펙에 맞게 정형화
                                     fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
                                 )
                             }

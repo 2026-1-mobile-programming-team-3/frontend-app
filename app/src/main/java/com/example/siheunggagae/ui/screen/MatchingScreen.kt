@@ -118,7 +118,8 @@ fun MatchingScreen(
     }
 
     val requestCount = if (uiState is MatchingUiState.Success) {
-        (uiState as MatchingUiState.Success).matches.size
+        val successState = uiState as MatchingUiState.Success
+        successState.matches.count { it.authorNickname == myNickname }
     } else 0
 
     Scaffold(
