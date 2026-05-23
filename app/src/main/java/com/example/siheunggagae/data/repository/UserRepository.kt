@@ -7,6 +7,8 @@ import com.example.siheunggagae.data.model.BlockCreatedResponse
 import com.example.siheunggagae.data.model.BlockListResponse
 import com.example.siheunggagae.data.model.ReportCreateRequest
 import com.example.siheunggagae.data.model.ReportCreatedResponse
+import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
+import com.example.siheunggagae.data.model.FavoriteStoreCreateResponse
 import com.example.siheunggagae.data.model.FavoriteStoreListResponse
 import com.example.siheunggagae.data.model.MatchListResponse
 import com.example.siheunggagae.data.model.MyMatchListResponse
@@ -49,6 +51,9 @@ class UserRepository {
     suspend fun deletePet(petId: Int): Response<Unit> = api.deletePet(petId)
     suspend fun getFavoriteStores(page: Int = 1, size: Int = 20): Response<FavoriteStoreListResponse> =
         api.getFavoriteStores(page, size)
+
+    suspend fun addFavoriteStore(storeId: Int): Response<FavoriteStoreCreateResponse> =
+        api.addFavoriteStore(FavoriteStoreCreateRequest(storeId))
 
     suspend fun deleteFavoriteStore(storeId: Int): Response<Unit> =
         api.deleteFavoriteStore(storeId)

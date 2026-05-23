@@ -48,6 +48,7 @@ import com.example.siheunggagae.data.model.NotificationSettingsResponse
 import com.example.siheunggagae.data.model.NotificationSettingsUpdateRequest
 import com.example.siheunggagae.data.model.PasswordChangeRequest
 import com.example.siheunggagae.data.model.PetCreate
+import com.example.siheunggagae.data.model.PetHotelListResponse
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.ReportCreateRequest
@@ -334,6 +335,13 @@ interface AuthApiService {
         @Path("storeId") storeId: Int,
         @Path("reviewId") reviewId: Int,
     ): Response<MessageResponse>
+
+    @GET("api/v1/maps/pet-hotels")
+    suspend fun getPetHotels(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radius") radius: Int = 5000,
+    ): Response<PetHotelListResponse>
 
     @GET("api/v1/maps/volunteers")
     suspend fun getVolunteerMarkers(): Response<List<VolunteerMarkerDto>>

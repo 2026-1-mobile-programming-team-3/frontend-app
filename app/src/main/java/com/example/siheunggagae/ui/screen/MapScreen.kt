@@ -42,6 +42,12 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
@@ -200,6 +206,16 @@ fun MapScreen(
         }
     }
 
+    // 내 위치 파란 점 — 권한 있고 ViewModel 이 위치 잡고 있을 때만.
+    LaunchedEffect(mapReady, uiState.location, locationPermission.hasPermission) {
+        val loc = uiState.location
+        if (mapReady && loc != null && locationPermission.hasPermission) {
+            mapWrapper.updateMyLocation(loc.latitude, loc.longitude)
+        } else if (mapReady) {
+            mapWrapper.removeMyLocation()
+        }
+    }
+
     // truncated 시 스낵바 안내
     LaunchedEffect(uiState.truncated) {
         if (uiState.truncated) {
@@ -327,7 +343,7 @@ fun MapScreen(
                 // 실제 카카오 MapView
                 AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
-                // 상단 검색바 + 카테고리 칩
+                // 상단 검색바 + 카테고리 칩 + 펫호텔 비교 배너
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -340,6 +356,36 @@ fun MapScreen(
                         selected = uiState.selectedCategory,
                         onSelect = { viewModel.selectCategory(it) },
                     )
+                    // PET_HOTEL 단독 선택 시 비교 배너
+                    val isPetHotelOnly = uiState.selectedCategory == StoreCategory.PET_HOTEL
+                    val petHotelCount = if (isPetHotelOnly) {
+                        uiState.viewportStores.count { it.category == "PET_HOTEL" }
+                    } else 0
+                    AnimatedVisibility(
+                        visible = isPetHotelOnly && petHotelCount > 0,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    ) {
+                        PetHotelCompareBanner(
+                            count = petHotelCount,
+                            onClick = {
+                                val center = uiState.cameraTarget
+                                val lat = center?.first ?: 37.3799
+                                val lng = center?.second ?: 126.8030
+                                // viewport 대각선의 절반을 radius 로 — 배너 카운트(viewport 결과)와
+                                // 비교 화면(/maps/pet-hotels?radius=…)의 결과 차이를 최소화.
+                                val radius = radiusFromViewport(uiState.viewportBounds)
+                                onNavigate(
+                                    com.example.siheunggagae.Screen.PetHotelCompare.createRoute(
+                                        lat = lat,
+                                        lng = lng,
+                                        radius = radius,
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 }
 
                 // 우측 플로팅 버튼
@@ -445,6 +491,76 @@ private fun MapSearchCard(onClick: () -> Unit = {}) {
             lineHeight = 20.sp,
             color = Brown400Mp,
         )
+    }
+}
+
+// ─── 펫호텔 비교 배너 ─────────────────────────────────────────────────────────
+
+/**
+ * viewport bbox [swLat, swLng, neLat, neLng] 의 대각선 절반(meter) 을 radius 로 추정.
+ * 1km ~ 50km 로 clamp. bbox 가 null 이면 5km 디폴트.
+ */
+private fun radiusFromViewport(bbox: DoubleArray?): Int {
+    if (bbox == null || bbox.size < 4) return 5000
+    val swLat = bbox[0]
+    val swLng = bbox[1]
+    val neLat = bbox[2]
+    val neLng = bbox[3]
+    val avgLat = (swLat + neLat) / 2.0
+    val latM = (neLat - swLat) * 111_000.0
+    val lngM = (neLng - swLng) * 111_000.0 * kotlin.math.cos(Math.toRadians(avgLat))
+    val diagonal = kotlin.math.sqrt(latM * latM + lngM * lngM)
+    return (diagonal / 2.0).toInt().coerceIn(1000, 50000)
+}
+
+@Composable
+private fun PetHotelCompareBanner(
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "주변 펫호텔 ${count}곳",
+                    fontFamily = PretendardFamily,
+                    color = Color(0xFF1E120A),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "가격순 보기",
+                    fontFamily = PretendardFamily,
+                    color = Color(0xFF8A6E58),
+                    fontSize = 10.sp,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color(0xFF614B3A))
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+            ) {
+                Text(
+                    text = "가격 비교 →",
+                    fontFamily = PretendardFamily,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 

@@ -108,8 +108,40 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
 - **StoreDetailSheet** (마커 탭 시): 민트→연두 그라디언트 헤더 + 장소명 + "[업종] · [거리] · ⭐[별점]" + Favorite + "상세 정보 보기"(Brown900 → PlaceDetail)
 - **MapSearchOverlay**: 뒤로가기 + 검색 입력 + 결과 리스트
 - 마커: 줌 14↑ 개별 마커(카테고리 이모지 + 매장명) / 줌 11–13 그리드 클러스터
+- 카테고리 필터에서 "펫호텔" 단독 선택 시 지도 상단에 "주변 펫호텔 N곳 · 가격순 보기 / 가격 비교 →" 슬라이드 배너 노출 (→ PetHotelCompare)
 - ViewModel: MapViewModel
 - 라우트 인자: `volunteerMode`, `focusLat`, `focusLng`, `focusStoreId` (모두 옵션)
+
+### [PetHotelCompareScreen] 주변 펫호텔 가격 비교
+
+- 라우트: `pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}` — Map 화면의 카테고리 "펫호텔" 단독 선택 시 상단 슬라이드 배너에서 진입.
+- TopBar: 뒤로가기 카드(40×40dp shadow=2dp) + "주변 펫호텔 N곳" 18sp SemiBold (N은 동적)
+- TopBar 우측: `ic_sliders` 비교 버튼 — 매장 ≥ 2 일 때 활성. 탭 시 PetHotelMatrixCompareScreen 진입 (현재 lat/lng/radius 전달).
+- 정렬 칩 (가로 스크롤): 최저가(기본) / 거리 / 별점 — 14sp Medium, h=16dp v=8dp, 선택=#1A1A1A White
+- 펫 크기 필터 칩 (작은): 전체(기본) / 소형 / 중형 / 대형 — 11sp Medium, h=10dp v=4dp. plan_name 휴리스틱 매칭 (소형|small|S, 중형|medium|M, 대형|large|L)
+- 카드 (radius 16dp shadow 2dp, margin h=18 v=6):
+  - 상단 140dp 가로 썸네일: Coil AsyncImage(`thumbnail_url`) Crop, null/blank → OrangeSand→PinkSurface 그라디언트 + `ic_hotel` 폴백
+  - 좌상단 "최저가" 뱃지 (Brown900 bg, 10sp 700 White) — 최저가 1위 카드에만, 정렬 PRICE일 때만
+  - 우상단 ♥ 28dp 원형 (Pink500 if favorited else BorderBeige) — 탭 시 optimistic + API + 실패 시 롤백
+  - 정보 영역: 매장명 16sp 800 + ★ratingAvg (ratingCount) → 주소 시·동 + 거리(m/km) 11sp → Canvas PriceRangeBar (조건부: min/max 있고 absMax>absMin) → 옵션 pill + "최저가 N원~" (20sp 900 Brown900)
+- Canvas PriceRangeBar: 전체 가격대(absMin~absMax) 위에서 매장 min~max 막대(OrangeSand→Orange500 그라디언트) + 최저가 dot(Brown900). 외부 라이브러리 없이 Compose Canvas 직접 구현.
+- 빈 상태: 80dp OrangeSand 원형 + `ic_hotel` 40dp Orange500 + "주변에 펫호텔이 없어요" + "반경 늘리기" Brown900 CTA (5km씩 증가, 최대 50km)
+- ViewModel: PetHotelCompareViewModel(PetHotelRepository, UserRepository, lat, lng) — setSort / setSize / expandRadius / retry / toggleFavorite (optimistic + 롤백)
+- 백엔드 추가 없음 — `GET /api/v1/maps/pet-hotels` 단일 호출. 정렬·필터·시각화 모두 클라이언트.
+
+### [PetHotelMatrixCompareScreen] 펫호텔 매트릭스 비교
+
+- 라우트: `pet_hotel_matrix_compare?lat={lat}&lng={lng}&radius={radius}` — PetHotelCompareScreen TopBar 우측 `ic_sliders` 버튼에서 진입. 매장 수 ≥ 2 일 때만 활성.
+- TopBar: 뒤로가기 카드(40×40dp shadow=2dp) + "펫호텔 비교" 18sp SemiBold
+- 모드 토글 (세그먼티드 in TagGray pill): "1:1 비교" / "여러 곳 비교". 선택 옵션 bg=White + Brown900 800 + shadow 1dp. 매장 수 ≤ 2 일 때 토글 비활성.
+- **1:1 모드**: 드롭다운 2개 (A=Orange500 border, B=Pink500 border). 썸네일 36dp radius 10dp — `thumbnailUrl` 있으면 Coil AsyncImage(`ContentScale.Crop`), 없으면 폴백 그라디언트(A=OrangeSand→Orange500, B=PinkSurface→Pink500) + `ic_hotel` 흰색. 드롭다운 탭 시 ModalBottomSheet 로 매장 선택. B 시트에서 A 매장 제외(중복 방지).
+- **2-컬럼 매트릭스**: 헤더 OrangeSand bg, 컬럼명 Orange500/Pink500 색 인덱스. 각 셀 12sp. 최우값 셀 OrangeSand bg + 좌상단 5dp Orange500 dot + 12sp 800 Brown900.
+- **여러 곳 모드**: 서브헤더 "주변 펫호텔 **N**곳 비교" + 우측 `ic_sliders` 필터 칩. 가로 스크롤 매트릭스(라벨 72dp + 매장 컬럼 60dp). 우하단 "← 가로로 스와이프 →" 힌트.
+- 표시 항목: 별점(+리뷰수 부텍스트) / 거리 / 최저가 / 최고가 / 옵션 수
+- **인사이트 카드**: OrangeSand radius 12dp + `ic_lightbulb` Orange500. 1:1 은 두 매장 우위 한 줄 ("[A]는 거리·가격에서 유리, [B]는 별점·옵션이 더 좋음"). 여러 곳은 `ic_award` + "최저가 X · 별점 Y · 옵션 Z · 가까움 W" 4개 카테고리 1위 매장명 굵게.
+- **매장 상세 진입**: 1:1 은 두 큰 버튼(A=OrangeSand/Orange500 border, B=PinkSurface/Pink500 border), 여러 곳은 매장별 80dp 폭 작은 버튼 가로 스크롤.
+- ViewModel: PetHotelMatrixCompareViewModel(repo, lat, lng, radius?) — setMode / selectA / selectB / retry / computeInsight
+- 엣지: 매장 ≤ 1 시 PetHotelCompareScreen 의 비교 버튼 자체 비활성 (40% alpha + 클릭 무반응). 매장 == 2 시 자동 1:1, 토글 비활성. ≥ 3 시 디폴트 "여러 곳 비교".
 
 ### [NewsScreen] 소식
 
