@@ -50,6 +50,10 @@ import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.ChatUiState
 import com.example.siheunggagae.ui.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private val BgC          = Color(0xFFFFFFFF)
 private val TextBlackC   = Color(0xFF1F130B)
@@ -62,6 +66,30 @@ private val PinkSurfaceC = Color(0xFFFEE8ED)
 private val Gray300C     = Color(0xFFE9E9E9)
 private val InputBgC     = Color(0xFFF3F3F3)
 private val PlaceholderC = Color(0xFFC1AFA0)
+
+// ─── 🕒 [서버 UTC 타임 -> 한국 표준시(KST) 전환 엔진] ───
+private fun formatChatTime(createdAt: String): String {
+    return try {
+        // 서버 표준 규격 ISO 8601 (ex: 2026-05-23T08:10:49Z) 파싱 연산
+        val odt = OffsetDateTime.parse(createdAt)
+        val kstZone = ZoneId.of("Asia/Seoul")
+        val kstTime = odt.atZoneSameInstant(kstZone)
+        kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+    } catch (e: Exception) {
+        try {
+            // 타임존 식별자가 유실된 생 문자열일 경우, 백엔드가 UTC 기준 취급했다고 가정한 2차 가드 보정 기믹
+            val ldt = LocalDateTime.parse(createdAt.take(19))
+            val kstTime = ldt.atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+            kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        } catch (ex: Exception) {
+            createdAt.take(16).replace("T", " ") // 최종 예외 백업 스텁 방어선
+        }
+    }
+}
+
+private fun formatChatDate(createdAt: String): String {
+    return formatChatTime(createdAt).take(10) // "yyyy-MM-dd" 파트 분리 슬라이싱
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,13 +189,14 @@ fun ChatScreen(
 
                             itemsIndexed(state.messages, key = { _, msg -> msg.id }) { index, msg ->
                                 val isMe = msg.senderId == viewModel.myUserId
-                                val currentMsgDate = msg.createdAt.take(10)
+                                // 🕒 한국 시간 기준으로 날짜 재정의 연산 처리
+                                val currentMsgDate = formatChatDate(msg.createdAt)
 
                                 if (index == 0) {
                                     DateDivider(label = currentMsgDate.replace("-", ". "))
                                     Spacer(Modifier.height(8.dp))
                                 } else {
-                                    val prevMsgDate = state.messages[index - 1].createdAt.take(10)
+                                    val prevMsgDate = formatChatDate(state.messages[index - 1].createdAt)
                                     if (currentMsgDate != prevMsgDate) {
                                         DateDivider(label = currentMsgDate.replace("-", ". "))
                                         Spacer(Modifier.height(8.dp))
@@ -491,7 +520,8 @@ private fun ReceivedMessageItem(msg: ChatMessageItem, name: String, onLongClick:
             ) {
                 Text(text = msg.content, fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC)
             }
-            Text(text = msg.createdAt.take(16).replace("T", " "), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
+            // 🕒 메시지 포맷 함수 적용 기믹 수송선 연동
+            Text(text = formatChatTime(msg.createdAt), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
         }
     }
 }
@@ -509,7 +539,8 @@ private fun SentMessageItem(msg: ChatMessageItem) {
             ) {
                 Text(text = msg.content, fontFamily = PretendardFamily, fontSize = 14.sp, color = Color.White)
             }
-            Text(text = msg.createdAt.take(16).replace("T", " "), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
+            // 🕒 메시지 포맷 함수 적용 기믹 수송선 연동
+            Text(text = formatChatTime(msg.createdAt), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
         }
     }
 }
