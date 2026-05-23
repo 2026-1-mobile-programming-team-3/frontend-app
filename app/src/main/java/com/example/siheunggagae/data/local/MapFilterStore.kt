@@ -15,7 +15,7 @@ class MapFilterStore(private val context: Context) {
 
     companion object {
         private val KEY_CATEGORIES = stringSetPreferencesKey("visible_categories")
-        val DEFAULT_CATEGORIES: Set<String> = setOf("CAFE", "RESTAURANT", "PARK", "HOSPITAL", "GROOMING")
+        val DEFAULT_CATEGORIES: Set<String> = setOf("CAFE", "RESTAURANT", "PARK", "HOSPITAL", "GROOMING", "PET_HOTEL")
 
         val NAME_TO_API: Map<String, String> = mapOf(
             "카페"     to "CAFE",
@@ -23,6 +23,7 @@ class MapFilterStore(private val context: Context) {
             "공원"     to "PARK",
             "동물병원" to "HOSPITAL",
             "미용"     to "GROOMING",
+            "펫호텔"   to "PET_HOTEL",
         )
     }
 

@@ -107,13 +107,17 @@ data class StoreSearchResponse(
 // ── Viewport 매장 (bbox 기반) ──────────────────────────────────────────────────
 
 data class StoreViewportItem(
+    @SerializedName(value = "store_id", alternate = ["storeId", "id"])
     val storeId: Int = 0,
     val name: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val category: String = "",
+    @SerializedName(value = "is_pet_allowed", alternate = ["isPetAllowed"])
     val isPetAllowed: Boolean = false,
+    @SerializedName(value = "rating_avg", alternate = ["ratingAvg"])
     val ratingAvg: Double? = null,
+    @SerializedName(value = "rating_count", alternate = ["ratingCount"])
     val ratingCount: Int = 0,
 ) {
     val resolvedId: Int get() = storeId

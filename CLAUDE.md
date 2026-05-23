@@ -185,4 +185,6 @@ object MyStoreRequests      : Screen("my_store_requests")
 object StoreRequestForm     : Screen("store_request_form?type&storeId&requestId")
 object StoreRequestDetail   : Screen("store_request_detail/{requestId}")
 object MapPinPicker         : Screen("map_pin_picker?lat&lng")
+object PetHotelCompare      : Screen("pet_hotel_compare?lat&lng&radius")
+object PetHotelMatrixCompare : Screen("pet_hotel_matrix_compare?lat&lng&radius")
 ```

@@ -57,8 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.repository.AuthRepository
-import com.example.siheunggagae.data.repository.UserRepository
 import com.example.siheunggagae.data.repository.NotificationRepository
+import com.example.siheunggagae.data.repository.PetHotelRepository
+import com.example.siheunggagae.data.repository.UserRepository
+import com.example.siheunggagae.ui.screen.PetHotelCompareScreen
+import com.example.siheunggagae.ui.screen.PetHotelMatrixCompareScreen
+import com.example.siheunggagae.ui.viewmodel.PetHotelCompareViewModel
+import com.example.siheunggagae.ui.viewmodel.PetHotelMatrixCompareViewModel
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
 import com.example.siheunggagae.ui.viewmodel.MyViewModel
 import com.example.siheunggagae.ui.viewmodel.NotificationViewModel
@@ -191,6 +196,32 @@ sealed class Screen(val route: String) {
     object MatchReview : Screen("match_review?matchId={matchId}&status={status}&isViewOnly={isViewOnly}&canEdit={canEdit}") {
         fun createRoute(matchId: Int, status: String, isViewOnly: Boolean = false, canEdit: Boolean = false) =
             "match_review?matchId=$matchId&status=$status&isViewOnly=$isViewOnly&canEdit=$canEdit"
+    }
+    object PetHotelCompare : Screen("pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}") {
+        const val ARG_LAT = "lat"
+        const val ARG_LNG = "lng"
+        const val ARG_RADIUS = "radius"
+
+        fun createRoute(lat: Double? = null, lng: Double? = null, radius: Int? = null): String {
+            val parts = buildList {
+                lat?.let { add("lat=$it") }
+                lng?.let { add("lng=$it") }
+                radius?.let { add("radius=$it") }
+            }
+            return if (parts.isEmpty()) "pet_hotel_compare"
+            else "pet_hotel_compare?" + parts.joinToString("&")
+        }
+    }
+    object PetHotelMatrixCompare : Screen("pet_hotel_matrix_compare?lat={lat}&lng={lng}&radius={radius}") {
+        const val ARG_LAT = "lat"
+        const val ARG_LNG = "lng"
+        const val ARG_RADIUS = "radius"
+
+        fun createRoute(lat: Double, lng: Double, radius: Int? = null): String {
+            val parts = mutableListOf("lat=$lat", "lng=$lng")
+            radius?.let { parts += "radius=$it" }
+            return "pet_hotel_matrix_compare?" + parts.joinToString("&")
+        }
     }
     object FavoriteStores  : Screen("favorite_stores")
     object BlockManage     : Screen("block_manage")
@@ -862,6 +893,87 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                             storeId = sid,
                         ),
                     )
+                },
+            )
+        }
+
+        composable(
+            route = Screen.PetHotelCompare.route,
+            arguments = listOf(
+                navArgument(Screen.PetHotelCompare.ARG_LAT) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelCompare.ARG_LNG) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelCompare.ARG_RADIUS) {
+                    type = NavType.IntType; defaultValue = 5000
+                },
+            ),
+        ) { backStackEntry ->
+            val lat = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_LAT)?.toDoubleOrNull()
+                ?: 37.3799   // 시흥시청 폴백
+            val lng = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_LNG)?.toDoubleOrNull()
+                ?: 126.8030
+            val radius = backStackEntry.arguments
+                ?.getInt(Screen.PetHotelCompare.ARG_RADIUS)
+                ?.takeIf { it > 0 }
+                ?: PetHotelCompareViewModel.RADIUS_DEFAULT_M
+            val vm: PetHotelCompareViewModel = viewModel(
+                factory = PetHotelCompareViewModel.Factory(
+                    PetHotelRepository(),
+                    UserRepository(),
+                    lat,
+                    lng,
+                    radius,
+                ),
+            )
+            PetHotelCompareScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onStoreClick = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
+                },
+                onCompareClick = {
+                    navController.navigate(
+                        Screen.PetHotelMatrixCompare.createRoute(lat = lat, lng = lng, radius = radius),
+                    )
+                },
+            )
+        }
+
+        composable(
+            route = Screen.PetHotelMatrixCompare.route,
+            arguments = listOf(
+                navArgument(Screen.PetHotelMatrixCompare.ARG_LAT) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelMatrixCompare.ARG_LNG) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelMatrixCompare.ARG_RADIUS) {
+                    type = NavType.IntType; defaultValue = 5000
+                },
+            ),
+        ) { entry ->
+            val lat = entry.arguments?.getString(Screen.PetHotelMatrixCompare.ARG_LAT)?.toDoubleOrNull()
+                ?: 37.3799
+            val lng = entry.arguments?.getString(Screen.PetHotelMatrixCompare.ARG_LNG)?.toDoubleOrNull()
+                ?: 126.8030
+            val radius = entry.arguments?.getInt(Screen.PetHotelMatrixCompare.ARG_RADIUS)?.takeIf { it > 0 }
+                ?: PetHotelCompareViewModel.RADIUS_DEFAULT_M
+            val vm: PetHotelMatrixCompareViewModel = viewModel(
+                factory = PetHotelMatrixCompareViewModel.Factory(
+                    PetHotelRepository(), lat, lng, radius,
+                ),
+            )
+            PetHotelMatrixCompareScreen(
+                viewModel = vm,
+                onBack = { navController.popBackStack() },
+                onStoreClick = { storeId ->
+                    navController.navigate(Screen.PlaceDetail.createRoute(storeId))
                 },
             )
         }

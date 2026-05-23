@@ -134,6 +134,7 @@ application = 한 봉사자가 특정 매칭에 보낸 신청 1건.
 | GET | `/maps/store-requests` | `getMyStoreRequests` | `StoreRequestListResponse` |
 | GET | `/maps/store-requests/{requestId}` | `getStoreRequest` | `StoreRequestItem` |
 | DELETE | `/maps/store-requests/{requestId}` | `cancelStoreRequest` | `Unit` |
+| GET | `/maps/pet-hotels` | `getPetHotels` | `PetHotelListResponse` |
 
 `category`(쿼리) 값: `CAFE` / `RESTAURANT` / `PARK` / `HOSPITAL` / `GROOMING` (대문자, `MapFilterStore.DEFAULT_CATEGORIES`).
 

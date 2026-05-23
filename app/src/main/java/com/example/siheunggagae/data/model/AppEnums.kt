@@ -29,6 +29,7 @@ enum class StoreCategory(val label: String, val apiValue: String?) {
     PARK("공원", "PARK"),
     HOSPITAL("동물병원", null),
     GROOMING("미용", null),
+    PET_HOTEL("펫호텔", "PET_HOTEL"),
 }
 
 /** 봉사자 뱃지 등급 (API: VolunteerBadgeTier) — PDF 기준 달성 조건 */
