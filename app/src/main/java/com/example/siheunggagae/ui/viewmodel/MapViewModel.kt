@@ -29,6 +29,8 @@ data class MapUiState(
     val location: Location? = null,
     val cameraTarget: Pair<Double, Double>? = null,
     val cameraSerial: Int = 0,
+    /** [swLat, swLng, neLat, neLng] — 마지막 viewport. 펫호텔 비교 진입 시 동적 radius 계산에 사용. */
+    val viewportBounds: DoubleArray? = null,
     val stores: List<StoreResponse> = emptyList(),
     val selectedStore: StoreResponse? = null,
     val selectedStoreDetail: StoreDetailResponse? = null,
@@ -204,8 +206,9 @@ class MapViewModel(
     }
 
     fun onViewportChange(swLat: Double, swLng: Double, neLat: Double, neLng: Double, zoom: Int) {
-        lastBbox = doubleArrayOf(swLat, swLng, neLat, neLng)
-        _uiState.update { it.copy(currentZoom = zoom) }
+        val bbox = doubleArrayOf(swLat, swLng, neLat, neLng)
+        lastBbox = bbox
+        _uiState.update { it.copy(currentZoom = zoom, viewportBounds = bbox) }
         if (zoom < 11) {
             viewportJob?.cancel()
             _uiState.update { it.copy(viewportStores = emptyList(), truncated = false) }

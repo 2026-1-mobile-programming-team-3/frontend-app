@@ -69,6 +69,7 @@ fun MapFilterBottomSheet(
             MapFilterEntry("공원",     iconRes = R.drawable.ic_forest,       isSelected = "PARK"       in initialCategories),
             MapFilterEntry("동물병원", iconRes = R.drawable.ic_health_cross, isSelected = "HOSPITAL"   in initialCategories),
             MapFilterEntry("미용",     iconRes = R.drawable.ic_content_cut,  isSelected = "GROOMING"   in initialCategories),
+            MapFilterEntry("펫호텔",   iconRes = R.drawable.ic_hotel,        isSelected = "PET_HOTEL"  in initialCategories),
         )
     }
 

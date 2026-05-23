@@ -169,6 +169,46 @@ class MapViewWrapper(private val mapView: MapView) {
         }
     }
 
+    /**
+     * 내 위치 파란 점 — Kakao SDK v2는 빌트인 my-location 이 없어 Label 기반으로 직접 그린다.
+     * 같은 ID 로 반복 호출하면 이전 라벨 제거 후 재생성.
+     */
+    fun updateMyLocation(lat: Double, lng: Double) {
+        val map = kakaoMap ?: return
+        val layer = map.labelManager?.layer ?: return
+        markers.remove(MY_LOCATION_ID)?.remove()
+        val style = LabelStyles.from(LabelStyle.from(createMyLocationBitmap()))
+        val label = layer.addLabel(LabelOptions.from(LatLng.from(lat, lng)).setStyles(style))
+        label.tag = MY_LOCATION_ID
+        label.setClickable(false)
+        markers[MY_LOCATION_ID] = label
+    }
+
+    fun removeMyLocation() {
+        markers.remove(MY_LOCATION_ID)?.remove()
+    }
+
+    private fun createMyLocationBitmap(sizePx: Int = 48): Bitmap {
+        val bm = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bm)
+        val cx = sizePx / 2f
+        // 헤일로 (반투명 파랑)
+        c.drawCircle(cx, cx, cx, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x442196F3 })
+        // 흰 테두리
+        c.drawCircle(cx, cx, cx * 0.48f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+        })
+        // 본체 파란 점
+        c.drawCircle(cx, cx, cx * 0.40f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF2196F3.toInt()
+        })
+        return bm
+    }
+
+    companion object {
+        const val MY_LOCATION_ID = "__my_location__"
+    }
+
     private fun createPinBitmap(@ColorInt color: Int, category: String? = null, name: String? = null): Bitmap {
         val r  = 22f   // 원 반지름
         val cx = r + 3f
