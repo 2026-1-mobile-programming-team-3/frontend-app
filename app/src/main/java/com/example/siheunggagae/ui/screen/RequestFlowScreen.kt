@@ -16,19 +16,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -49,6 +56,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -90,6 +99,15 @@ private val quickTimes = listOf(
 
 private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 
+// ─── 주소 검색 결과 매핑 데이터 모델 ──────────────────────────────────────────
+data class SearchPlaceItem(
+    val placeName: String,
+    val addressName: String,
+    val latitude: Float,
+    val longitude: Float
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RequestFlowScreen(
     viewModel: RequestViewModel,
@@ -114,13 +132,19 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
+    // ─── 주소 검색 및 좌표 데이터 상태 ───
+    var showLocationSearch by remember { mutableStateOf(false) }
+    var latInput by remember { mutableStateOf(viewModel.latitude) }
+    var lngInput by remember { mutableStateOf(viewModel.longitude) }
+    val searchSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     LaunchedEffect(matchId) {
         if (matchId != 0) {
             viewModel.loadMatchDetail(matchId)
         }
     }
 
-    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId, viewModel.desiredTime) {
+    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId, viewModel.desiredTime, viewModel.latitude, viewModel.longitude) {
         if (matchId != 0) {
             titleInput = viewModel.title
             destination = viewModel.address
@@ -128,6 +152,8 @@ fun RequestFlowScreen(
             selectedPetId = viewModel.selectedPetId
             timeInput = viewModel.desiredTime?.take(5) ?: ""
             selectedTime = viewModel.desiredTime?.take(5)
+            latInput = viewModel.latitude
+            lngInput = viewModel.longitude
         }
     }
 
@@ -176,9 +202,9 @@ fun RequestFlowScreen(
                         val dayStr = selectedDay.toString().padStart(2, '0')
                         viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
 
-                        // 👈 [시간 저장 로직 핵심 변경!] 어떤 방식으로 입력했든 HH:mm:00 포맷으로 강제 정렬합니다.
                         val rawTime = if (timeInput.isNotBlank()) timeInput else selectedTime ?: "12:00"
                         val formattedTime = when {
+                            rawTime.matches(Regex("^\\d{4}$")) -> "${rawTime.take(2)}:${rawTime.drop(2)}:00"
                             rawTime.matches(Regex("^\\d{2}:\\d{2}$")) -> "$rawTime:00"
                             rawTime.matches(Regex("^\\d{1}:\\d{2}$")) -> "0$rawTime:00"
                             rawTime.contains("오전") -> {
@@ -205,6 +231,8 @@ fun RequestFlowScreen(
                     viewModel.title = titleInput
                     viewModel.address = destination
                     viewModel.content = memo
+                    viewModel.latitude = latInput
+                    viewModel.longitude = lngInput
 
                     if (matchId != 0) {
                         viewModel.updateRequest(matchId)
@@ -231,19 +259,39 @@ fun RequestFlowScreen(
                     onAddPet = onAddPet
                 )
                 2 -> Step2Content(
-                    currentMonth = currentMonth, onMonthChange = { currentMonth = it },
-                    selectedDay = selectedDay, onSelectDay = { selectedDay = it },
-                    timeInput = timeInput, onTimeChange = { timeInput = it; selectedTime = null },
-                    selectedTime = selectedTime, onSelectTime = { selectedTime = it; timeInput = it } // 👈 퀵 선택 시 입력창도 같이 채워지도록 연동!
+                    currentMonth = currentMonth,
+                    onMonthChange = { currentMonth = it },
+                    selectedDay = selectedDay,
+                    onSelectDay = { selectedDay = it },
+                    timeInput = timeInput,
+                    onTimeChange = { input ->
+                        timeInput = input.filter { it.isDigit() }.take(4)
+                        selectedTime = null
+                    },
+                    selectedTime = selectedTime,
+                    onSelectTime = { selectedTime = it; timeInput = it }
                 )
                 3 -> Step3Content(
                     title = titleInput, onTitleChange = { titleInput = it },
                     destination = destination, onDestinationChange = { destination = it },
-                    memo = memo, onMemoChange = { if (it.length <= 500) memo = it }
+                    memo = memo, onMemoChange = { if (it.length <= 500) memo = it },
+                    onSearchClick = { showLocationSearch = true }
                 )
             }
             Spacer(Modifier.height(16.dp))
         }
+    }
+
+    if (showLocationSearch) {
+        LocationSearchBottomSheet(
+            sheetState = searchSheetState,
+            onDismiss = { showLocationSearch = false },
+            onPlaceSelected = { place ->
+                destination = place.addressName
+                latInput = place.latitude
+                lngInput = place.longitude
+            }
+        )
     }
 }
 
@@ -531,7 +579,7 @@ private fun Step2Content(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "예: 14:30",
+                    text = "예: 1430 (오후 2시 30분)",
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp,
                     color = Brown400F
@@ -541,6 +589,10 @@ private fun Step2Content(
                 Icon(painter = painterResource(R.drawable.ic_schedule), contentDescription = null, tint = Orange500F)
             },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Orange500F,
                 unfocusedBorderColor = BrownBorderF,
@@ -702,6 +754,7 @@ private fun Step3Content(
     title: String, onTitleChange: (String) -> Unit,
     destination: String, onDestinationChange: (String) -> Unit,
     memo: String, onMemoChange: (String) -> Unit,
+    onSearchClick: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
@@ -715,12 +768,7 @@ private fun Step3Content(
             onValueChange = onTitleChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
-                Text(
-                    text = "예: 정왕동 실외견 이동 부탁드립니다.",
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    color = Brown400F
-                )
+                Text(text = "예: 정왕동 실외견 이동 부탁드립니다.", fontFamily = PretendardFamily, fontSize = 16.sp, color = Brown400F)
             },
             singleLine = true,
             colors = flowFieldColors(),
@@ -736,15 +784,28 @@ private fun Step3Content(
             onValueChange = onDestinationChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
-                Text(
-                    text = "예: 정왕 동물병원",
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    color = Brown400F
-                )
+                Text(text = "예: 정왕 동물병원 (우측 검색 버튼 이용)", fontFamily = PretendardFamily, fontSize = 16.sp, color = Brown400F)
             },
             leadingIcon = {
                 Icon(painter = painterResource(R.drawable.ic_location_on), contentDescription = null, tint = Orange500F)
+            },
+            trailingIcon = {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(OrangeSand)
+                        .clickable { onSearchClick() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "주소 검색",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Orange500F
+                    )
+                }
             },
             singleLine = true,
             colors = flowFieldColors(leadingAlwaysOrange = true),
@@ -763,12 +824,7 @@ private fun Step3Content(
                     .fillMaxWidth()
                     .heightIn(min = 120.dp),
                 placeholder = {
-                    Text(
-                        text = "봉사자에게 전달할 내용을 입력하세요.",
-                        fontFamily = PretendardFamily,
-                        fontSize = 16.sp,
-                        color = Brown400F
-                    )
+                    Text(text = "봉사자에게 전달할 내용을 입력하세요.", fontFamily = PretendardFamily, fontSize = 16.sp, color = Brown400F)
                 },
                 maxLines = Int.MAX_VALUE,
                 colors = flowFieldColors(),
@@ -869,6 +925,82 @@ private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean 
                     color = if (enabled) Color.White else Brown400F
                 )
             }
+        }
+    }
+}
+
+// ─── 주소 검색용 실시간 바텀시트 레이아웃 ──────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocationSearchBottomSheet(
+    sheetState: androidx.compose.material3.SheetState,
+    onDismiss: () -> Unit,
+    onPlaceSelected: (SearchPlaceItem) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+
+    val siheungPlaces = listOf(
+        SearchPlaceItem("정왕역 (4호선)", "경기 시흥시 정왕역로 170", 37.3517f, 126.7427f),
+        SearchPlaceItem("시흥시청", "경기 시흥시 시청로 20", 37.3801f, 126.8029f),
+        SearchPlaceItem("배grouped 생명공원", "경기 시흥시 배고5로 55", 37.3685f, 126.7171f),
+        SearchPlaceItem("시흥 스마트허브 병원", "경기 시흥시 공단대로 247", 37.3384f, 126.7291f),
+        SearchPlaceItem("옥구공원 반려견 놀이터", "경기 시흥시 서해안로 277", 37.3592f, 126.7022f)
+    )
+    val filteredPlaces = siheungPlaces.filter {
+        it.placeName.contains(searchQuery) || it.addressName.contains(searchQuery)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Text(text = "목적지 검색", fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextBlack)
+            Spacer(Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("장소명 또는 시흥시 도로명 주소 입력") },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Orange500F,
+                    unfocusedBorderColor = BrownBorderF,
+                    cursorColor = Orange500F
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+
+            LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+                if (searchQuery.isNotBlank() && filteredPlaces.isEmpty()) {
+                    item {
+                        Text(text = "검색 결과가 없습니다.", color = GrayText, modifier = Modifier.padding(vertical = 16.dp), fontFamily = PretendardFamily)
+                    }
+                } else {
+                    items(if (searchQuery.isBlank()) siheungPlaces else filteredPlaces) { place ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onPlaceSelected(place)
+                                    onDismiss()
+                                }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            Text(text = place.placeName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextBlack, fontFamily = PretendardFamily)
+                            Spacer(Modifier.height(2.dp))
+                            Text(text = place.addressName, fontSize = 13.sp, color = GrayText, fontFamily = PretendardFamily)
+                            Spacer(Modifier.height(10.dp))
+                            HorizontalDivider(color = Color(0xFFF4F4F4))
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

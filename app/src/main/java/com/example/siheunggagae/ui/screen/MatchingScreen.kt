@@ -1,5 +1,7 @@
 ﻿package com.example.siheunggagae.ui.screen
 
+import androidx.compose.foundation.layout.navigationBarsPadding
+import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,11 +15,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -52,13 +54,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.siheunggagae.AppBottomBar
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchListItem
@@ -83,17 +85,12 @@ private val Background95  = Color(0xFFFEFEFE)
 private val TextBlack     = Color(0xFF1E120A)
 private val FABBrown      = Color(0xFF9A7B5E)
 
-// ─── 데이터 ────────────────────────────────────────────────────────────────────
-
 enum class MatchingTab(val label: String, val status: MatchStatus?) {
     ALL("전체", null),
     WAITING("모집중", MatchStatus.WAITING),
-    MATCHING("검토중", MatchStatus.MATCHING),
     PROGRESS("진행중", MatchStatus.PROGRESS),
     DONE("완료", MatchStatus.DONE),
 }
-
-// ─── 화면 ──────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +103,11 @@ fun MatchingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
+    val bottomBarHeight = 80.dp
+    val context = LocalContext.current
+
+    val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", Context.MODE_PRIVATE) }
+    val myNickname = remember { prefs.getString("nickname", "") ?: "" }
 
     var showActionsSheet by remember { mutableStateOf(false) }
     var longPressedRequest by remember { mutableStateOf<MatchListItem?>(null) }
@@ -122,75 +124,84 @@ fun MatchingScreen(
     Scaffold(
         containerColor = Background95,
         topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
-        floatingActionButton = {
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
+            ) {
+                // ─── 🌟 민트색 카드에 봉사 이력 대시보드 내비게이션 연결 완료 ───
+                item {
+                    SummaryCards(
+                        onMyRequests = onMyRequests,
+                        requestCount = requestCount,
+                        onVolunteerHistoryClick = { onNavigate("volunteer_history") }
+                    )
+                }
+
+                item {
+                    MatchingTabRow(selected = selectedTab, onSelect = { tab ->
+                        selectedTab = tab
+                        viewModel.fetchMatches(tab.status?.name)
+                    })
+                }
+                item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
+                item { Spacer(Modifier.height(12.dp)) }
+
+                when (val state = uiState) {
+                    is MatchingUiState.Loading -> {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = Orange500M)
+                            }
+                        }
+                    }
+                    is MatchingUiState.Error -> {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                Text(text = state.message, color = Pink500M, fontFamily = PretendardFamily)
+                            }
+                        }
+                    }
+                    is MatchingUiState.Success -> {
+                        if (state.matches.isEmpty()) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text(text = "조건에 맞는 봉사 요청이 없습니다.", color = Brown700M, fontFamily = PretendardFamily)
+                                }
+                            }
+                        } else {
+                            items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
+                                val isMine = request.authorNickname == myNickname
+
+                                MatchingRequestCard(
+                                    request = request,
+                                    isMine = isMine,
+                                    onCardClick = { request.matchId?.let { onCardClick(it) } },
+                                    onCardLongClick = {
+                                        longPressedRequest = request
+                                        showActionsSheet = true
+                                    }
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
+                        }
+                    }
+                }
+                item { Spacer(Modifier.height(80.dp)) }
+            }
             FloatingActionButton(
                 onClick = onRequestFlowClick,
                 containerColor = FABBrown,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = (bottomBarHeight + 42.dp))
+                    .size(56.dp)
             ) {
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "새 요청", modifier = Modifier.size(24.dp))
             }
-        }
-    ) { innerPadding ->
-        LazyColumn(
-            // 👈 [충돌 해결 완료] 충돌 마커를 걷어내고, 팀원의 하단 패딩 및 간격 설정을 안전하게 적용했습니다.
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            item { SummaryCards(onMyRequests = onMyRequests, requestCount = requestCount) }
-
-            item {
-                MatchingTabRow(selected = selectedTab, onSelect = { tab ->
-                    selectedTab = tab
-                    viewModel.fetchMatches(tab.status?.name)
-                })
-            }
-            item { RequestListHeader(onMapViewClick = { onNavigate("map?volunteerMode=true") }) }
-            item { Spacer(Modifier.height(12.dp)) }
-
-            when (val state = uiState) {
-                is MatchingUiState.Loading -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Orange500M)
-                        }
-                    }
-                }
-                is MatchingUiState.Error -> {
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            Text(text = state.message, color = Pink500M, fontFamily = PretendardFamily)
-                        }
-                    }
-                }
-                is MatchingUiState.Success -> {
-                    if (state.matches.isEmpty()) {
-                        item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                                Text(text = "조건에 맞는 봉사 요청이 없습니다.", color = Brown700M, fontFamily = PretendardFamily)
-                            }
-                        }
-                    } else {
-                        items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
-                            MatchingRequestCard(
-                                request = request,
-                                onCardClick = { request.matchId?.let { onCardClick(it) } },
-                                onCardLongClick = {
-                                    longPressedRequest = request
-                                    showActionsSheet = true
-                                }
-                            )
-                            Spacer(Modifier.height(12.dp))
-                        }
-                    }
-                }
-            }
-            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
@@ -201,23 +212,15 @@ fun MatchingScreen(
             containerColor = Color.White,
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         ) {
-            CardActionsSheetContent(
-                request = longPressedRequest,
-                onDismiss = { showActionsSheet = false },
-            )
+            CardActionsSheetContent(request = longPressedRequest, onDismiss = { showActionsSheet = false })
         }
     }
 }
 
-// ─── TopBar ────────────────────────────────────────────────────────────────────
 @Composable
 private fun MatchingTopBar(onMyRequests: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .statusBarsPadding()
-            .background(Color.White)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -231,9 +234,12 @@ private fun MatchingTopBar(onMyRequests: () -> Unit) {
     }
 }
 
-// ─── 요약 카드 2열 ─────────────────────────────────────────────────────────────
 @Composable
-private fun SummaryCards(onMyRequests: () -> Unit, requestCount: Int) {
+private fun SummaryCards(
+    onMyRequests: () -> Unit,
+    requestCount: Int,
+    onVolunteerHistoryClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -247,7 +253,7 @@ private fun SummaryCards(onMyRequests: () -> Unit, requestCount: Int) {
             value = "${requestCount}건 검토 중"
         )
         SummaryCard(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).clickable { onVolunteerHistoryClick() }, // 👈 멍텅구리 제거 후 패스 연결
             bgColor = Color(0xFFF0FDF4),
             iconRes = R.drawable.ic_favorite,
             iconColor = Green500M,
@@ -268,7 +274,6 @@ private fun SummaryCard(modifier: Modifier, bgColor: Color, iconRes: Int, iconCo
     }
 }
 
-// ─── 탭 Row ────────────────────────────────────────────────────────────────────
 @Composable
 private fun MatchingTabRow(selected: MatchingTab, onSelect: (MatchingTab) -> Unit) {
     val tabs = MatchingTab.entries
@@ -293,7 +298,6 @@ private fun MatchingTabRow(selected: MatchingTab, onSelect: (MatchingTab) -> Uni
     }
 }
 
-// ─── 리스트 헤더 ───────────────────────────────────────────────────────────────
 @Composable
 private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
     Row(
@@ -305,17 +309,17 @@ private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
         Row(
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.clickable { onMapViewClick() }
         ) {
-            Icon(painter = painterResource(R.drawable.ic_map), contentDescription = null, tint = Color(0xFFF7A35B), modifier = Modifier.size(16.dp))
+            Icon(painterResource(R.drawable.ic_map), contentDescription = null, tint = Color(0xFFF7A35B), modifier = Modifier.size(16.dp))
             Text(text = "지도 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF7A35B))
         }
     }
 }
 
-// ─── 요청 카드 ─────────────────────────────────────────────────────────────────
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MatchingRequestCard(
     request: MatchListItem,
+    isMine: Boolean,
     onCardClick: () -> Unit = {},
     onCardLongClick: () -> Unit = {}
 ) {
@@ -325,31 +329,28 @@ private fun MatchingRequestCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .combinedClickable(
-                onClick = { onCardClick() },
-                onLongClick = { onCardLongClick() }
-            ),
+            .combinedClickable(onClick = { onCardClick() }, onLongClick = { onCardLongClick() })
+            .then(if (isMine) Modifier.border(1.5.dp, BrownBorderM, RoundedCornerShape(16.dp)) else Modifier),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = if (isMine) Color(0xFFFFFDFB) else Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isMine) 1.dp else 2.dp)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StatusChipM(status = matchStatus)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatusChipM(status = matchStatus)
+                    if (isMine) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(PinkSurfaceM).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Text(text = "내 요청", fontFamily = PretendardFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Pink500M)
+                        }
+                    }
+                }
                 if (request.createdAt != null) {
                     Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700M)
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = request.title ?: "제목 없음",
-                fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp, color = TextBlack,
-                maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
+            Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp, color = TextBlack, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val timePart = request.desiredTime?.take(5) ?: ""
             val subInfo = listOfNotNull(
                 request.address?.split(" ")?.getOrNull(2) ?: request.address,
@@ -362,7 +363,7 @@ private fun MatchingRequestCard(
             if (request.applicationsCount != null && request.applicationsCount > 0) {
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "신청 ${request.applicationsCount}건", fontFamily = PretendardFamily, fontSize = 12.sp, lineHeight = 16.sp, color = Brown700M)
+                    Text(text = "신청 ${request.applicationsCount}건", fontFamily = PretendardFamily, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = if (isMine) FontWeight.Bold else FontWeight.Medium, color = if (isMine) Pink500M else Brown700M)
                 }
             }
         }
@@ -371,158 +372,41 @@ private fun MatchingRequestCard(
 
 @Composable
 private fun StatusChipM(status: MatchStatus) {
-    Box(
-        modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(status.bgColor).padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
+    Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(status.bgColor).padding(horizontal = 10.dp, vertical = 4.dp)) {
         Text(text = status.label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp, color = status.textColor)
     }
 }
 
 @Composable
-private fun PetTypeChipM(label: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50.dp))
-            .border(1.dp, BrownBorderM, RoundedCornerShape(50.dp))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = label,
-            fontFamily = PretendardFamily,
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            color = Brown700M
-        )
-    }
-}
-
-// ─── 카드 액션 시트 ────────────────────────────────────────────────────────────
-
-@Composable
-private fun CardActionsSheetContent(
-    request: MatchListItem?,
-    onDismiss: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(bottom = 16.dp),
-    ) {
+private fun CardActionsSheetContent(request: MatchListItem?, onDismiss: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
         if (request != null) {
-            Text(
-                text = request.title ?: "제목 없음",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Brown700M,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-            )
+            Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = Brown700M, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
         }
         HorizontalDivider(color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.BookmarkBorder,
-            iconBg = Color(0xFFFFF3E0),
-            iconTint = Orange500M,
-            label = "북마크 추가",
-            labelColor = TextBlack,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.BookmarkBorder, iconBg = Color(0xFFFFF3E0), iconTint = Orange500M, label = "북마크 추가", labelColor = TextBlack, onClick = onDismiss)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.Share,
-            iconBg = Color(0xFFEFF6FF),
-            iconTint = Color(0xFF388AF5),
-            label = "공유하기",
-            labelColor = TextBlack,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.Share, iconBg = Color(0xFFEFF6FF), iconTint = Color(0xFF388AF5), label = "공유하기", labelColor = TextBlack, onClick = onDismiss)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.Flag,
-            iconBg = Color(0xFFFEE7EC),
-            iconTint = Pink500M,
-            label = "신고하기",
-            labelColor = Pink500M,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.Flag, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "신고하기", labelColor = Pink500M, onClick = onDismiss)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.VisibilityOff,
-            iconBg = Color(0xFFF3F4F6),
-            iconTint = Color(0xFF6B7280),
-            label = "게시글 숨기기",
-            labelColor = TextBlack,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.VisibilityOff, iconBg = Color(0xFFF3F4F6), iconTint = Color(0xFF6B7280), label = "게시글 숨기기", labelColor = TextBlack, onClick = onDismiss)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.Block,
-            iconBg = Color(0xFFFEE7EC),
-            iconTint = Pink500M,
-            label = "작성자 차단",
-            labelColor = Pink500M,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.Block, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "작성자 차단", labelColor = Pink500M, onClick = onDismiss)
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-
-        CardActionRow(
-            icon = Icons.Default.Block,
-            iconBg = Color(0xFFFEE7EC),
-            iconTint = Pink500M,
-            label = "게시글 숨기기 + 작성자 차단",
-            labelColor = Pink500M,
-            onClick = onDismiss,
-        )
+        CardActionRow(icon = Icons.Default.Block, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "게시글 숨기기 + 작성자 차단", labelColor = Pink500M, onClick = onDismiss)
     }
 }
 
 @Composable
-private fun CardActionRow(
-    icon : ImageVector,
-    iconBg : Color,
-    iconTint : Color,
-    label: String,
-    labelColor: Color,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(iconBg),
-        ) {
+private fun CardActionRow(icon: ImageVector, iconBg: Color, iconTint: Color, label: String, labelColor: Color, onClick: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(iconBg)) {
             Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
-        Text(
-            text = label,
-            fontFamily = PretendardFamily,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            lineHeight = 24.sp,
-            color = labelColor,
-        )
+        Text(text = label, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = labelColor)
     }
 }
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

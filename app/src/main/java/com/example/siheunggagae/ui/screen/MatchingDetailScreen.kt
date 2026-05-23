@@ -2,6 +2,7 @@
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -28,7 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
-import com.example.siheunggagae.Screen // 👈 채팅 라우팅 경로 추적을 위한 스크린 임포트 추가
+import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchDetailResponse
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
@@ -57,7 +59,26 @@ fun MatchingDetailScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
 
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showReviewDialog by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var appIdToCancel by remember { mutableStateOf(-1) }
+
     LaunchedEffect(requestId) { viewModel.fetchDetail(requestId) }
+    val requestData = (uiState as? MatchDetailUiState.Success)?.detail
+
+    LaunchedEffect(requestData) {
+        requestData?.let { detail ->
+            if (detail.status?.trim()?.uppercase() == "DONE" &&
+                viewModel.currentUserId == detail.author?.userId &&
+                detail.isReviewed != true // 후기를 아직 작성하지 않았을 때만
+            ) {
+                showReviewDialog = true
+            } else {
+                showReviewDialog = false
+            }
+        }
+    }
     LaunchedEffect(uiState) {
         if (uiState is MatchDetailUiState.DeleteSuccess) {
             Toast.makeText(context, "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
@@ -66,57 +87,265 @@ fun MatchingDetailScreen(
         }
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("요청 글 삭제", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
+            text = { Text("정말로 이 이동 지원 요청을 삭제하시겠습니까?", fontFamily = PretendardFamily, color = TextBlackD) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    viewModel.deleteMatch(requestId)
+                }) { Text("삭제", color = Pink500D, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("취소", color = TextBlackD) }
+            }
+        )
+    }
+
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text("매칭 취소", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
+            text = { Text("정말로 이 봉사자와의 매칭을 취소하시겠습니까?\n취소 시 목록에서 제외되며 다시 새로운 지원을 받을 수 있습니다.", fontFamily = PretendardFamily, color = TextBlackD) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCancelDialog = false
+                    if (appIdToCancel != -1) {
+                        viewModel.cancelAcceptedMatching(requestId, appIdToCancel) {
+                            Toast.makeText(context, "매칭이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) { Text("매칭 취소", color = Pink500D, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) { Text("유지하기", color = TextBlackD) }
+            }
+        )
+    }
+
+
+    if (showReviewDialog) {
+        AlertDialog(
+            onDismissRequest = { showReviewDialog = false },
+            title = { Text("봉사 완료 확인", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
+            text = { Text("봉사가 무사히 완료되었습니다!\n함께 이동한 지원자에게 따뜻한 후기를 남기시겠어요?", fontFamily = PretendardFamily, color = TextBlackD) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showReviewDialog = false
+
+                    viewModel.resetState()
+
+                    onNavigate("match_review?matchId=$requestId&status=DONE")
+                }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showReviewDialog = false
+                    onBack()
+                }) { Text("나중에 하기", color = TextBlackD) }
+            }
+        )
+    }
+
     Scaffold(
         containerColor = BackgroundD,
         topBar = {
+            val isMenuOwner = requestData?.author?.userId == viewModel.currentUserId
+            val currentStatus = requestData?.status?.trim()?.uppercase() ?: ""
             MatchingDetailTopBar(
                 onBack = onBack,
-                onDelete = { viewModel.deleteMatch(requestId) },
-                onEdit = { onNavigate("request_flow?requestId=$requestId") }
+                onDelete = { showDeleteDialog = true },
+                onEdit = { onNavigate("request_flow?requestId=$requestId") },
+                isMyRequest = isMenuOwner,
+                currentStatus = currentStatus
             )
         },
+        // ─── 🌟 [재호님 통찰 반영 완료] 중복 및 409 유발 버튼 완전 도려내기 ───
+        bottomBar = {
+            val successState = uiState as? MatchDetailUiState.Success
+            successState?.let {
+                val currentStatus = it.detail.status?.trim()?.uppercase() ?: ""
+                val isMenuOwner = viewModel.currentUserId == it.detail.author?.userId
+
+                // [안전 가드] 내가 요청자인데 아직 매칭 대기(WAITING/MATCHING) 상태라면
+                // 하단에 굳이 버튼 공간을 차지할 필요가 없으므로 영역을 그리지 않고 조기 리턴합니다.
+                if (isMenuOwner && (currentStatus == "WAITING" || currentStatus == "MATCHING")) {
+                    return@let
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(BackgroundD)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    if (isMenuOwner) {
+                        // 1️⃣ 진행 중인 상태일 때는 오직 [완료 처리하기] 버튼만 깔끔하게 노출
+                        if (currentStatus == "PROGRESS") {
+                            Button(
+                                onClick = {
+                                    viewModel.updateMatchStatus(requestId, "DONE") {
+                                        showReviewDialog = true
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Pink500D),
+                                shape = RoundedCornerShape(26.dp)
+                            ) {
+                                Text(
+                                    text = "완료 처리하기",
+                                    fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
+                                )
+                            }
+                        } else if (currentStatus == "DONE") {
+                            // 2️⃣ 완료된 상태일 때 후기 분기 처리 매핑 구역
+                            Button(
+                                onClick = {
+                                    if (!viewModel.isReviewWritten) {
+                                        onNavigate("match_review?matchId=$requestId&status=DONE")
+                                    } else {
+                                        onNavigate("my_review_detail?matchId=$requestId")
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (!viewModel.isReviewWritten) Pink500D else Brown700D
+                                ),
+                                shape = RoundedCornerShape(26.dp)
+                            ) {
+                                Text(
+                                    text = if (!viewModel.isReviewWritten) "봉사 후기 작성하기" else "내가 작성한 후기 보기",
+                                    fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        // 3️⃣ 봉사자(남이 쓴 글) 시점일 때의 기존 흐름 가드는 무결하므로 완벽 유지
+                        if (currentStatus == "DONE") {
+                            Button(
+                                onClick = {
+                                    Toast.makeText(context, "상대방이 남긴 후기 상세 페이지로 이동합니다 (준비중)", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E120A)),
+                                shape = RoundedCornerShape(26.dp)
+                            ) {
+                                Text(
+                                    text = "상대방이 남긴 후기 보기",
+                                    fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
+                                )
+                            }
+                        } else {
+                            val cleanAppStatus = viewModel.myApplicationStatus?.trim()?.uppercase() ?: ""
+                            when (cleanAppStatus) {
+                                "ACCEPTED" -> {
+                                    Button(
+                                        onClick = {
+                                            val appId = viewModel.myApplicationId ?: 0
+                                            onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Pink500D),
+                                        shape = RoundedCornerShape(26.dp)
+                                    ) {
+                                        Text("요청자와 채팅하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                                "PENDING" -> {
+                                    Button(
+                                        onClick = {},
+                                        enabled = false,
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Gray300D, disabledContainerColor = Gray300D),
+                                        shape = RoundedCornerShape(26.dp)
+                                    ) {
+                                        Text("수락 대기 중입니다", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Brown700D)
+                                    }
+                                }
+                                "REJECTED" -> {
+                                    Button(
+                                        onClick = {},
+                                        enabled = false,
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2F2F2), disabledContainerColor = Color(0xFFF2F2F2)),
+                                        shape = RoundedCornerShape(26.dp)
+                                    ) {
+                                        Text("매칭이 무산되었습니다", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                    }
+                                }
+                                "CANCELED" -> {
+                                    Button(
+                                        onClick = {},
+                                        enabled = false,
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF2F2F2), disabledContainerColor = Color(0xFFF2F2F2)),
+                                        shape = RoundedCornerShape(26.dp)
+                                    ) {
+                                        Text("신청이 취소되었습니다", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                                    }
+                                }
+                                else -> {
+                                    Button(
+                                        onClick = { onNavigate("apply_flow?requestId=$requestId") },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Pink500D),
+                                        shape = RoundedCornerShape(26.dp)
+                                    ) {
+                                        Text("봉사 신청하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (val state = uiState) {
+            val detailState = uiState
+            when (detailState) {
                 is MatchDetailUiState.Loading -> CircularProgressIndicator(color = Orange500D, modifier = Modifier.align(Alignment.Center))
-                is MatchDetailUiState.Error -> Text(text = state.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
+                is MatchDetailUiState.Error -> Text(text = detailState.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
                 is MatchDetailUiState.Success -> {
-                    val request = state.detail
+                    val request = detailState.detail
+
+                    val displayList = if (request.status?.trim()?.uppercase() == "DONE") {
+                        viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
+                    } else {
+                        viewModel.applicantList.filter {
+                            val s = it.status?.trim()?.uppercase()
+                            s != "CANCELED" && s != "REJECTED"
+                        }
+                    }
+
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             StatusBannerD(statusText = request.status ?: "상태 없음")
                             RequestInfoCardD(request = request)
-
-                            // ─── 2단계: 지원자 현황 리스트 추가 ───
+                            PublicMapCard(latitude = request.latitude, longitude = request.longitude)
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "지원자 현황 (${viewModel.applicantList.size}명)",
+                                text = if (request.status?.trim()?.uppercase() == "DONE") "함께 이동한 봉사자" else "지원자 현황 (${displayList.size}명)",
                                 fontFamily = PretendardFamily,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextBlackD
                             )
 
-                            if (viewModel.applicantList.isEmpty()) {
-                                // 대기 중인 지원자가 아예 없을 때의 빈 레이아웃 예외 처리
+                            if (displayList.isEmpty()) {
                                 Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color(0xFFF9F9F9), RoundedCornerShape(16.dp))
-                                        .padding(vertical = 32.dp),
+                                    modifier = Modifier.fillMaxWidth().background(Color(0xFFF9F9F9), RoundedCornerShape(16.dp)).padding(vertical = 32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "아직 신청한 지원자가 없습니다.",
-                                        fontFamily = PretendardFamily,
-                                        fontSize = 14.sp,
-                                        color = Brown700D
-                                    )
+                                    Text(text = "아직 신청한 지원자가 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700D)
                                 }
                             } else {
-                                // 지원자 리스트 루프 돌며 카드 컴포넌트 렌더링
-                                viewModel.applicantList.forEach { appItem ->
+                                displayList.forEach { appItem ->
                                     val applicantName = appItem.applicant?.nickname ?: "지원자"
+                                    val isCardAccepted = appItem.status?.trim()?.uppercase() == "ACCEPTED"
 
                                     Row(
                                         modifier = Modifier
@@ -128,64 +357,98 @@ fun MatchingDetailScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        // 초록 프로필 이니셜 아바타
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier.size(40.dp).clip(CircleShape).background(MintLightD)
                                         ) {
-                                            Text(
-                                                text = applicantName.firstOrNull()?.toString() ?: "",
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Green600D
-                                            )
+                                            Text(text = applicantName.firstOrNull()?.toString() ?: "", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Green600D)
                                         }
 
-                                        // 지원자 이름 및 한줄 요약 메시지 구역
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = applicantName,
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = TextBlackD
-                                            )
+                                            Text(text = applicantName, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackD)
                                             Spacer(Modifier.height(2.dp))
-                                            Text(
-                                                text = appItem.message ?: "신청 메시지가 없습니다.",
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 12.sp,
-                                                color = Brown700D,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
+                                            Text(text = appItem.message ?: "신청 메시지가 없습니다.", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
 
-                                        // 1:1 웹소켓 채팅방 연동 버튼 (매칭 글 ID와 해당 봉사자의 신청 고유 ID 바인딩)
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(50.dp))
-                                                .background(Pink500D)
-                                                .clickable {
-                                                    val appId = appItem.applicationId ?: 0
-                                                    onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                        if (request.status?.trim()?.uppercase() != "DONE") {
+                                            if (isCardAccepted) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .border(1.dp, Gray300D, RoundedCornerShape(8.dp))
+                                                            .background(Color.White)
+                                                            .clickable {
+                                                                val appId = appItem.applicationId ?: 0
+                                                                onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                                            }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
+                                                    }
+
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier
+                                                            .clip(RoundedCornerShape(8.dp))
+                                                            .border(1.dp, Pink500D, RoundedCornerShape(8.dp))
+                                                            .background(Color.White)
+                                                            .clickable {
+                                                                appIdToCancel = appItem.applicationId ?: -1
+                                                                showCancelDialog = true
+                                                            }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("취소", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
+                                                    }
                                                 }
-                                                .padding(horizontal = 14.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(
-                                                text = "채팅하기",
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
+                                            } else {
+                                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
+                                                            val appId = appItem.applicationId ?: 0
+                                                            onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                                        }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
+                                                    }
+
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Pink500D).clickable {
+                                                            val appId = appItem.applicationId ?: 0
+                                                            viewModel.acceptApplication(requestId, appId) {}
+                                                        }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("수락", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                    }
+
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
+                                                            val appId = appItem.applicationId ?: 0
+                                                            viewModel.rejectApplication(requestId, appId)
+                                                        }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text("거절", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D)
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(PinkSurfaceD).padding(horizontal = 12.dp, vertical = 6.dp)
+                                            ) {
+                                                Text("매칭 완료 🤝", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
+                                            }
                                         }
                                     }
                                 }
                             }
-                            Spacer(Modifier.height(24.dp)) // 하단 마감 패딩
+                            Spacer(Modifier.height(80.dp))
                         }
                     }
                 }
@@ -195,13 +458,13 @@ fun MatchingDetailScreen(
     }
 }
 
-// ── TopBar 수정본 ──
 @Composable
 private fun MatchingDetailTopBar(
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    isMyRequest: Boolean = true
+    isMyRequest: Boolean,
+    currentStatus: String
 ) {
     Row(
         modifier = Modifier
@@ -216,7 +479,7 @@ private fun MatchingDetailTopBar(
         }
 
         Text(
-            text = "내 봉사 상세",
+            text = if (isMyRequest) "내 봉사 상세" else "참여 봉사 상세",
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = TextBlackD,
@@ -229,12 +492,11 @@ private fun MatchingDetailTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(end = 8.dp)
         ) {
-            TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
-            TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
-
-            if (!isMyRequest) {
+            if (isMyRequest && currentStatus != "DONE") {
+                TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
+                TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
+            } else {
                 TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
-                TopBarIconD(iconRes = R.drawable.ic_share, desc = "공유")
             }
         }
     }
@@ -251,7 +513,6 @@ private fun TopBarIconD(iconRes: Int? = null, imageVector: ImageVector? = null, 
     }
 }
 
-// ── 컴포넌트 ──
 @Composable
 private fun StatusBannerD(statusText: String) {
     Row(

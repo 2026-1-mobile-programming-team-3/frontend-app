@@ -1,6 +1,7 @@
 package com.example.siheunggagae.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,7 +9,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,62 +36,98 @@ private val TextBlack = Color(0xFF1E120A)
 private val Brown700M = Color(0xFF8A6E58)
 private val Orange500M = Color(0xFFF7A35B)
 private val Pink500M = Color(0xFFF04268)
+private val Gray300M = Color(0xFFE8E8E8)
+private val InputBgM = Color(0xFFF8F8F8)
 
 @Composable
 fun MyRequestsScreen(
     viewModel: MyRequestsViewModel,
     onBack: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {},
     onCardClick: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val tabs = listOf("전체", "매칭전", "매칭됨", "종료됨")
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel.selectedTab) {
         viewModel.fetchMyRequests()
     }
 
     Scaffold(
         containerColor = Background95,
-        topBar = { MyRequestsTopBar(onBack = onBack) }
+        topBar = {
+            MyRequestsTopBar(
+                onBack = onBack,
+                onNavigateToCreate = onNavigateToCreate
+            )
+        }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (val state = uiState) {
-                is MyRequestsUiState.Loading -> {
-                    CircularProgressIndicator(
-                        color = Orange500M,
-                        modifier = Modifier.align(Alignment.Center)
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+
+            TabRow(
+                selectedTabIndex = viewModel.selectedTab,
+                containerColor = Color.White,
+                contentColor = Pink500M,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[viewModel.selectedTab]),
+                        color = Pink500M
                     )
                 }
-                is MyRequestsUiState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = Pink500M,
-                        fontFamily = PretendardFamily,
-                        modifier = Modifier.align(Alignment.Center)
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = viewModel.selectedTab == index,
+                        onClick = { viewModel.selectedTab = index },
+                        text = {
+                            Text(
+                                text = title,
+                                fontFamily = PretendardFamily,
+                                fontSize = 14.sp,
+                                fontWeight = if (viewModel.selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                color = if (viewModel.selectedTab == index) Pink500M else Brown700M
+                            )
+                        }
                     )
                 }
-                is MyRequestsUiState.Success -> {
-                    if (state.matches.isEmpty()) {
+            }
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (val state = uiState) {
+                    is MyRequestsUiState.Loading -> {
+                        CircularProgressIndicator(
+                            color = Orange500M,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    is MyRequestsUiState.Error -> {
                         Text(
-                            text = "작성한 봉사 요청이 없습니다.",
-                            color = Brown700M,
+                            text = state.message,
+                            color = Pink500M,
                             fontFamily = PretendardFamily,
                             modifier = Modifier.align(Alignment.Center)
                         )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(vertical = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(state.matches) { request ->
-                                MyRequestCard(
-                                    request = request,
-                                    onCardClick = { request.matchId?.let { onCardClick(it) } }
-                                )
+                    }
+                    is MyRequestsUiState.Success -> {
+                        if (state.matches.isEmpty()) {
+                            Text(
+                                text = "작성한 봉사 요청이 없습니다.",
+                                color = Brown700M,
+                                fontFamily = PretendardFamily,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.matches) { request ->
+                                    MyRequestCard(
+                                        request = request,
+                                        onCardClick = { request.matchId?.let { onCardClick(it) } }
+                                    )
+                                }
                             }
                         }
                     }
@@ -98,7 +138,7 @@ fun MyRequestsScreen(
 }
 
 @Composable
-private fun MyRequestsTopBar(onBack: () -> Unit) {
+private fun MyRequestsTopBar(onBack: () -> Unit, onNavigateToCreate: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -123,6 +163,7 @@ private fun MyRequestsTopBar(onBack: () -> Unit) {
                 modifier = Modifier.size(22.dp)
             )
         }
+
         Text(
             text = "내 봉사 요청 목록",
             fontFamily = PretendardFamily,
@@ -131,6 +172,21 @@ private fun MyRequestsTopBar(onBack: () -> Unit) {
             color = TextBlack,
             modifier = Modifier.align(Alignment.Center)
         )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .shadow(1.dp, RoundedCornerShape(50.dp))
+                .clip(RoundedCornerShape(50.dp))
+                .background(Pink500M)
+                .clickable { onNavigateToCreate() }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+            Text("새 요청", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
     }
 }
 
@@ -141,7 +197,6 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
             .clickable { onCardClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -153,37 +208,81 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 👈 상태 레이블 표시 칩 추가
                 Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(matchStatus.bgColor).padding(horizontal = 10.dp, vertical = 4.dp)) {
                     Text(text = matchStatus.label, fontFamily = PretendardFamily, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = matchStatus.textColor)
                 }
-                if (request.createdAt != null) {
+
+                val hasUnreadChat = false
+                if (hasUnreadChat) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(Pink500M).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                        Text("새 메시지", fontFamily = PretendardFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                } else if (request.createdAt != null) {
                     Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700M)
                 }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+
             Text(
                 text = request.title ?: "제목 없음",
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 color = TextBlack,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
-            // 👈 시간 결합 데이터 파싱 개선 (날짜와 실시간 시간 데이터 노출)
+            // 👈 [버그 수정 구역] MatchListItem 스펙에 맞춰 request.pet 필드 제거 후 주소 정보 결합 가공 처리
             val datePart = request.desiredDate?.take(10) ?: "날짜 미정"
             val timePart = request.desiredTime?.take(5) ?: "시간 미정"
-            val townPart = request.address?.split(" ")?.getOrNull(2) ?: request.address ?: "주소 없음"
+            val townPart = request.address?.split(" ")?.getOrNull(2) ?: request.address ?: "동네 미정"
 
             Text(
-                text = "$townPart · $datePart $timePart",
+                text = "📍 $townPart · 🗓️ $datePart $timePart",
                 fontFamily = PretendardFamily,
                 fontSize = 13.sp,
                 color = Brown700M
             )
+            Spacer(Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(InputBgM).padding(horizontal = 6.dp, vertical = 3.dp)) {
+                    Text(text = "목적지", fontFamily = PretendardFamily, fontSize = 11.sp, color = Brown700M, fontWeight = FontWeight.Medium)
+                }
+                Text(
+                    text = request.address ?: "지정 주소 없음",
+                    fontFamily = PretendardFamily,
+                    fontSize = 13.sp,
+                    color = TextBlack,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (matchStatus == MatchStatus.DONE) {
+                HorizontalDivider(color = Gray300M, thickness = 1.dp, modifier = Modifier.padding(vertical = 10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB200), modifier = Modifier.size(16.dp))
+                        // [동적 연동] 하드코딩 "5.0" 대신 서버에서 내려온 후기 별점 데이터(receivedRating) 연동
+                        val displayRating = request.receivedRating?.toDouble() ?: 5.0
+                        Text(text = displayRating.toString(), fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextBlack)
+                    }
+                    Text(
+                        text = "후기 보기 >",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Pink500M
+                    )
+                }
+            }
         }
     }
 }

@@ -33,6 +33,7 @@ data class HomeUiState(
     val airQuality: String = "",
     val pendingMatchCount: Int = 0,
     val nearestDDay: Int? = null,
+    val volunteerMatchCount: Int = 0,
     val nearbyStoreCount: Int = 0,
     val allStores: List<StoreResponse> = emptyList(),
     val displayedStores: List<StoreResponse> = emptyList(),
@@ -129,6 +130,8 @@ class HomeViewModel(
                     else -> dashboard.weather?.dustGrade ?: ""
                 }
                 val authorEntry = dashboard.myMatchSummary?.asAuthor
+                val applicantEntry = dashboard.myMatchSummary?.asApplicant
+
                 val dDay = authorEntry?.desiredDate?.let { dateStr ->
                     runCatching {
                         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -149,6 +152,7 @@ class HomeViewModel(
                         airQuality = dustStr,
                         pendingMatchCount = authorEntry?.applicationsCount ?: 0,
                         nearestDDay = dDay,
+                        volunteerMatchCount = if (applicantEntry != null) 1 else 0,
                         nearbyStoreCount = dashboard.nearbyStoreCount ?: 0,
                     )
                 }

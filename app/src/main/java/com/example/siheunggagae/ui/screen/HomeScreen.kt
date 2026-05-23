@@ -57,6 +57,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
@@ -83,6 +84,7 @@ private val Green500H     = Color(0xFF00A63E)
 private val Blue400H      = Color(0xFF388AF5)
 private val Orange600H    = Color(0xFFEE6A46)
 private val PinkSurfaceH  = Color(0xFFFEE7EC)
+private val MintSurfaceH  = Color(0xFFD0FEE1)
 private val BackgroundH   = Color(0xFFFEFEFE)
 private val GrayTextH     = Color(0xFF6B7280)
 private val TextBlackH    = Color(0xFF1E120A)
@@ -189,7 +191,9 @@ fun HomeScreen(
                 airQuality = uiState.airQuality,
                 pendingMatchCount = uiState.pendingMatchCount,
                 nearestDDay = uiState.nearestDDay,
+                volunteerMatchCount = uiState.volunteerMatchCount,
                 onBannerClick = { onNavigate(Screen.MyRequests.route) },
+                onVolunteerBannerClick = { onNavigate("volunteer_history") }
             )
             Spacer(Modifier.height(8.dp))
             NearbyStoresSection(
@@ -326,7 +330,6 @@ fun HomeTopBar(
 }
 
 // ─── 산책지수 섹션 ────────────────────────────────────────────────────────────
-
 @Composable
 fun WalkIndexSection(
     walkScore: Int = 0,
@@ -335,7 +338,9 @@ fun WalkIndexSection(
     airQuality: String = "",
     pendingMatchCount: Int = 0,
     nearestDDay: Int? = null,
+    volunteerMatchCount: Int = 0,
     onBannerClick: () -> Unit = {},
+    onVolunteerBannerClick: () -> Unit = {},
 ) {
     val scoreColor = when {
         walkScore >= 80 -> Green500H
@@ -353,71 +358,83 @@ fun WalkIndexSection(
         if (airQuality.isNotEmpty()) append(" · 미세먼지 $airQuality")
     }.ifEmpty { "날씨 정보 없음" }
 
+    // 각 배너의 노출 조건 개별 수립
+    val showPinkBanner = pendingMatchCount > 0 || nearestDDay != null
+    val showMintBanner = volunteerMatchCount > 0
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+        modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
-        Text(
-            text = "오늘 산책지수",
-            fontFamily = PretendardFamily,
-            color = TextBlackH,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 30.sp,
-        )
+        Text(text = "오늘 산책지수", fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
         Spacer(Modifier.height(6.dp))
         Text(
             text = buildAnnotatedString {
                 if (walkScore > 0) {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = scoreColor, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("${walkScore}점")
-                    }
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("으로 $scoreComment")
-                    }
+                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = scoreColor, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("${walkScore}점") }
+                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("으로 $scoreComment") }
                 } else {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = GrayTextH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("로딩 중...")
-                    }
+                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = GrayTextH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("로딩 중...") }
                 }
             },
             lineHeight = 32.sp,
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = weatherText,
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            lineHeight = 20.sp,
-            color = GrayTextH,
-        )
-        if (pendingMatchCount > 0 || nearestDDay != null) {
+        Text(text = weatherText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = GrayTextH)
+
+        if (showPinkBanner || showMintBanner) {
             Spacer(Modifier.height(14.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(PinkSurfaceH)
-                    .clickable { onBannerClick() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = buildAnnotatedString {
-                        if (nearestDDay != null) {
-                            withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.Bold, fontSize = 12.sp)) {
-                                append("[D-${nearestDDay}]  ")
-                            }
-                        }
-                        withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 14.sp)) {
-                            append("신청 ${pendingMatchCount}건 검토하기  ")
-                        }
-                    },
-                )
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Brown700H, modifier = Modifier.size(18.dp))
+                if (showPinkBanner) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PinkSurfaceH)
+                            .clickable { onBannerClick() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = buildAnnotatedString {
+                                if (nearestDDay != null) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.Bold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
+                                }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Bold, fontSize = 12.sp)) { append("내 요청 ${pendingMatchCount}건 검토중") }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Pink500H, modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                if (showMintBanner) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MintSurfaceH)
+                            .clickable { onVolunteerBannerClick() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "봉사활동 ${volunteerMatchCount}건 진행중",
+                            fontFamily = PretendardFamily,
+                            color = Color(0xFF006622),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Green500H, modifier = Modifier.size(16.dp))
+                    }
+                }
             }
         }
     }

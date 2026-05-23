@@ -218,6 +218,9 @@ fun MyScreen(
                         myMatchCount = stats?.myMatchCount ?: 0,
                         volunteerCount = stats?.volunteerCompletedCount ?: 0,
                         favoriteCount = stats?.favoriteCount ?: 0,
+                        onMyMatchClick = { onNavigate("my_requests") },
+                        onVolunteerClick = onVolunteerHistoryClick,
+                        onFavoriteClick = onFavoriteStoresClick
                     )
                     Spacer(Modifier.height(12.dp))
                     MySectionLabel("봉사 뱃지", fontSize = 18)
@@ -577,49 +580,38 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
 // ─── 활동 통계 Row ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun ActivityStatsRow(myMatchCount: Int, volunteerCount: Int, favoriteCount: Int) {
+private fun ActivityStatsRow(
+    myMatchCount: Int,
+    volunteerCount: Int,
+    favoriteCount: Int,
+    onMyMatchClick: () -> Unit = {},
+    onVolunteerClick: () -> Unit = {},
+    onFavoriteClick: () -> Unit = {}
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        StatCard("내 요청",  myMatchCount.toString(),    Pink500My,   Modifier.weight(1f))
-        StatCard("봉사 참여", volunteerCount.toString(),  Green500My,  Modifier.weight(1f))
-        StatCard("즐겨찾기", favoriteCount.toString(),   Orange500My, Modifier.weight(1f))
+        StatCard("내 요청",  myMatchCount.toString(),    Pink500My,   Modifier.weight(1f), onClick = onMyMatchClick)
+        StatCard("봉사 참여", volunteerCount.toString(),  Green500My,  Modifier.weight(1f), onClick = onVolunteerClick)
+        StatCard("즐겨찾기", favoriteCount.toString(),   Orange500My, Modifier.weight(1f), onClick = onFavoriteClick)
     }
 }
-
 @Composable
-private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier) {
+private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier, onClick: () -> Unit = {}) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .clickable { }
+            .clickable { onClick() }
             .padding(vertical = 16.dp),
     ) {
-        Text(
-            text = value,
-            fontFamily = PretendardFamily,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 36.sp,
-            color = valueColor
-        )
+        Text(text = value, fontFamily = PretendardFamily, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp, color = valueColor)
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontFamily = PretendardFamily,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Normal,
-            lineHeight = 16.sp,
-            color = Brown700My
-        )
+        Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700My)
     }
 }
-
 // ─── 봉사 뱃지 Card ────────────────────────────────────────────────────────────
 
 @Composable

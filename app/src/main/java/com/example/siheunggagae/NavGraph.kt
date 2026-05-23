@@ -120,6 +120,7 @@ import com.example.siheunggagae.ui.screen.StoreRequestFormScreen
 import com.example.siheunggagae.ui.screen.VolunteerApplyScreen
 import com.example.siheunggagae.ui.screen.VolunteerBadgeListScreen
 import com.example.siheunggagae.ui.screen.VolunteerHistoryScreen
+import com.example.siheunggagae.ui.screen.MatchReviewScreen
 import com.example.siheunggagae.ui.viewmodel.BlockManageViewModel
 import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
 import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
@@ -141,7 +142,7 @@ import com.example.siheunggagae.ui.theme.Gray95
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
-
+import com.example.siheunggagae.ui.viewmodel.MatchReviewViewModel
 // ─── 라우트 정의 ───────────────────────────────────────────────────────────────
 
 sealed class Screen(val route: String) {
@@ -186,6 +187,9 @@ sealed class Screen(val route: String) {
     }
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: String) = "news_detail/$newsId"
+    }
+    object MatchReview     : Screen("match_review?matchId={matchId}&status={status}") {
+        fun createRoute(matchId: Int, status: String) = "match_review?matchId=$matchId&status=$status"
     }
     object FavoriteStores  : Screen("favorite_stores")
     object BlockManage     : Screen("block_manage")
@@ -727,6 +731,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
 
+        // NavGraph.kt의 MyRequests 컴포저블 구역을 아래 코드로 예쁘게 이어주세요!
+
         composable(Screen.MyRequests.route) {
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
             val myRequestsViewModel: com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel = viewModel(
@@ -736,10 +742,36 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             MyRequestsScreen(
                 viewModel = myRequestsViewModel,
                 onBack = { navController.popBackStack() },
+                onNavigateToCreate = {
+                    // 9.1 새 요청 클릭 시 폼 작성 화면으로 전환
+                    navController.navigate("request_flow?requestId=0")
+                },
                 onCardClick = { requestId ->
-                    // 카드를 클릭하면 해당 요청의 상세 화면으로 이동합니다.
+                    // 9.5 카드를 클릭하면 상세 화면(요청자 시점)으로 매끄럽게 연결
                     navController.navigate(Screen.MatchingDetail.createRoute(requestId))
                 }
+            )
+        }
+        composable(
+            route = Screen.MatchReview.route,
+            arguments = listOf(
+                navArgument("matchId") { type = NavType.IntType; defaultValue = -1 },
+                navArgument("status") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) { backStackEntry ->
+            val matchId = backStackEntry.arguments?.getInt("matchId") ?: -1
+            val status = backStackEntry.arguments?.getString("status") ?: ""
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
+
+            val reviewViewModel: MatchReviewViewModel = viewModel(
+                factory = MatchReviewViewModel.Factory(api)
+            )
+
+            MatchReviewScreen(
+                matchId = matchId,
+                matchStatus = status,
+                viewModel = reviewViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -1195,10 +1227,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
 }
 
 private fun NavHostController.navigateTab(route: String) {
-    navigate(route) {
-        launchSingleTop = true
-        restoreState = true
-        popUpTo(Screen.Home.route) { saveState = true }
+    if (isTopLevelTabRoute(route)) {
+        navigate(route) {
+            launchSingleTop = true
+            restoreState = true
+            popUpTo(Screen.Home.route) { saveState = true }
+        }
+    } else {
+        navigate(route)
     }
 }
 
@@ -1233,6 +1269,7 @@ private fun handleNotificationDeeplink(link: String?, navController: NavHostCont
 
 @Composable
 fun MyRequestsScreen(
+    viewModel: com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel,
     onBack: () -> Unit = {},
     onCardClick: (requestId: Int) -> Unit = {},
 ) {

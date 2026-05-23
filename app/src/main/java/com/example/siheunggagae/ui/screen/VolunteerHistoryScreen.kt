@@ -382,7 +382,6 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                         color = Green500H,
                     )
                 }
-                // myRating 대신 receivedRating 사용
                 if (match.receivedRating != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
@@ -393,7 +392,7 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text = String.format("%.1f", match.receivedRating),
+                            text = String.format("%.1f", match.receivedRating.toDouble()),
                             fontFamily = PretendardFamily,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
