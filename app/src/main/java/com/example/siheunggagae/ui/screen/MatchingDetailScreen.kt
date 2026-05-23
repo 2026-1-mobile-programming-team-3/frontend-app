@@ -1,10 +1,20 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,11 +24,27 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -32,11 +58,12 @@ import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
+import kotlinx.coroutines.launch
 
-// 스펙 컬러
 private val Brown700D = Color(0xFF8A6E58)
 private val Brown400D = Color(0xFFC4A882)
 private val Orange500D = Color(0xFFF7A35B)
@@ -58,6 +85,10 @@ fun MatchingDetailScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showReviewDialog by remember { mutableStateOf(false) }
@@ -71,7 +102,7 @@ fun MatchingDetailScreen(
         requestData?.let { detail ->
             if (detail.status?.trim()?.uppercase() == "DONE" &&
                 viewModel.currentUserId == detail.author?.userId &&
-                detail.isReviewed != true // 후기를 아직 작성하지 않았을 때만
+                detail.isReviewed != true
             ) {
                 showReviewDialog = true
             } else {
@@ -79,9 +110,10 @@ fun MatchingDetailScreen(
             }
         }
     }
+
     LaunchedEffect(uiState) {
         if (uiState is MatchDetailUiState.DeleteSuccess) {
-            Toast.makeText(context, "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar("성공적으로 삭제되었습니다.")
             viewModel.resetState()
             onBack()
         }
@@ -114,7 +146,9 @@ fun MatchingDetailScreen(
                     showCancelDialog = false
                     if (appIdToCancel != -1) {
                         viewModel.cancelAcceptedMatching(requestId, appIdToCancel) {
-                            Toast.makeText(context, "매칭이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("매칭이 취소되었습니다.")
+                            }
                         }
                     }
                 }) { Text("매칭 취소", color = Pink500D, fontWeight = FontWeight.Bold) }
@@ -125,7 +159,6 @@ fun MatchingDetailScreen(
         )
     }
 
-
     if (showReviewDialog) {
         AlertDialog(
             onDismissRequest = { showReviewDialog = false },
@@ -134,10 +167,8 @@ fun MatchingDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showReviewDialog = false
-
                     viewModel.resetState()
-
-                    onNavigate("match_review?matchId=$requestId&status=DONE")
+                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                 }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -151,6 +182,7 @@ fun MatchingDetailScreen(
 
     Scaffold(
         containerColor = BackgroundD,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             val isMenuOwner = requestData?.author?.userId == viewModel.currentUserId
             val currentStatus = requestData?.status?.trim()?.uppercase() ?: ""
@@ -162,15 +194,12 @@ fun MatchingDetailScreen(
                 currentStatus = currentStatus
             )
         },
-        // ─── 🌟 [재호님 통찰 반영 완료] 중복 및 409 유발 버튼 완전 도려내기 ───
         bottomBar = {
             val successState = uiState as? MatchDetailUiState.Success
             successState?.let {
                 val currentStatus = it.detail.status?.trim()?.uppercase() ?: ""
                 val isMenuOwner = viewModel.currentUserId == it.detail.author?.userId
 
-                // [안전 가드] 내가 요청자인데 아직 매칭 대기(WAITING/MATCHING) 상태라면
-                // 하단에 굳이 버튼 공간을 차지할 필요가 없으므로 영역을 그리지 않고 조기 리턴합니다.
                 if (isMenuOwner && (currentStatus == "WAITING" || currentStatus == "MATCHING")) {
                     return@let
                 }
@@ -183,7 +212,6 @@ fun MatchingDetailScreen(
                         .padding(horizontal = 24.dp, vertical = 12.dp)
                 ) {
                     if (isMenuOwner) {
-                        // 1️⃣ 진행 중인 상태일 때는 오직 [완료 처리하기] 버튼만 깔끔하게 노출
                         if (currentStatus == "PROGRESS") {
                             Button(
                                 onClick = {
@@ -201,13 +229,12 @@ fun MatchingDetailScreen(
                                 )
                             }
                         } else if (currentStatus == "DONE") {
-                            // 2️⃣ 완료된 상태일 때 후기 분기 처리 매핑 구역
                             Button(
                                 onClick = {
                                     if (!viewModel.isReviewWritten) {
-                                        onNavigate("match_review?matchId=$requestId&status=DONE")
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
                                     } else {
-                                        onNavigate("my_review_detail?matchId=$requestId")
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = true))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
@@ -223,18 +250,17 @@ fun MatchingDetailScreen(
                             }
                         }
                     } else {
-                        // 3️⃣ 봉사자(남이 쓴 글) 시점일 때의 기존 흐름 가드는 무결하므로 완벽 유지
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
-                                    Toast.makeText(context, "상대방이 남긴 후기 상세 페이지로 이동합니다 (준비중)", Toast.LENGTH_SHORT).show()
+                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = false))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E120A)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Brown700D),
                                 shape = RoundedCornerShape(26.dp)
                             ) {
                                 Text(
-                                    text = "상대방이 남긴 후기 보기",
+                                    text = "요청자가 작성한 후기 보기",
                                     fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
                                 )
                             }
@@ -311,8 +337,9 @@ fun MatchingDetailScreen(
                 is MatchDetailUiState.Error -> Text(text = detailState.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
                 is MatchDetailUiState.Success -> {
                     val request = detailState.detail
+                    val blockedUsers = prefs.getStringSet("blocked_users", emptySet()) ?: emptySet()
 
-                    val displayList = if (request.status?.trim()?.uppercase() == "DONE") {
+                    val originalList = if (request.status?.trim()?.uppercase() == "DONE") {
                         viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
                     } else {
                         viewModel.applicantList.filter {
@@ -320,6 +347,8 @@ fun MatchingDetailScreen(
                             s != "CANCELED" && s != "REJECTED"
                         }
                     }
+
+                    val displayList = originalList.filter { it.applicant?.nickname !in blockedUsers }
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

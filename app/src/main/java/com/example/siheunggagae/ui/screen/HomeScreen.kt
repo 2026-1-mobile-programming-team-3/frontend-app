@@ -126,6 +126,13 @@ fun HomeScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
 
+    val siheungPrefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
+    LaunchedEffect(uiState.nickname) {
+        if (uiState.nickname.isNotEmpty()) {
+            siheungPrefs.edit().putString("nickname", uiState.nickname).apply()
+        }
+    }
+
     var showDongModal by remember { mutableStateOf(false) }
 
     // 미니 맵

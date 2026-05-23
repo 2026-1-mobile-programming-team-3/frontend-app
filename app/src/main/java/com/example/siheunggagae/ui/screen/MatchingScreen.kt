@@ -1,6 +1,5 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import androidx.compose.foundation.layout.navigationBarsPadding
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -15,10 +14,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +31,9 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,7 +43,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +53,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,14 +72,15 @@ import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.MatchStatus
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.util.bgColor
 import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.MatchingUiState
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
+import kotlinx.coroutines.launch
 
-// 스펙 컬러
 private val Brown900M     = Color(0xFF614B3A)
 private val Brown700M     = Color(0xFF8A6E58)
 private val Brown400M     = Color(0xFFC4A882)
@@ -105,9 +113,26 @@ fun MatchingScreen(
     var selectedTab by remember { mutableStateOf(MatchingTab.ALL) }
     val bottomBarHeight = 80.dp
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", Context.MODE_PRIVATE) }
     val myNickname = remember { prefs.getString("nickname", "") ?: "" }
+
+    var showBlockedUsersDialog by remember { mutableStateOf(false) }
+    var blockListUpdateTrigger by remember { mutableStateOf(0) }
+
+    val blockedUsers = remember(blockListUpdateTrigger) {
+        prefs.getStringSet("blocked_users", emptySet()) ?: emptySet()
+    }
+    val displayMatches = remember(uiState, blockedUsers) {
+        if (uiState is MatchingUiState.Success) {
+            (uiState as MatchingUiState.Success).matches.filter { it.authorNickname !in blockedUsers }
+        } else {
+            emptyList()
+        }
+    }
 
     var showActionsSheet by remember { mutableStateOf(false) }
     var longPressedRequest by remember { mutableStateOf<MatchListItem?>(null) }
@@ -117,20 +142,34 @@ fun MatchingScreen(
         viewModel.fetchMatches(selectedTab.status?.name)
     }
 
-    val requestCount = if (uiState is MatchingUiState.Success) {
-        (uiState as MatchingUiState.Success).matches.size
-    } else 0
+    LaunchedEffect(uiState) {
+        if (uiState is MatchingUiState.Error) {
+            snackbarHostState.showSnackbar((uiState as MatchingUiState.Error).message)
+        }
+    }
+
+    val requestCount = remember(uiState, blockListUpdateTrigger) {
+        if (uiState is MatchingUiState.Success) {
+            val successState = uiState as MatchingUiState.Success
+            successState.matches.count { it.authorNickname == myNickname }
+        } else 0
+    }
 
     Scaffold(
         containerColor = Background95,
-        topBar = { MatchingTopBar(onMyRequests = onMyRequests) },
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
+        topBar = {
+            MatchingTopBar(
+                onMyRequests = onMyRequests,
+                onManageBlocks = { showBlockedUsersDialog = true }
+            )
+        },
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
             ) {
-                // ─── 🌟 민트색 카드에 봉사 이력 대시보드 내비게이션 연결 완료 ───
                 item {
                     SummaryCards(
                         onMyRequests = onMyRequests,
@@ -164,14 +203,14 @@ fun MatchingScreen(
                         }
                     }
                     is MatchingUiState.Success -> {
-                        if (state.matches.isEmpty()) {
+                        if (displayMatches.isEmpty()) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                                     Text(text = "조건에 맞는 봉사 요청이 없습니다.", color = Brown700M, fontFamily = PretendardFamily)
                                 }
                             }
                         } else {
-                            items(state.matches, key = { it.matchId ?: it.hashCode() }) { request ->
+                            items(displayMatches, key = { it.matchId ?: it.hashCode() }) { request ->
                                 val isMine = request.authorNickname == myNickname
 
                                 MatchingRequestCard(
@@ -205,6 +244,19 @@ fun MatchingScreen(
         }
     }
 
+    if (showBlockedUsersDialog) {
+        BlockedUsersManagementDialog(
+            prefs = prefs,
+            onDismiss = { showBlockedUsersDialog = false },
+            onUnblockSuccess = {
+                blockListUpdateTrigger++
+                scope.launch {
+                    snackbarHostState.showSnackbar("차단이 성공적으로 해제되었습니다.")
+                }
+            }
+        )
+    }
+
     if (showActionsSheet) {
         ModalBottomSheet(
             onDismissRequest = { showActionsSheet = false },
@@ -218,18 +270,87 @@ fun MatchingScreen(
 }
 
 @Composable
-private fun MatchingTopBar(onMyRequests: () -> Unit) {
+private fun BlockedUsersManagementDialog(
+    prefs: android.content.SharedPreferences,
+    onDismiss: () -> Unit,
+    onUnblockSuccess: () -> Unit
+) {
+    var blockedList by remember {
+        mutableStateOf(prefs.getStringSet("blocked_users", emptySet())?.toList() ?: emptyList())
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("차단된 유저 관리", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlack) },
+        text = {
+            if (blockedList.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    Text("차단한 사용자가 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700M)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+                    items(blockedList) { nickname ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(nickname, fontFamily = PretendardFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextBlack)
+                            TextButton(
+                                onClick = {
+                                    val currentSet = prefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
+                                    currentSet.remove(nickname)
+                                    prefs.edit().putStringSet("blocked_users", currentSet).apply()
+
+                                    blockedList = currentSet.toList()
+                                    onUnblockSuccess()
+                                },
+                                colors = ButtonDefaults.textButtonColors(contentColor = Pink500M)
+                            ) {
+                                Text("차단 해제", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFF3F4F6))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = Brown900M)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@Composable
+private fun MatchingTopBar(onMyRequests: () -> Unit, onManageBlocks: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = "매칭", fontFamily = PretendardFamily, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlack)
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(40.dp).shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onMyRequests() }
-        ) {
-            Icon(painter = painterResource(R.drawable.ic_assignment), contentDescription = "내 봉사 요청 목록", tint = Brown700M, modifier = Modifier.size(22.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(40.dp).shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onManageBlocks() }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Block,
+                    contentDescription = "차단 유저 관리",
+                    tint = Pink500M,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(40.dp).shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onMyRequests() }
+            ) {
+                Icon(painter = painterResource(R.drawable.ic_assignment), contentDescription = "내 봉사 요청 목록", tint = Brown700M, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
@@ -253,7 +374,7 @@ private fun SummaryCards(
             value = "${requestCount}건 검토 중"
         )
         SummaryCard(
-            modifier = Modifier.weight(1f).clickable { onVolunteerHistoryClick() }, // 👈 멍텅구리 제거 후 패스 연결
+            modifier = Modifier.weight(1f).clickable { onVolunteerHistoryClick() },
             bgColor = Color(0xFFF0FDF4),
             iconRes = R.drawable.ic_favorite,
             iconColor = Green500M,
@@ -405,12 +526,5 @@ private fun CardActionRow(icon: ImageVector, iconBg: Color, iconTint: Color, lab
             Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
         }
         Text(text = label, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = labelColor)
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun MatchingScreenPreview() {
-    SiheungGagaeTheme {
     }
 }

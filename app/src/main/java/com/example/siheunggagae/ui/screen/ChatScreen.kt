@@ -1,8 +1,5 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
-import com.example.siheunggagae.R
-import com.example.siheunggagae.Screen
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,12 +14,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -38,12 +40,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.R
+import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.ChatMessageItem
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.ChatUiState
 import com.example.siheunggagae.ui.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private val BgC          = Color(0xFFFFFFFF)
 private val TextBlackC   = Color(0xFF1F130B)
@@ -57,6 +67,31 @@ private val Gray300C     = Color(0xFFE9E9E9)
 private val InputBgC     = Color(0xFFF3F3F3)
 private val PlaceholderC = Color(0xFFC1AFA0)
 
+// ─── 🕒 [서버 UTC 타임 -> 한국 표준시(KST) 전환 엔진] ───
+private fun formatChatTime(createdAt: String): String {
+    return try {
+        // 서버 표준 규격 ISO 8601 (ex: 2026-05-23T08:10:49Z) 파싱 연산
+        val odt = OffsetDateTime.parse(createdAt)
+        val kstZone = ZoneId.of("Asia/Seoul")
+        val kstTime = odt.atZoneSameInstant(kstZone)
+        kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+    } catch (e: Exception) {
+        try {
+            // 타임존 식별자가 유실된 생 문자열일 경우, 백엔드가 UTC 기준 취급했다고 가정한 2차 가드 보정 기믹
+            val ldt = LocalDateTime.parse(createdAt.take(19))
+            val kstTime = ldt.atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+            kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        } catch (ex: Exception) {
+            createdAt.take(16).replace("T", " ") // 최종 예외 백업 스텁 방어선
+        }
+    }
+}
+
+private fun formatChatDate(createdAt: String): String {
+    return formatChatTime(createdAt).take(10) // "yyyy-MM-dd" 파트 분리 슬라이싱
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     matchId: Int,
@@ -69,18 +104,23 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // ─── 🌟 [신고 팝업용 상태 변수 세트] ───
     var showReportDialog by remember { mutableStateOf(false) }
     var targetMsgId by remember { mutableStateOf(-1) }
     var targetSenderId by remember { mutableStateOf(-1) }
     var reportReason by remember { mutableStateOf("") }
 
+    var showTopMenuBottomSheet by remember { mutableStateOf(false) }
+    var showBlockConfirmDialog by remember { mutableStateOf(false) }
+    var showUserReportDialog by remember { mutableStateOf(false) }
+    var userReportReason by remember { mutableStateOf("") }
+
     LaunchedEffect(matchId, applicationId) {
         viewModel.initChatRoom(matchId, applicationId)
     }
 
-    // ─── 🌟 [태은-6.7 반영] 리스트 스크롤 최상단 감지 센서 (과거 내역 페이징 호출) ───
     val successState = uiState as? ChatUiState.Success
     if (successState != null && successState.hasMore) {
         val firstVisibleItemIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
@@ -93,6 +133,7 @@ fun ChatScreen(
 
     Scaffold(
         containerColor = BgC,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             val state = uiState as? ChatUiState.Success
             val isAlreadyAccepted = state?.matchDetail?.status != null && state.matchDetail.status != "WAITING"
@@ -103,7 +144,8 @@ fun ChatScreen(
                 isAlreadyAccepted = isAlreadyAccepted,
                 onBack = onBack,
                 onAcceptClick = { viewModel.acceptVolunteer { onBack() } },
-                onCancelClick = { viewModel.cancelVolunteer { onBack() } }
+                onCancelClick = { viewModel.cancelVolunteer { onBack() } },
+                onMenuClick = { showTopMenuBottomSheet = true }
             )
         },
         bottomBar = {
@@ -128,7 +170,6 @@ fun ChatScreen(
                     Text(text = state.message, color = Pink500C, modifier = Modifier.align(Alignment.Center), fontFamily = PretendardFamily)
                 }
                 is ChatUiState.Success -> {
-                    // 새 메시지가 들어오면 하단 강제 자동 스크롤
                     LaunchedEffect(state.messages.size) {
                         if (state.messages.isNotEmpty()) {
                             listState.animateScrollToItem(state.messages.lastIndex + 1)
@@ -146,17 +187,16 @@ fun ChatScreen(
                         ) {
                             item { Spacer(Modifier.height(4.dp)) }
 
-                            // ─── 🌟 [동적 날짜 파티셔닝 인터랙션 개조] ───
                             itemsIndexed(state.messages, key = { _, msg -> msg.id }) { index, msg ->
                                 val isMe = msg.senderId == viewModel.myUserId
-                                val currentMsgDate = msg.createdAt.take(10)
+                                // 🕒 한국 시간 기준으로 날짜 재정의 연산 처리
+                                val currentMsgDate = formatChatDate(msg.createdAt)
 
-                                // 이전 메시지와 날짜가 다르거나, 맨 첫 메시지라면 날짜 구분선 렌더링
                                 if (index == 0) {
                                     DateDivider(label = currentMsgDate.replace("-", ". "))
                                     Spacer(Modifier.height(8.dp))
                                 } else {
-                                    val prevMsgDate = state.messages[index - 1].createdAt.take(10)
+                                    val prevMsgDate = formatChatDate(state.messages[index - 1].createdAt)
                                     if (currentMsgDate != prevMsgDate) {
                                         DateDivider(label = currentMsgDate.replace("-", ". "))
                                         Spacer(Modifier.height(8.dp))
@@ -166,7 +206,6 @@ fun ChatScreen(
                                 if (isMe) {
                                     SentMessageItem(msg = msg)
                                 } else {
-                                    // 🌟 롱클릭 콜백 리스너 장착
                                     ReceivedMessageItem(
                                         msg = msg,
                                         name = state.opponentNickname,
@@ -185,7 +224,128 @@ fun ChatScreen(
             }
         }
 
-        // ─── 🌟 [태은-6.10 실체 구현] 메시지 신성 모달 다이얼로그 시스템 ───
+        if (showTopMenuBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showTopMenuBottomSheet = false },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(start = 24.dp, end = 24.dp, bottom = 32.dp, top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TextButton(
+                        onClick = {
+                            showTopMenuBottomSheet = false
+                            showUserReportDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("상대방 사용자 신고하기", fontFamily = PretendardFamily, fontSize = 16.sp, color = TextBlackC, fontWeight = FontWeight.Medium)
+                    }
+                    HorizontalDivider(color = Gray300C)
+                    TextButton(
+                        onClick = {
+                            showTopMenuBottomSheet = false
+                            showBlockConfirmDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("상대방 사용자 차단하기", fontFamily = PretendardFamily, fontSize = 16.sp, color = Pink500C, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (showBlockConfirmDialog) {
+            val state = uiState as? ChatUiState.Success
+            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+
+            AlertDialog(
+                onDismissRequest = { showBlockConfirmDialog = false },
+                title = { Text("사용자 차단", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackC) },
+                text = { Text("정말로 이 유저를 차단하시겠습니까?\n차단 이후에는 해당 유저의 글과 메시지가 타임라인에서 영구히 숨김 처리되며, 매칭이 취소됩니다.", fontFamily = PretendardFamily, color = TextBlackC) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.blockUser(opponentId) { success ->
+                                showBlockConfirmDialog = false
+                                if (success) {
+                                    val siheungPrefs = context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE)
+                                    val blockedSet = siheungPrefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
+
+                                    state?.opponentNickname?.let { blockedSet.add(it) }
+                                    siheungPrefs.edit().putStringSet("blocked_users", blockedSet).apply()
+
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("성공적으로 차단되었습니다.")
+                                    }
+                                    onBack()
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("차단 처리에 실패했습니다.")
+                                    }
+                                }
+                            }
+                        }
+                    ) { Text("차단하기", color = Pink500C, fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBlockConfirmDialog = false }) { Text("취소", color = TextBlackC) }
+                }
+            )
+        }
+
+        if (showUserReportDialog) {
+            val state = uiState as? ChatUiState.Success
+            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+
+            AlertDialog(
+                onDismissRequest = { showUserReportDialog = false },
+                title = { Text("사용자 신고하기", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackC) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("상대방의 프로필 부정 행위나 매너 위반 사항에 대해 사유를 기술해 주세요.", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700C)
+                        OutlinedTextField(
+                            value = userReportReason,
+                            onValueChange = { userReportReason = it },
+                            placeholder = { Text("사유를 기입해 주세요 (욕설/스팸/사기/기타)...", fontFamily = PretendardFamily) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (userReportReason.isNotBlank()) {
+                                viewModel.reportUser(opponentId, userReportReason) { success ->
+                                    showUserReportDialog = false
+                                    userReportReason = ""
+                                    val alert = if (success) "유저 신고 접수가 정상 처리되었습니다." else "신고 처리에 실패했습니다."
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(alert)
+                                    }
+                                }
+                            } else {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("신고 사유를 작성해 주세요.")
+                                }
+                            }
+                        }
+                    ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showUserReportDialog = false
+                        userReportReason = ""
+                    }) { Text("취소", color = TextBlackC) }
+                }
+            )
+        }
+
         if (showReportDialog) {
             AlertDialog(
                 onDismissRequest = { showReportDialog = false },
@@ -201,20 +361,22 @@ fun ChatScreen(
                         )
                     }
                 },
-
                 confirmButton = {
                     TextButton(
                         onClick = {
                             if (reportReason.isNotBlank()) {
-                                // ─── 🌟 [수정] 첫 번째 인자였던 matchId를 지우고 깔끔하게 원상 복귀 완료! ───
                                 viewModel.reportMessage(targetMsgId, targetSenderId, reportReason) { success ->
                                     showReportDialog = false
                                     reportReason = ""
                                     val alert = if (success) "정상적으로 신고 접수되었습니다." else "신고 처리에 실패했습니다."
-                                    Toast.makeText(context, alert, Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(alert)
+                                    }
                                 }
                             } else {
-                                Toast.makeText(context, "사유를 반드시 입력해주세요.", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("사유를 반드시 입력해주세요.")
+                                }
                             }
                         }
                     ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }
@@ -237,14 +399,15 @@ private fun ChatTopBar(
     isAlreadyAccepted: Boolean,
     onBack: () -> Unit,
     onAcceptClick: () -> Unit,
-    onCancelClick: () -> Unit
+    onCancelClick: () -> Unit,
+    onMenuClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
             .background(BgC)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(start = 24.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -280,16 +443,21 @@ private fun ChatTopBar(
                     .clickable {
                         if (isAlreadyAccepted) onCancelClick() else onAcceptClick()
                     }
-                    .padding(horizontal = 17.dp, vertical = 7.dp),
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
             ) {
                 Text(
                     text = if (isAlreadyAccepted) "매칭 취소" else "수락",
                     fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = if (isAlreadyAccepted) Color(0xFFBA1A1A) else Color.White
                 )
             }
+            Spacer(Modifier.width(4.dp))
+        }
+
+        IconButton(onClick = onMenuClick, modifier = Modifier.size(40.dp)) {
+            Icon(imageVector = Icons.Default.MoreVert, contentDescription = "더보기 메뉴", tint = TextBlackC)
         }
     }
 }
@@ -344,7 +512,6 @@ private fun ReceivedMessageItem(msg: ChatMessageItem, name: String, onLongClick:
                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
                     .background(BgC)
                     .border(1.dp, Gray300C, RoundedCornerShape(topStart = 4.dp, topEnd = 16.dp, bottomEnd = 16.dp, bottomStart = 16.dp))
-                    // 🌟 롱클릭 신고 동작을 수용할 수 있게 가공된 리스너 패널 매핑
                     .combinedClickable(
                         onClick = {},
                         onLongClick = { onLongClick() }
@@ -353,7 +520,8 @@ private fun ReceivedMessageItem(msg: ChatMessageItem, name: String, onLongClick:
             ) {
                 Text(text = msg.content, fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC)
             }
-            Text(text = msg.createdAt.take(16).replace("T", " "), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
+            // 🕒 메시지 포맷 함수 적용 기믹 수송선 연동
+            Text(text = formatChatTime(msg.createdAt), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
         }
     }
 }
@@ -371,7 +539,8 @@ private fun SentMessageItem(msg: ChatMessageItem) {
             ) {
                 Text(text = msg.content, fontFamily = PretendardFamily, fontSize = 14.sp, color = Color.White)
             }
-            Text(text = msg.createdAt.take(16).replace("T", " "), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
+            // 🕒 메시지 포맷 함수 적용 기믹 수송선 연동
+            Text(text = formatChatTime(msg.createdAt), fontFamily = PretendardFamily, fontSize = 10.sp, color = Brown700C)
         }
     }
 }

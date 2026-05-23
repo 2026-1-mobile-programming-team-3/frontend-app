@@ -1,7 +1,6 @@
 package com.example.siheunggagae.ui.screen
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,9 +27,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchReviewViewModel
 import com.example.siheunggagae.ui.viewmodel.ReviewUiState
+import kotlinx.coroutines.launch
 
 private val BgC          = Color(0xFFFFFFFF)
 private val TextBlackC   = Color(0xFF1F130B)
@@ -44,18 +45,22 @@ private val PlaceholderC = Color(0xFFC1AFA0)
 @Composable
 fun MatchReviewScreen(
     matchId: Int,
-    matchStatus: String, // [태은-8.1] 매칭 상태 진입 가드용
+    matchStatus: String,
+    isViewOnly: Boolean = false,
+    canEdit: Boolean = false,
     viewModel: MatchReviewViewModel,
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    var rating by remember { mutableStateOf(5) } // [태은-8.2] 기본 별점 5점
-    var reviewText by remember { mutableStateOf("") } // [태은-8.3] 후기 텍스트
-    var selectedImageUris by remember { mutableStateOf<List<String>>(emptyList()) } // [태은-8.4] 이미지 URI 목록
+    var isReadOnly by remember { mutableStateOf(isViewOnly) }
+    var rating by remember { mutableStateOf(5) }
+    var reviewText by remember { mutableStateOf("") }
+    var selectedImageUris by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // [태은-8.4] 이미지 픽커 라운처 설정 (최대 10장)
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
     ) { uris ->
@@ -64,25 +69,35 @@ fun MatchReviewScreen(
         }
     }
 
-    // [태은-8.1] 진입 가드: DONE 상태가 아니면 차단 후 퇴출
+    LaunchedEffect(matchId, isViewOnly) {
+        if (isViewOnly) {
+            viewModel.loadReview(matchId)
+        }
+    }
+
     LaunchedEffect(matchStatus) {
-        if (matchStatus != "DONE") {
-            Toast.makeText(context, "완료된 봉사 활동만 후기를 작성할 수 있습니다.", Toast.LENGTH_SHORT).show()
+        if (!isViewOnly && matchStatus != "DONE") {
+            snackbarHostState.showSnackbar("완료된 봉사 활동만 후기를 작성할 수 있습니다.")
             onBack()
         }
     }
 
-    // 응답 결과 구독 파이프라인
     LaunchedEffect(uiState) {
         when (val state = uiState) {
             is ReviewUiState.Success -> {
-                Toast.makeText(context, "후기가 성공적으로 등록되었습니다! ⭐", Toast.LENGTH_SHORT).show()
-                viewModel.resetState()
-                onBack()
+                if (state.review != null) {
+                    rating = state.review.rating ?: 5
+                    reviewText = state.review.content ?: ""
+                } else {
+                    snackbarHostState.showSnackbar("후기가 성공적으로 반영되었습니다! ⭐")
+                    viewModel.resetState()
+                    onBack()
+                }
             }
             is ReviewUiState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                snackbarHostState.showSnackbar(state.message)
                 viewModel.resetState()
+                onBack()
             }
             else -> {}
         }
@@ -90,9 +105,15 @@ fun MatchReviewScreen(
 
     Scaffold(
         containerColor = BgC,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("봉사 후기 작성", fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextBlackC) },
+                title = {
+                    Text(
+                        text = if (!canEdit) "요청자가 남긴 후기" else if (isReadOnly) "작성한 후기 보기" else "후기 수정하기",
+                        fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextBlackC
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "뒤로", tint = TextBlackC)
@@ -110,9 +131,11 @@ fun MatchReviewScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // ── [태은-8.2] 점수 선택 ──
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("활동은 어떠셨나요?", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackC)
+                    Text(
+                        text = if (!canEdit) "요청자가 남긴 별점" else if (isReadOnly) "내가 남긴 별점" else "활동은 어떠셨나요?",
+                        fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackC
+                    )
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (i in 1..5) {
@@ -123,94 +146,107 @@ fun MatchReviewScreen(
                                 tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8E8E8),
                                 modifier = Modifier
                                     .size(42.dp)
-                                    .clickable { rating = i }
+                                    .clickable(enabled = !isReadOnly) { rating = i }
                             )
                         }
                     }
                 }
 
-                // ── [태은-8.3] 후기 본문 입력 구역 ──
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("정성스러운 후기를 남겨주세요", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackC)
+                    Text(
+                        text = if (!canEdit) "후기 상세 내용" else if (isReadOnly) "작성했던 후기 내용" else "정성스러운 후기를 남겨주세요",
+                        fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackC
+                    )
                     BasicTextField(
                         value = reviewText,
                         onValueChange = { reviewText = it },
+                        enabled = !isReadOnly,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(InputBgC)
+                            .background(if (isReadOnly) Color(0xFFF4F4F4) else InputBgC)
                             .border(1.dp, Gray300C, RoundedCornerShape(12.dp))
                             .padding(16.dp),
                         textStyle = androidx.compose.ui.text.TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC),
                         decorationBox = { innerTextField ->
                             if (reviewText.isEmpty()) {
-                                Text("여기에 내용을 입력해주세요. 작성해주신 후기는 상대방 프로필에 반영됩니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = PlaceholderC)
+                                Text("작성된 후기 내용이 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = PlaceholderC)
                             }
                             innerTextField()
                         }
                     )
                 }
 
-                // ── [태은-8.4] 인증 사진 첨부 구역 ──
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("인증 사진 첨부 (선택, 최대 10장)", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackC)
-
-                    // 👈 [버그 수정 완료] Row를 Column으로 변경하여 정렬 옵션 충돌을 해결했습니다!
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(InputBgC)
-                            .clickable {
-                                imagePickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            }
-                            .padding(vertical = 20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "사진 추가",
-                            tint = Brown700C,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Text(
-                            text = if (selectedImageUris.isEmpty()) "사진 추가하기" else "사진 ${selectedImageUris.size}장 선택됨",
-                            fontFamily = PretendardFamily,
-                            fontSize = 12.sp,
-                            color = Brown700C
-                        )
+                if (!isReadOnly) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("인증 사진 첨부 (선택, 최대 10장)", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackC)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(InputBgC)
+                                .clickable {
+                                    imagePickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                }
+                                .padding(vertical = 20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Add, contentDescription = "사진 추가", tint = Brown700C, modifier = Modifier.size(24.dp))
+                            Text(text = if (selectedImageUris.isEmpty()) "사진 추가하기" else "사진 ${selectedImageUris.size}장 선택됨", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700C)
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
 
-                // ── [태은-8.5] 후기 등록 버튼 ──
-                Button(
-                    onClick = {
-                        if (reviewText.isBlank()) {
-                            Toast.makeText(context, "후기 내용을 입력해 주세요.", Toast.LENGTH_SHORT).show()
-                            return@Button
+                if (isReadOnly) {
+                    if (canEdit) {
+                        Button(
+                            onClick = { isReadOnly = false },
+                            modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Brown700C),
+                            shape = RoundedCornerShape(26.dp)
+                        ) {
+                            Text("후기 수정하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
-                        viewModel.submitReview(matchId, rating, reviewText, selectedImageUris) {
-                            // 등록 액션 성공 콜백
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (reviewText.isBlank()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("후기 내용을 입력해 주세요.")
+                                }
+                                return@Button
+                            }
+                            if (isViewOnly) {
+                                viewModel.modifyReview(matchId, rating, reviewText) {
+                                    isReadOnly = true
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("후기가 깔끔하게 수정되었습니다! ✏️")
+                                    }
+                                }
+                            } else {
+                                viewModel.submitReview(matchId, rating, reviewText, selectedImageUris) {}
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Pink500C),
+                        shape = RoundedCornerShape(26.dp),
+                        enabled = uiState !is ReviewUiState.Loading
+                    ) {
+                        if (uiState is ReviewUiState.Loading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text(
+                                text = if (isViewOnly) "수정 완료하기" else "후기 등록하기",
+                                fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White
+                            )
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .shadow(2.dp, RoundedCornerShape(26.dp)),
-                    colors = ButtonDefaults.buttonColors(containerColor = Pink500C),
-                    shape = RoundedCornerShape(26.dp),
-                    enabled = uiState !is ReviewUiState.Loading
-                ) {
-                    if (uiState is ReviewUiState.Loading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                    } else {
-                        Text("후기 등록하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

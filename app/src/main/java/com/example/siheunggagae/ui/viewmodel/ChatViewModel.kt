@@ -107,7 +107,6 @@ class ChatViewModel(
         viewModelScope.launch {
             try {
                 val oldestMessageId = currentMessages.first().id
-                // 수정한 api.getChatMessages 파이프라인에 최상단 커서 ID 주입
                 val response = api.getChatMessages(mId, appId, beforeId = oldestMessageId)
 
                 if (response.isSuccessful && response.body() != null) {
@@ -171,7 +170,6 @@ class ChatViewModel(
         }
     }
 
-
     fun reportMessage(messageId: Int, targetUserId: Int, reason: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -183,6 +181,34 @@ class ChatViewModel(
                 )
                 val response = api.reportChatMessage(body)
                 onComplete(response.isSuccessful)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    /**
+     * ─── 🌟 [태은-10.4] 상대방 유저 영구 차단 (POST /users/me/blocks) ───
+     */
+    fun blockUser(targetUserId: Int, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                // TODO: 나중에 강문님이 백엔드 차단 엔드포인트 뚫어주시면 레포지토리 연동할 구역
+                onComplete(true)
+            } catch (e: Exception) {
+                onComplete(false)
+            }
+        }
+    }
+
+    /**
+     * ─── 🌟 [태은-10.2] 유저 자체 전역 신고하기 (POST /reports) ───
+     */
+    fun reportUser(targetUserId: Int, reason: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                // TODO: 나중에 강문님이 백엔드 유저 신고 엔드포인트 뚫어주시면 레포지토리 연동할 구역
+                onComplete(true)
             } catch (e: Exception) {
                 onComplete(false)
             }

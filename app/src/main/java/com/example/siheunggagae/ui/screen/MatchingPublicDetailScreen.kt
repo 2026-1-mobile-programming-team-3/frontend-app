@@ -1,9 +1,5 @@
 package com.example.siheunggagae.ui.screen
 
-import com.example.siheunggagae.R
-import com.example.siheunggagae.Screen
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -32,18 +27,22 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.R
+import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchDetailResponse
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -58,12 +59,13 @@ import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kakao.vectormap.MapView as KakaoNativeMapView
 import com.example.siheunggagae.MapViewWrapper
 import androidx.compose.runtime.DisposableEffect
-// 스펙 컬러
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
+import kotlinx.coroutines.launch
+
 private val Brown700P     = Color(0xFF8A6E58)
 private val Brown400P     = Color(0xFFC4A882)
 private val BrownBorderP  = Color(0xFFE8D3C2)
@@ -76,7 +78,7 @@ private val BackgroundP   = Color(0xFFFEFEFE)
 private val Gray300P      = Color(0xFFE8E8E8)
 private val TextBlackP    = Color(0xFF1E120A)
 private val Green600P     = Color(0xFF00A63E)
-private val Brown900C    = Color(0xFF614C3B)
+private val Brown900C     = Color(0xFF614C3B)
 
 @Composable
 fun MatchingPublicDetailScreen(
@@ -92,6 +94,8 @@ fun MatchingPublicDetailScreen(
     var showApplyDialog by remember { mutableStateOf(false) }
     var applyMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
@@ -99,25 +103,34 @@ fun MatchingPublicDetailScreen(
 
     Scaffold(
         containerColor = BackgroundP,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = { PublicDetailTopBar(onBack = onBack) },
         bottomBar = {
             if (uiState is MatchDetailUiState.Success) {
                 val state = uiState as MatchDetailUiState.Success
+                val currentStatus = state.detail.status?.trim()?.uppercase() ?: ""
                 val authorId = state.detail.author?.userId
                 val myUserId = viewModel?.currentUserId
                 val isMyRequest = authorId != null && authorId == myUserId
 
                 PublicDetailBottomBar(
+                    currentStatus = currentStatus,
                     isMyRequest = isMyRequest,
                     isApplied = viewModel?.isApplied ?: false,
-                    myApplicationStatus = viewModel?.myApplicationStatus ?: "", // 👈 뷰모델의 원본 상태 전달
+                    myApplicationStatus = viewModel?.myApplicationStatus ?: "",
                     onApply = { showApplyDialog = true },
                     onChat = {
-                        if (viewModel?.isApplied == true) {
-                            val applicationId = viewModel.myApplicationId ?: 0
-                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                        if (currentStatus == "DONE") {
+                            onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                         } else {
-                            android.widget.Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", android.widget.Toast.LENGTH_SHORT).show()
+                            if (viewModel?.isApplied == true) {
+                                val applicationId = viewModel.myApplicationId ?: 0
+                                onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                            } else {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
+                                }
+                            }
                         }
                     },
                     onManageRequest = {
@@ -163,11 +176,18 @@ fun MatchingPublicDetailScreen(
                             RequesterCard(
                                 authorNickname = request.author?.nickname ?: "요청자",
                                 onChat = {
-                                    if (viewModel?.isApplied == true) {
-                                        val applicationId = viewModel.myApplicationId ?: 0
-                                        onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                                    val currentStatus = request.status?.trim()?.uppercase() ?: ""
+                                    if (currentStatus == "DONE") {
+                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                                     } else {
-                                        android.widget.Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", android.widget.Toast.LENGTH_SHORT).show()
+                                        if (viewModel?.isApplied == true) {
+                                            val applicationId = viewModel.myApplicationId ?: 0
+                                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                                        } else {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
+                                            }
+                                        }
                                     }
                                 }
                             )
@@ -192,9 +212,11 @@ fun MatchingPublicDetailScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel?.applyForMatch(requestId, applyMessage) { success, msg ->
+                        viewModel?.applyForMatch(requestId, applyMessage) { _, msg ->
                             showApplyDialog = false
-                            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(msg)
+                            }
                         }
                     }) { Text("신청하기") }
                 },
@@ -205,8 +227,6 @@ fun MatchingPublicDetailScreen(
         }
     }
 }
-
-// ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PublicDetailTopBar(onBack: () -> Unit) {
@@ -244,8 +264,6 @@ private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     }
 }
 
-// ─── 상태 배너 ─────────────────────────────────────────────────────────────────
-
 @Composable
 private fun PublicStatusBanner(statusText: String) {
     Row(
@@ -256,8 +274,6 @@ private fun PublicStatusBanner(statusText: String) {
         Text(text = statusText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextBlackP)
     }
 }
-
-// ─── 요청 정보 Card ────────────────────────────────────────────────────────────
 
 @Composable
 private fun PublicRequestInfoCard(request: MatchDetailResponse) {
@@ -337,8 +353,6 @@ private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(bg)) { content() }
 }
 
-// ─── 경로 Row ──────────────────────────────────────────────────────────────────
-
 @Composable
 private fun PublicRouteRow(destination: String) {
     Row(
@@ -353,21 +367,16 @@ private fun PublicRouteRow(destination: String) {
     }
 }
 
-// ─── 경로 지도 Card ────────────────────────────────────────────────────────────
-
 @Composable
 fun PublicMapCard(
     latitude: Double?,
     longitude: Double?,
     placeName: String? = "목적지"
 ) {
-    // 1. 서버에서 좌표가 누락되어 올 경우를 대비한 시흥시청 안전빵(Fallback) 좌표 지정
     val lat = latitude ?: 37.3801
     val lng = longitude ?: 126.8029
-
     val context = LocalContext.current
 
-    // 2. 컴포즈 생명주기 동안 단 한 번만 생성되도록 Native MapView와 병화님 래퍼를 기억(remember)합니다.
     val nativeMapView = remember { KakaoNativeMapView(context) }
     val mapWrapper = remember(nativeMapView) { MapViewWrapper(nativeMapView) }
 
@@ -379,28 +388,24 @@ fun PublicMapCard(
             .background(Color(0xFFF4F4F4)),
         contentAlignment = Alignment.Center
     ) {
-        // 3. 🌟 [핵심] 네이티브 카카오 지도 뷰를 콤포즈 레이아웃 구조 내에 바인딩
         AndroidView(
             factory = { nativeMapView },
             modifier = Modifier.fillMaxSize(),
             update = { _ ->
-                // 지도가 아직 초기화되지 않았다면 병화님이 만든 세션 시스템 가동
                 if (!mapWrapper.hasBeenInitialized) {
-                    mapWrapper.init { kakaoMap ->
-                        // 지도 준비가 완료되면 카메라를 목적지로 슥 밀어주고 핀 꽂기
+                    mapWrapper.init { _ ->
                         mapWrapper.moveCamera(lat, lng, zoomLevel = 16)
                         mapWrapper.clearMarkers()
                         mapWrapper.addMarker(
                             id = "destination_marker",
                             lat = lat,
                             lng = lng,
-                            markerColor = 0xFFF04268.toInt(), // 우리 스펙인 Pink500D 색상 전달
-                            category = "HOSPITAL",           // 병화님 코드에 기재된 🏥 아이콘 강제 매핑
+                            markerColor = 0xFFF04268.toInt(),
+                            category = "HOSPITAL",
                             name = placeName ?: "목적지"
                         )
                     }
                 } else {
-                    // 이미 지도가 켜진 상태에서 뒤늦게 데이터가 갱신되어 들어올 때의 방어선
                     mapWrapper.moveCamera(lat, lng, zoomLevel = 16)
                     mapWrapper.clearMarkers()
                     mapWrapper.addMarker(
@@ -415,21 +420,19 @@ fun PublicMapCard(
             }
         )
 
-        // 4. 컴포저블 화면이 완전히 파괴되거나 빠져나갈 때 메모리 누수 방지 처리
         DisposableEffect(nativeMapView) {
             onDispose {
                 runCatching { mapWrapper.pause() }
             }
         }
 
-        // 좌하단 기존 "지도에서 보기" 안내 레이어 오버레이 유지
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(12.dp)
                 .clip(RoundedCornerShape(50.dp))
                 .background(Color.White)
-                .clickable { /* 탭 시 병화님의 풀스크린 지도 화면으로 넘겨주는 내비게이션 연동 가능 */ }
+                .clickable { }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -439,8 +442,6 @@ fun PublicMapCard(
         }
     }
 }
-
-// ─── 요청자 정보 Card ──────────────────────────────────────────────────────────
 
 @Composable
 private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
@@ -463,18 +464,17 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Icon(painter = painterResource(R.drawable.ic_chat_bubble), null, tint = Brown700P, modifier = Modifier.size(14.dp))
-            Text(text = "채팅", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
+            Text(text = "채팅 / 후기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
         }
     }
 }
 
-// ─── 🌟 하단 고정 버튼 바 [수정 완료 구역] ─────────────────────────────────────────
-
 @Composable
 private fun PublicDetailBottomBar(
+    currentStatus: String,
     isMyRequest: Boolean,
     isApplied: Boolean,
-    myApplicationStatus: String, // 👈 추가된 파라미터
+    myApplicationStatus: String,
     onApply: () -> Unit,
     onChat: () -> Unit,
     onManageRequest: () -> Unit
@@ -489,7 +489,6 @@ private fun PublicDetailBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
-            // 1️⃣ 내가 요청자(글쓴이)일 때의 제어 바
             isMyRequest -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -499,7 +498,15 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 2️⃣ 🌟 [신규 방어] 뷰모델에서 인지한 거절(REJECTED) 유저 차단 마감
+            currentStatus == "DONE" -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Brown700P).clickable { onChat() },
+                ) {
+                    Text(text = "요청자가 작성한 후기 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+
             myApplicationStatus == "REJECTED" -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -509,7 +516,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 3️⃣ 🌟 [신규 방어] 뷰모델에서 인지한 취소(CANCELED) 유저 차단 마감
             myApplicationStatus == "CANCELED" -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -519,7 +525,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 4️⃣ 아직 신청하지 않은 깨끗한 봉사자 시점
             !isApplied -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -536,7 +541,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 5️⃣ 정상 수락 대기중(PENDING)이거나 확정(ACCEPTED)된 봉사자 시점
             else -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -554,8 +558,6 @@ private fun PublicDetailBottomBar(
         }
     }
 }
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

@@ -193,8 +193,9 @@ sealed class Screen(val route: String) {
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: String) = "news_detail/$newsId"
     }
-    object MatchReview     : Screen("match_review?matchId={matchId}&status={status}") {
-        fun createRoute(matchId: Int, status: String) = "match_review?matchId=$matchId&status=$status"
+    object MatchReview : Screen("match_review?matchId={matchId}&status={status}&isViewOnly={isViewOnly}&canEdit={canEdit}") {
+        fun createRoute(matchId: Int, status: String, isViewOnly: Boolean = false, canEdit: Boolean = false) =
+            "match_review?matchId=$matchId&status=$status&isViewOnly=$isViewOnly&canEdit=$canEdit"
     }
     object PetHotelCompare : Screen("pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}") {
         const val ARG_LAT = "lat"
@@ -787,11 +788,15 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             route = Screen.MatchReview.route,
             arguments = listOf(
                 navArgument("matchId") { type = NavType.IntType; defaultValue = -1 },
-                navArgument("status") { type = NavType.StringType; defaultValue = "" }
+                navArgument("status") { type = NavType.StringType; defaultValue = "" },
+                navArgument("isViewOnly") { type = NavType.BoolType; defaultValue = false },
+                navArgument("canEdit") { type = NavType.BoolType; defaultValue = false }
             )
         ) { backStackEntry ->
             val matchId = backStackEntry.arguments?.getInt("matchId") ?: -1
             val status = backStackEntry.arguments?.getString("status") ?: ""
+            val isViewOnly = backStackEntry.arguments?.getBoolean("isViewOnly") ?: false
+            val canEdit = backStackEntry.arguments?.getBoolean("canEdit") ?: false
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
 
             val reviewViewModel: MatchReviewViewModel = viewModel(
@@ -801,6 +806,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             MatchReviewScreen(
                 matchId = matchId,
                 matchStatus = status,
+                isViewOnly = isViewOnly,
+                canEdit = canEdit,
                 viewModel = reviewViewModel,
                 onBack = { navController.popBackStack() }
             )
