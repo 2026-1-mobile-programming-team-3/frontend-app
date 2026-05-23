@@ -1,10 +1,20 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,11 +24,27 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -32,11 +58,12 @@ import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
+import kotlinx.coroutines.launch
 
-// 스펙 컬러
 private val Brown700D = Color(0xFF8A6E58)
 private val Brown400D = Color(0xFFC4A882)
 private val Orange500D = Color(0xFFF7A35B)
@@ -58,8 +85,9 @@ fun MatchingDetailScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // 🌟 [신규 장치] MatchingScreen과 동일한 로컬 프리퍼런스 장부 연결
     val prefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -82,9 +110,10 @@ fun MatchingDetailScreen(
             }
         }
     }
+
     LaunchedEffect(uiState) {
         if (uiState is MatchDetailUiState.DeleteSuccess) {
-            Toast.makeText(context, "성공적으로 삭제되었습니다.", Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar("성공적으로 삭제되었습니다.")
             viewModel.resetState()
             onBack()
         }
@@ -117,7 +146,9 @@ fun MatchingDetailScreen(
                     showCancelDialog = false
                     if (appIdToCancel != -1) {
                         viewModel.cancelAcceptedMatching(requestId, appIdToCancel) {
-                            Toast.makeText(context, "매칭이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("매칭이 취소되었습니다.")
+                            }
                         }
                     }
                 }) { Text("매칭 취소", color = Pink500D, fontWeight = FontWeight.Bold) }
@@ -127,7 +158,6 @@ fun MatchingDetailScreen(
             }
         )
     }
-
 
     if (showReviewDialog) {
         AlertDialog(
@@ -152,6 +182,7 @@ fun MatchingDetailScreen(
 
     Scaffold(
         containerColor = BackgroundD,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             val isMenuOwner = requestData?.author?.userId == viewModel.currentUserId
             val currentStatus = requestData?.status?.trim()?.uppercase() ?: ""
@@ -306,11 +337,8 @@ fun MatchingDetailScreen(
                 is MatchDetailUiState.Error -> Text(text = detailState.message, color = Pink500D, fontFamily = PretendardFamily, modifier = Modifier.align(Alignment.Center))
                 is MatchDetailUiState.Success -> {
                     val request = detailState.detail
-
-                    // 🌟 [양방향 차단 핵심 변경 기믹]
                     val blockedUsers = prefs.getStringSet("blocked_users", emptySet()) ?: emptySet()
 
-                    // 기존 지원자 목록 가져오기 파이프라인
                     val originalList = if (request.status?.trim()?.uppercase() == "DONE") {
                         viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
                     } else {
@@ -320,7 +348,6 @@ fun MatchingDetailScreen(
                         }
                     }
 
-                    // 🌟 [필터 연동] 내가 차단 장부에 넣은 '봉사자'의 신청서는 명단에서 흔적도 없이 삭제!
                     val displayList = originalList.filter { it.applicant?.nickname !in blockedUsers }
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {

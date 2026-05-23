@@ -1,8 +1,5 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
-import com.example.siheunggagae.R
-import com.example.siheunggagae.Screen
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,16 +14,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.MoreVert // 🌟 더보기 아이콘 추가
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton // 🌟 아이콘버튼 추가
-import androidx.compose.material3.ModalBottomSheet // 🌟 바텀시트 스펙 추가
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -42,12 +40,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.R
+import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.ChatMessageItem
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.ChatUiState
 import com.example.siheunggagae.ui.viewmodel.ChatViewModel
+import kotlinx.coroutines.launch
 
 private val BgC          = Color(0xFFFFFFFF)
 private val TextBlackC   = Color(0xFF1F130B)
@@ -61,7 +63,7 @@ private val Gray300C     = Color(0xFFE9E9E9)
 private val InputBgC     = Color(0xFFF3F3F3)
 private val PlaceholderC = Color(0xFFC1AFA0)
 
-@OptIn(ExperimentalMaterial3Api::class) // 🌟 바텀시트 가동을 위한 옵트인 지정
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     matchId: Int,
@@ -74,17 +76,17 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // ─── 🌟 [신고/차단 인터랙션 제어 플래그 세트] ───
-    var showReportDialog by remember { mutableStateOf(false) } // 메시지 롱클릭 신고 팝업
+    var showReportDialog by remember { mutableStateOf(false) }
     var targetMsgId by remember { mutableStateOf(-1) }
     var targetSenderId by remember { mutableStateOf(-1) }
     var reportReason by remember { mutableStateOf("") }
 
-    // ─── 🌟 [태은-10 신규 기능 제어 변수] ───
-    var showTopMenuBottomSheet by remember { mutableStateOf(false) } // 상단 ⋮ 버튼 바텀시트
-    var showBlockConfirmDialog by remember { mutableStateOf(false) } // 차단 알림 팝업
-    var showUserReportDialog by remember { mutableStateOf(false) }   // 유저 전역 신고 팝업
+    var showTopMenuBottomSheet by remember { mutableStateOf(false) }
+    var showBlockConfirmDialog by remember { mutableStateOf(false) }
+    var showUserReportDialog by remember { mutableStateOf(false) }
     var userReportReason by remember { mutableStateOf("") }
 
     LaunchedEffect(matchId, applicationId) {
@@ -103,6 +105,7 @@ fun ChatScreen(
 
     Scaffold(
         containerColor = BgC,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             val state = uiState as? ChatUiState.Success
             val isAlreadyAccepted = state?.matchDetail?.status != null && state.matchDetail.status != "WAITING"
@@ -114,7 +117,7 @@ fun ChatScreen(
                 onBack = onBack,
                 onAcceptClick = { viewModel.acceptVolunteer { onBack() } },
                 onCancelClick = { viewModel.cancelVolunteer { onBack() } },
-                onMenuClick = { showTopMenuBottomSheet = true } // 🌟 ⋮ 누르면 바텀시트 트리거 오픈!
+                onMenuClick = { showTopMenuBottomSheet = true }
             )
         },
         bottomBar = {
@@ -192,7 +195,6 @@ fun ChatScreen(
             }
         }
 
-        // ─── 🌟 [태은-10.1] 우측 상단 ⋮ 메뉴 전용 바텀시트 제어 기믹 ───
         if (showTopMenuBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showTopMenuBottomSheet = false },
@@ -229,7 +231,6 @@ fun ChatScreen(
             }
         }
 
-        // ─── 🌟 [태은-10.4] 차단 확인 다이얼로그 가드 시스템 (1단계 조치 완료 구역) ───
         if (showBlockConfirmDialog) {
             val state = uiState as? ChatUiState.Success
             val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
@@ -244,17 +245,20 @@ fun ChatScreen(
                             viewModel.blockUser(opponentId) { success ->
                                 showBlockConfirmDialog = false
                                 if (success) {
-                                    // 🌟 [1단계 핵심 장치] siheung_gagae_prefs 파일 장부에 차단된 유저 닉네임을 차곡차곡 누적 적재합니다.
                                     val siheungPrefs = context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE)
                                     val blockedSet = siheungPrefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
 
                                     state?.opponentNickname?.let { blockedSet.add(it) }
                                     siheungPrefs.edit().putStringSet("blocked_users", blockedSet).apply()
 
-                                    Toast.makeText(context, "성공적으로 차단되었습니다.", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("성공적으로 차단되었습니다.")
+                                    }
                                     onBack()
                                 } else {
-                                    Toast.makeText(context, "차단 처리에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("차단 처리에 실패했습니다.")
+                                    }
                                 }
                             }
                         }
@@ -266,7 +270,6 @@ fun ChatScreen(
             )
         }
 
-        // ─── 🌟 [태은-10.2] 유저 자체 전역 신고 다이얼로그 시스템 ───
         if (showUserReportDialog) {
             val state = uiState as? ChatUiState.Success
             val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
@@ -293,10 +296,14 @@ fun ChatScreen(
                                     showUserReportDialog = false
                                     userReportReason = ""
                                     val alert = if (success) "유저 신고 접수가 정상 처리되었습니다." else "신고 처리에 실패했습니다."
-                                    Toast.makeText(context, alert, Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(alert)
+                                    }
                                 }
                             } else {
-                                Toast.makeText(context, "신고 사유를 작성해 주세요.", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("신고 사유를 작성해 주세요.")
+                                }
                             }
                         }
                     ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }
@@ -310,7 +317,6 @@ fun ChatScreen(
             )
         }
 
-        // ─── 메시지 롱클릭 신고 모달 다이얼로그 시스템 (기존 유지) ───
         if (showReportDialog) {
             AlertDialog(
                 onDismissRequest = { showReportDialog = false },
@@ -334,10 +340,14 @@ fun ChatScreen(
                                     showReportDialog = false
                                     reportReason = ""
                                     val alert = if (success) "정상적으로 신고 접수되었습니다." else "신고 처리에 실패했습니다."
-                                    Toast.makeText(context, alert, Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(alert)
+                                    }
                                 }
                             } else {
-                                Toast.makeText(context, "사유를 반드시 입력해주세요.", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("사유를 반드시 입력해주세요.")
+                                }
                             }
                         }
                     ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }

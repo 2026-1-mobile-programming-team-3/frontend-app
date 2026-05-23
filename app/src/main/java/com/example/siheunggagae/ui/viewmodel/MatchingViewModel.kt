@@ -20,13 +20,12 @@ class MatchingViewModel(private val repository: MatchRepository) : ViewModel() {
     val uiState: StateFlow<MatchingUiState> = _uiState
 
     init {
-        fetchMatches() // 뷰모델이 생성될 때 자동으로 전체 목록 불러오기
+        fetchMatches()
     }
 
     fun fetchMatches(status: String? = null) {
         viewModelScope.launch {
             _uiState.value = MatchingUiState.Loading
-            // status가 "ALL"이면 null로 변환해서 전체 조회
             val apiStatus = if (status == "ALL") null else status
 
             repository.getMatchList(status = apiStatus)

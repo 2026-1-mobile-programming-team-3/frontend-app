@@ -1,6 +1,5 @@
 package com.example.siheunggagae.ui.screen
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,10 +37,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,8 +63,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.kakao.vectormap.MapView as KakaoNativeMapView
 import com.example.siheunggagae.MapViewWrapper
 import androidx.compose.runtime.DisposableEffect
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
+import kotlinx.coroutines.launch
 
-// 스펙 컬러
 private val Brown700P     = Color(0xFF8A6E58)
 private val Brown400P     = Color(0xFFC4A882)
 private val BrownBorderP  = Color(0xFFE8D3C2)
@@ -91,6 +94,8 @@ fun MatchingPublicDetailScreen(
     var showApplyDialog by remember { mutableStateOf(false) }
     var applyMessage by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
@@ -98,11 +103,11 @@ fun MatchingPublicDetailScreen(
 
     Scaffold(
         containerColor = BackgroundP,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = { PublicDetailTopBar(onBack = onBack) },
         bottomBar = {
             if (uiState is MatchDetailUiState.Success) {
                 val state = uiState as MatchDetailUiState.Success
-                // 🌟 [수정] 매칭 전체의 모집/완료 상태 데이터 추출
                 val currentStatus = state.detail.status?.trim()?.uppercase() ?: ""
                 val authorId = state.detail.author?.userId
                 val myUserId = viewModel?.currentUserId
@@ -115,7 +120,6 @@ fun MatchingPublicDetailScreen(
                     myApplicationStatus = viewModel?.myApplicationStatus ?: "",
                     onApply = { showApplyDialog = true },
                     onChat = {
-                        // 🌟 완료 상태일 때 누르면 후기 페이지로 보내고, 아닐 때만 기존 채팅 프로세스 가동
                         if (currentStatus == "DONE") {
                             onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                         } else {
@@ -123,7 +127,9 @@ fun MatchingPublicDetailScreen(
                                 val applicationId = viewModel.myApplicationId ?: 0
                                 onNavigate(Screen.Chat.createRoute(requestId, applicationId))
                             } else {
-                                Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
+                                }
                             }
                         }
                     },
@@ -178,7 +184,9 @@ fun MatchingPublicDetailScreen(
                                             val applicationId = viewModel.myApplicationId ?: 0
                                             onNavigate(Screen.Chat.createRoute(requestId, applicationId))
                                         } else {
-                                            Toast.makeText(context, "봉사 신청 후 채팅이 가능합니다!", Toast.LENGTH_SHORT).show()
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
+                                            }
                                         }
                                     }
                                 }
@@ -206,7 +214,9 @@ fun MatchingPublicDetailScreen(
                     TextButton(onClick = {
                         viewModel?.applyForMatch(requestId, applyMessage) { _, msg ->
                             showApplyDialog = false
-                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            scope.launch {
+                                snackbarHostState.showSnackbar(msg)
+                            }
                         }
                     }) { Text("신청하기") }
                 },
@@ -217,8 +227,6 @@ fun MatchingPublicDetailScreen(
         }
     }
 }
-
-// ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PublicDetailTopBar(onBack: () -> Unit) {
@@ -256,8 +264,6 @@ private fun PublicTopBarIcon(iconRes: Int, desc: String) {
     }
 }
 
-// ─── 상태 배너 ─────────────────────────────────────────────────────────────────
-
 @Composable
 private fun PublicStatusBanner(statusText: String) {
     Row(
@@ -268,8 +274,6 @@ private fun PublicStatusBanner(statusText: String) {
         Text(text = statusText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextBlackP)
     }
 }
-
-// ─── 요청 정보 Card ────────────────────────────────────────────────────────────
 
 @Composable
 private fun PublicRequestInfoCard(request: MatchDetailResponse) {
@@ -349,8 +353,6 @@ private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(bg)) { content() }
 }
 
-// ─── 경로 Row ──────────────────────────────────────────────────────────────────
-
 @Composable
 private fun PublicRouteRow(destination: String) {
     Row(
@@ -364,8 +366,6 @@ private fun PublicRouteRow(destination: String) {
         Text(text = destination, fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
-
-// ─── 경로 지도 Card ────────────────────────────────────────────────────────────
 
 @Composable
 fun PublicMapCard(
@@ -443,8 +443,6 @@ fun PublicMapCard(
     }
 }
 
-// ─── 요청자 정보 Card ──────────────────────────────────────────────────────────
-
 @Composable
 private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
     Row(
@@ -471,11 +469,9 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
     }
 }
 
-// ─── 🌟 하단 고정 버튼 바 [완벽 수정 완료] ─────────────────────────────────────────
-
 @Composable
 private fun PublicDetailBottomBar(
-    currentStatus: String, // 🌟 상위에서 주입받은 매칭의 진짜 상태 스펙
+    currentStatus: String,
     isMyRequest: Boolean,
     isApplied: Boolean,
     myApplicationStatus: String,
@@ -493,7 +489,6 @@ private fun PublicDetailBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
-            // 1️⃣ 내가 요청자(글쓴이)일 때의 제어 바
             isMyRequest -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -503,7 +498,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 🌟 [최우선 가드 추가] 매칭 전체 상태가 DONE(완료)일 때 봉사자 시물레이션 차단 가로채기
             currentStatus == "DONE" -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -513,7 +507,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 2️⃣ 뷰모델에서 인지한 거절(REJECTED) 유저 차단 마감
             myApplicationStatus == "REJECTED" -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -523,7 +516,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 3️⃣ 뷰모델에서 인지한 취소(CANCELED) 유저 차단 마감
             myApplicationStatus == "CANCELED" -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -533,7 +525,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 4️⃣ 아직 신청하지 않은 깨끗한 봉사자 시점
             !isApplied -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -550,7 +541,6 @@ private fun PublicDetailBottomBar(
                 }
             }
 
-            // 5️⃣ 정상 수락 대기중(PENDING)이거나 확정(ACCEPTED)된 봉사자 시점
             else -> {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -568,8 +558,6 @@ private fun PublicDetailBottomBar(
         }
     }
 }
-
-// ─── Preview ───────────────────────────────────────────────────────────────────
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable

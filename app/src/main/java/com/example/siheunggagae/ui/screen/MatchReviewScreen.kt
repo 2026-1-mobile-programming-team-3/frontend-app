@@ -1,7 +1,6 @@
 package com.example.siheunggagae.ui.screen
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,9 +27,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchReviewViewModel
 import com.example.siheunggagae.ui.viewmodel.ReviewUiState
+import kotlinx.coroutines.launch
 
 private val BgC          = Color(0xFFFFFFFF)
 private val TextBlackC   = Color(0xFF1F130B)
@@ -46,12 +47,14 @@ fun MatchReviewScreen(
     matchId: Int,
     matchStatus: String,
     isViewOnly: Boolean = false,
-    canEdit: Boolean = false, // 🌟 [신규 가드] 수정 권한 여부 추가 (요청자만 true로 들어옴)
+    canEdit: Boolean = false,
     viewModel: MatchReviewViewModel,
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var isReadOnly by remember { mutableStateOf(isViewOnly) }
     var rating by remember { mutableStateOf(5) }
@@ -74,7 +77,7 @@ fun MatchReviewScreen(
 
     LaunchedEffect(matchStatus) {
         if (!isViewOnly && matchStatus != "DONE") {
-            Toast.makeText(context, "완료된 봉사 활동만 후기를 작성할 수 있습니다.", Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar("완료된 봉사 활동만 후기를 작성할 수 있습니다.")
             onBack()
         }
     }
@@ -86,15 +89,15 @@ fun MatchReviewScreen(
                     rating = state.review.rating ?: 5
                     reviewText = state.review.content ?: ""
                 } else {
-                    Toast.makeText(context, "후기가 성공적으로 반영되었습니다! ⭐", Toast.LENGTH_SHORT).show()
+                    snackbarHostState.showSnackbar("후기가 성공적으로 반영되었습니다! ⭐")
                     viewModel.resetState()
                     onBack()
                 }
             }
             is ReviewUiState.Error -> {
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                snackbarHostState.showSnackbar(state.message)
                 viewModel.resetState()
-                onBack() // 아까 추가했던 안전장치 유지
+                onBack()
             }
             else -> {}
         }
@@ -102,11 +105,11 @@ fun MatchReviewScreen(
 
     Scaffold(
         containerColor = BgC,
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        // 🌟 상단 타이틀도 수정 권한에 따라 유연하게 매핑 변경
                         text = if (!canEdit) "요청자가 남긴 후기" else if (isReadOnly) "작성한 후기 보기" else "후기 수정하기",
                         fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextBlackC
                     )
@@ -215,13 +218,17 @@ fun MatchReviewScreen(
                     Button(
                         onClick = {
                             if (reviewText.isBlank()) {
-                                Toast.makeText(context, "후기 내용을 입력해 주세요.", Toast.LENGTH_SHORT).show()
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("후기 내용을 입력해 주세요.")
+                                }
                                 return@Button
                             }
                             if (isViewOnly) {
                                 viewModel.modifyReview(matchId, rating, reviewText) {
                                     isReadOnly = true
-                                    Toast.makeText(context, "후기가 깔끔하게 수정되었습니다! ✏️", Toast.LENGTH_SHORT).show()
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("후기가 깔끔하게 수정되었습니다! ✏️")
+                                    }
                                 }
                             } else {
                                 viewModel.submitReview(matchId, rating, reviewText, selectedImageUris) {}
