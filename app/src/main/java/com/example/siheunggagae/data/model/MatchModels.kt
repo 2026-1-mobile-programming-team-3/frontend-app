@@ -7,6 +7,7 @@ import com.google.gson.annotations.SerializedName
 data class MatchCreateRequest(
     val title: String,
     val content: String,
+    val category: MatchCategory,           // 신규 필수 (백엔드 §2)
     val latitude: Float,
     val longitude: Float,
     val address: String? = null,
@@ -24,6 +25,7 @@ data class MatchCreateResponse(
 data class MatchUpdateRequest(
     val title: String? = null,
     val content: String? = null,
+    val category: MatchCategory? = null,   // 신규 옵셔널 (백엔드 §3)
     val latitude: Float? = null,
     val longitude: Float? = null,
     val address: String? = null,
@@ -31,6 +33,11 @@ data class MatchUpdateRequest(
     @com.google.gson.annotations.SerializedName("desired_time") val desiredTime: String? = null,
     val petId: Int? = null,
 )
+
+enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER, OTHER }
+
+/** 봉사자 자격(VOLUNTEER role) 보유자만 작성 가능한 카테고리. 백엔드 확정: VOLUNTEER 단일. */
+fun MatchCategory.requiresVolunteerRole(): Boolean = this == MatchCategory.VOLUNTEER
 
 data class MatchListItem(
     @SerializedName("match_id") val matchId: Int? = null,
@@ -48,6 +55,12 @@ data class MatchListItem(
     @SerializedName("unread_message_count") val unreadMessageCount: Int = 0,
     @SerializedName("my_application_status") val myApplicationStatus: String? = null,
     @SerializedName("received_rating") val receivedRating: Int? = null,
+    // ── 신규 (매칭 화면 개선) ──
+    val category: MatchCategory? = null,
+    @SerializedName(value = "author_user_id", alternate = ["authorUserId"])
+    val authorUserId: Int? = null,
+    @SerializedName(value = "distance_m", alternate = ["distanceM"])
+    val distanceM: Double? = null,
 )
 
 data class MatchListResponse(
@@ -84,6 +97,7 @@ data class MatchDetailResponse(
     val status: String? = null,
     val applicationsCount: Int? = null,
     val createdAt: String? = null,
+    val category: MatchCategory? = null,
 )
 
 data class MatchStatusUpdateRequest(

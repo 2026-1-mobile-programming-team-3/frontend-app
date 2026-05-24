@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -68,7 +71,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.platform.LocalContext
 import com.example.siheunggagae.R
+import com.example.siheunggagae.data.local.CurrentUserStore
+import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -107,7 +113,7 @@ data class SearchPlaceItem(
     val longitude: Float
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RequestFlowScreen(
     viewModel: RequestViewModel,
@@ -116,12 +122,16 @@ fun RequestFlowScreen(
     onComplete: () -> Unit = {},
     onAddPet: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val isVolunteer = remember { CurrentUserStore(context).isVolunteer() }
+
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
     var currentStep by remember { mutableStateOf(1) }
     var selectedPetId by remember { mutableStateOf<Int?>(viewModel.selectedPetId) }
+    var selectedCategory by remember { mutableStateOf<MatchCategory?>(viewModel.selectedCategory) }
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDay by remember { mutableStateOf<Int?>(null) }
@@ -175,7 +185,7 @@ fun RequestFlowScreen(
     }
 
     val isNextEnabled = when (currentStep) {
-        1 -> selectedPetId != null
+        1 -> selectedPetId != null && selectedCategory != null
         2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
         else -> titleInput.isNotBlank() && destination.isNotBlank() && memo.isNotBlank()
     }
@@ -256,7 +266,13 @@ fun RequestFlowScreen(
                     uiState = uiState,
                     selectedPetId = selectedPetId,
                     onSelectPet = { selectedPetId = it },
-                    onAddPet = onAddPet
+                    onAddPet = onAddPet,
+                    selectedCategory = selectedCategory,
+                    isVolunteer = isVolunteer,
+                    onSelectCategory = {
+                        selectedCategory = it
+                        viewModel.setCategory(it)
+                    }
                 )
                 2 -> Step2Content(
                     currentMonth = currentMonth,
@@ -398,7 +414,10 @@ private fun Step1Content(
     uiState: RequestUiState,
     selectedPetId: Int?,
     onSelectPet: (Int) -> Unit,
-    onAddPet: () -> Unit = {}
+    onAddPet: () -> Unit = {},
+    selectedCategory: MatchCategory?,
+    isVolunteer: Boolean,
+    onSelectCategory: (MatchCategory) -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
@@ -446,6 +465,110 @@ private fun Step1Content(
             }
             else -> {}
         }
+
+        Spacer(Modifier.height(28.dp))
+        CategorySelector(
+            selected = selectedCategory,
+            isVolunteer = isVolunteer,
+            onSelect = onSelectCategory,
+        )
+    }
+}
+
+// ─── 카테고리 칩 selector ──────────────────────────────────────────────────────
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategorySelector(
+    selected: MatchCategory?,
+    isVolunteer: Boolean,
+    onSelect: (MatchCategory) -> Unit,
+) {
+    Column {
+        Text(
+            text = "어떤 도움이 필요하신가요?",
+            fontFamily = PretendardFamily,
+            color = TextBlack,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.ExtraBold,
+        )
+        Spacer(Modifier.height(12.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CategoryFormChip(MatchCategory.WALK, "산책동행", R.drawable.ic_paw, selected == MatchCategory.WALK, enabled = true) { onSelect(MatchCategory.WALK) }
+            CategoryFormChip(MatchCategory.VET, "병원동행", R.drawable.ic_stethoscope, selected == MatchCategory.VET, enabled = true) { onSelect(MatchCategory.VET) }
+            CategoryFormChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING, enabled = true) { onSelect(MatchCategory.SHOPPING) }
+            CategoryFormChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE, enabled = true) { onSelect(MatchCategory.MOVE) }
+            CategoryFormChip(MatchCategory.OTHER, "기타", R.drawable.ic_users, selected == MatchCategory.OTHER, enabled = true) { onSelect(MatchCategory.OTHER) }
+            CategoryFormChip(
+                cat = MatchCategory.VOLUNTEER,
+                label = "봉사 (자격 필요)",
+                iconRes = R.drawable.ic_award,
+                selected = selected == MatchCategory.VOLUNTEER,
+                enabled = isVolunteer,
+            ) { if (isVolunteer) onSelect(MatchCategory.VOLUNTEER) }
+        }
+        if (!isVolunteer) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "봉사 카테고리는 봉사자 자격 보유자만 사용할 수 있어요",
+                fontFamily = PretendardFamily,
+                color = Brown700F,
+                fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryFormChip(
+    cat: MatchCategory,
+    label: String,
+    iconRes: Int,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = when {
+        selected -> Brown900F
+        !enabled -> Color(0xFFF4F4F4)
+        else     -> Color.White
+    }
+    val fg = when {
+        selected -> Color.White
+        !enabled -> Color(0xFFC1AEA0)
+        else     -> Brown900F
+    }
+    val border = when {
+        selected -> Brown900F
+        !enabled -> Color(0xFFE0E0E0)
+        else     -> BrownBorderF
+    }
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50.dp))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(50.dp))
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = fg,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontFamily = PretendardFamily,
+            color = fg,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+        )
     }
 }
 

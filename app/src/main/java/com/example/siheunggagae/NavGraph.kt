@@ -641,21 +641,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Matching.route) {
-            // 뷰모델 생성 및 주입
             val context = LocalContext.current
-            val app = context.applicationContext as SiheungGagaeApp
-            val api = com.example.siheunggagae.data.network.RetrofitClient.api // Retrofit 설정에 맞게 수정 필요
+            val locationProvider = remember { com.example.siheunggagae.data.location.LocationProvider(context) }
+            val locationPermission = com.example.siheunggagae.ui.util.rememberLocationPermissionState()
+            val currentUserStore = remember { com.example.siheunggagae.data.local.CurrentUserStore(context) }
+            val currentUserId = currentUserStore.userId()
+            val currentUserNickname = currentUserStore.nickname()
+
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
             val repository = remember { com.example.siheunggagae.data.repository.MatchRepository(api) }
             val viewModel: com.example.siheunggagae.ui.viewmodel.MatchingViewModel = viewModel(
-                factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(repository)
+                factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(
+                    repository = repository,
+                    isCurrentUserVolunteer = { currentUserStore.isVolunteer() },
+                    getCurrentLocation = {
+                        if (locationPermission.hasPermission) {
+                            val loc = kotlinx.coroutines.runBlocking { locationProvider.getLocationOrNull() }
+                            loc?.let { it.latitude to it.longitude }
+                        } else null
+                    },
+                )
             )
 
             MatchingScreen(
-                viewModel = viewModel, // 추가된 부분!
-                onMyRequests = { navController.navigate(Screen.MyRequests.route) },
+                viewModel = viewModel,
+                onMyRequestsClick = { navController.navigate(Screen.MyRequests.route) },
                 onRequestFlowClick = { navController.navigate(Screen.RequestFlow.route) },
-                onCardClick = { requestId -> navController.navigate(Screen.MatchingPublicDetail.createRoute(requestId)) },
-                onNavigate = { route -> navController.navigateTab(route) },
+                onCardClick = { matchId, isMine ->
+                    if (isMine) {
+                        navController.navigate(Screen.MatchingDetail.createRoute(matchId))
+                    } else {
+                        navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
+                    }
+                },
+                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+                onSearchClick = { /* no-op */ },
+                locationAvailable = locationPermission.hasPermission,
+                currentUserId = currentUserId,
+                currentUserNickname = currentUserNickname,
             )
         }
 
@@ -994,6 +1017,14 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 }
             }
 
+            // CurrentUserStore 캐싱 — 매칭 화면에서 본인 식별 / 봉사자 안내 트리거에 사용
+            val myUserStore = remember { com.example.siheunggagae.data.local.CurrentUserStore(myContext) }
+            val myUiState by myViewModel.uiState.collectAsState()
+            LaunchedEffect(myUiState) {
+                val me = (myUiState as? com.example.siheunggagae.ui.viewmodel.MyUiState.Success)?.user
+                if (me != null) myUserStore.save(me)
+            }
+
             MyScreen(
                 viewModel = myViewModel,
                 localImageUri = localImageUri,
@@ -1011,7 +1042,10 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onPrivacyClick = { navController.navigate("${Screen.Settings.route}?section=privacy") },
                 onHelpClick = { navController.navigate(Screen.Help.route) },
                 onLogout = {
-                    myScope.launch { myAuthRepo.logout() }
+                    myScope.launch {
+                        myAuthRepo.logout()
+                        com.example.siheunggagae.data.local.CurrentUserStore(myContext).clear()
+                    }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -1062,7 +1096,10 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onBlockManageClick = { navController.navigate(Screen.BlockManage.route) },
                 onHelpClick = { navController.navigate(Screen.Help.route) },
                 onAccountDeleted = {
-                    settingsScope.launch { settingsAuthRepo.logout() }
+                    settingsScope.launch {
+                        settingsAuthRepo.logout()
+                        com.example.siheunggagae.data.local.CurrentUserStore(settingsContext).clear()
+                    }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
                     }
