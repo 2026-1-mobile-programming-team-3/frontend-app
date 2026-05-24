@@ -29,12 +29,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -103,6 +106,7 @@ private fun categoryImageBg(category: String?) = when (categoryToKorean(category
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(
     unreadCount: Int = 0,
@@ -112,15 +116,19 @@ fun NewsScreen(
     onNavigate: (String) -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
     var newsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf("전체") }
     var showSearch by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0) isRefreshing = true else isLoading = true
         newsList = runCatching {
             RetrofitClient.api.getNews().body()?.news ?: emptyList()
         }.getOrDefault(emptyList())
         isLoading = false
+        isRefreshing = false
     }
 
     val filteredList = remember(selectedCategory, newsList) {
@@ -133,6 +141,11 @@ fun NewsScreen(
             // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { refreshKey++ },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                 if (isLoading) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -210,8 +223,9 @@ fun NewsScreen(
                             Spacer(Modifier.height(8.dp))
                         }
                     }
-                }
-            }
+                    }  // end LazyColumn
+                }  // end else (isLoading)
+                }  // end PullToRefreshBox
             }  // end Column (TopBar wrapper)
         }
 

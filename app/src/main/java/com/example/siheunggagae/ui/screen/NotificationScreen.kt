@@ -30,10 +30,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -106,6 +108,7 @@ private fun formatRelativeTime(createdAt: String): String {
 
 // ─── 화면 ──────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
     viewModel: NotificationViewModel? = null,
@@ -158,45 +161,51 @@ fun NotificationScreen(
                 selected = state.selectedTab,
                 onSelect = { viewModel?.selectTab(it) },
             )
-            when {
-                state.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Orange500N)
-                }
-                state.error != null && state.items.isEmpty() -> NotiErrorState(
-                    message = state.error ?: "오류가 발생했습니다",
-                    onRetry = { viewModel?.refresh() },
-                )
-                displayItems.isEmpty() -> EmptyNotification()
-                else -> {
-                    LazyColumn(
-                        state = listState,
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = { viewModel?.refresh() },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading -> Box(
                         modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        items(displayItems, key = { it.id }) { item ->
-                            NotificationItemRow(
-                                item = item,
-                                onClick = {
-                                    if (!item.isRead) viewModel?.markRead(item.id)
-                                    onItemClick(item)
-                                },
-                            )
-                        }
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Orange500N,
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                    )
+                        CircularProgressIndicator(color = Orange500N)
+                    }
+                    state.error != null && state.items.isEmpty() -> NotiErrorState(
+                        message = state.error ?: "오류가 발생했습니다",
+                        onRetry = { viewModel?.refresh() },
+                    )
+                    displayItems.isEmpty() -> EmptyNotification()
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(displayItems, key = { it.id }) { item ->
+                                NotificationItemRow(
+                                    item = item,
+                                    onClick = {
+                                        if (!item.isRead) viewModel?.markRead(item.id)
+                                        onItemClick(item)
+                                    },
+                                )
+                            }
+                            if (state.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Orange500N,
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    }
                                 }
                             }
                         }

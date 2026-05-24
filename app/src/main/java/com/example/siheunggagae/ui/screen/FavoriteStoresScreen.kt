@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -36,6 +37,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -74,6 +76,7 @@ private val StarYellowF  = Color(0xFFFDC700)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FavoriteStoresScreen(
     viewModel: FavoriteStoresViewModel? = null,
@@ -92,118 +95,123 @@ fun FavoriteStoresScreen(
         topBar = { FavoriteStoresTopBar(onBack = onBack) },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        when (val state = uiState) {
-            is FavoriteStoresUiState.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Pink500F)
-                }
-            }
-
-            is FavoriteStoresUiState.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(innerPadding),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+        PullToRefreshBox(
+            isRefreshing = uiState is FavoriteStoresUiState.Loading,
+            onRefresh = { viewModel?.refresh() },
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+        ) {
+            when (val state = uiState) {
+                is FavoriteStoresUiState.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = state.message,
-                            fontFamily = PretendardFamily,
-                            fontSize = 14.sp,
-                            color = Brown700F,
-                            textAlign = TextAlign.Center,
-                        )
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(Orange500F)
-                                .clickable { viewModel?.fetchStores() }
-                                .padding(horizontal = 20.dp, vertical = 10.dp),
-                        ) {
-                            Text("다시 시도", fontFamily = PretendardFamily, fontSize = 14.sp, color = Color.White)
-                        }
+                        CircularProgressIndicator(color = Pink500F)
                     }
                 }
-            }
 
-            is FavoriteStoresUiState.Success -> {
-                if (state.items.isEmpty()) {
+                is FavoriteStoresUiState.Error -> {
                     Box(
-                        modifier = Modifier.fillMaxSize().padding(innerPadding),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Favorite,
-                                contentDescription = null,
-                                tint = Gray300F,
-                                modifier = Modifier.size(48.dp),
-                            )
                             Text(
-                                text = "즐겨찾기한 매장이 없어요",
-                                fontFamily = PretendardFamily,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Brown700F,
-                            )
-                            Text(
-                                text = "매장 상세에서 하트를 눌러 추가해보세요",
-                                fontFamily = PretendardFamily,
-                                fontSize = 13.sp,
-                                color = Brown400F,
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        item {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "즐겨찾기 ${state.items.size}곳",
+                                text = state.message,
                                 fontFamily = PretendardFamily,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                lineHeight = 20.sp,
                                 color = Brown700F,
+                                textAlign = TextAlign.Center,
                             )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .background(Orange500F)
+                                    .clickable { viewModel?.fetchStores() }
+                                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                            ) {
+                                Text("다시 시도", fontFamily = PretendardFamily, fontSize = 14.sp, color = Color.White)
+                            }
                         }
-                        items(state.items, key = { it.favoriteId ?: 0 }) { item ->
-                            FavoriteStoreCard(
-                                item = item,
-                                onCardClick = { item.storeId?.let { onPlaceDetailClick(it) } },
-                                onHeartClick = {
-                                    item.storeId?.let { storeId ->
-                                        viewModel?.removeFavorite(storeId)
-                                        scope.launch {
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "즐겨찾기에서 제거했어요",
-                                                actionLabel = "실행취소",
-                                                duration = SnackbarDuration.Short,
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                viewModel?.addFavorite(storeId)
+                    }
+                }
+
+                is FavoriteStoresUiState.Success -> {
+                    if (state.items.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = Gray300F,
+                                    modifier = Modifier.size(48.dp),
+                                )
+                                Text(
+                                    text = "즐겨찾기한 매장이 없어요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Brown700F,
+                                )
+                                Text(
+                                    text = "매장 상세에서 하트를 눌러 추가해보세요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 13.sp,
+                                    color = Brown400F,
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            item {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = "즐겨찾기 ${state.items.size}곳",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 20.sp,
+                                    color = Brown700F,
+                                )
+                            }
+                            items(state.items, key = { it.favoriteId ?: 0 }) { item ->
+                                FavoriteStoreCard(
+                                    item = item,
+                                    onCardClick = { item.storeId?.let { onPlaceDetailClick(it) } },
+                                    onHeartClick = {
+                                        item.storeId?.let { storeId ->
+                                            viewModel?.removeFavorite(storeId)
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = "즐겨찾기에서 제거했어요",
+                                                    actionLabel = "실행취소",
+                                                    duration = SnackbarDuration.Short,
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    viewModel?.addFavorite(storeId)
+                                                }
                                             }
                                         }
-                                    }
-                                },
-                            )
+                                    },
+                                )
+                            }
+                            item { Spacer(Modifier.height(16.dp)) }
                         }
-                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }

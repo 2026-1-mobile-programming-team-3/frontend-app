@@ -22,6 +22,8 @@ class FavoriteStoresViewModel(private val repository: UserRepository) : ViewMode
 
     init { fetchStores() }
 
+    fun refresh() = fetchStores()
+
     fun fetchStores() {
         viewModelScope.launch {
             _uiState.value = FavoriteStoresUiState.Loading
