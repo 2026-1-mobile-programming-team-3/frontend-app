@@ -1,7 +1,5 @@
 package com.example.siheunggagae.map
 
-import com.example.siheunggagae.data.model.StoreViewportItem
-
 /** lat/lng -> 화면 픽셀 좌표 변환. null = 화면 밖 또는 변환 실패. */
 interface MarkerProjector {
     fun toScreen(lat: Double, lng: Double): Pair<Int, Int>?
@@ -48,15 +46,4 @@ sealed interface MarkerSpec {
             val topCategories: List<String>, val count: Int,
         )
     }
-}
-
-internal data class ClusterAccumulator(
-    var sx: Double,
-    var sy: Double,
-    var sumLat: Double,
-    var sumLng: Double,
-    val members: MutableList<StoreViewportItem>,
-) {
-    fun centroidLat(): Double = sumLat / members.size
-    fun centroidLng(): Double = sumLng / members.size
 }

@@ -2,6 +2,17 @@ package com.example.siheunggagae.map
 
 import com.example.siheunggagae.data.model.StoreViewportItem
 
+private data class ClusterAccumulator(
+    var sx: Double,
+    var sy: Double,
+    var sumLat: Double,
+    var sumLng: Double,
+    val members: MutableList<StoreViewportItem>,
+) {
+    fun centroidLat(): Double = sumLat / members.size
+    fun centroidLng(): Double = sumLng / members.size
+}
+
 private const val CLUSTER_RADIUS_PX = 80
 private const val CLUSTER_RADIUS_SQ = CLUSTER_RADIUS_PX * CLUSTER_RADIUS_PX
 
@@ -79,7 +90,7 @@ fun computeMarkerSpecs(
             val tops = acc.members
                 .groupingBy { it.category }
                 .eachCount()
-                .entries.sortedByDescending { it.value }
+                .entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
                 .take(3)
                 .map { it.key }
             val sortedIds = acc.members.map { it.storeId }.sorted()
