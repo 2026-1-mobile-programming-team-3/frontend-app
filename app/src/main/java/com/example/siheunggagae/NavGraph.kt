@@ -658,11 +658,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
 
             // EffectiveCenter: GPS 가 시흥 안이면 GPS, 밖이면 사용자 등록 동네, 그것도 없으면 시청.
-            // 비동기로 채워서 runBlocking ANR 회피.
+            // 비동기로 채워서 runBlocking ANR 회피. 결과는 EffectiveCenterCache 에 3분간 캐싱.
             val effectiveCenter = remember {
                 mutableStateOf<com.example.siheunggagae.data.location.EffectiveCenter?>(null)
             }
             LaunchedEffect(locationPermission.hasPermission) {
+                // 권한이 변경되면 캐시를 무효화하고 다시 판정.
+                com.example.siheunggagae.data.location.EffectiveCenterCache.invalidate()
                 effectiveCenter.value = com.example.siheunggagae.data.location
                     .resolveEffectiveCenter(api, locationProvider)
             }
@@ -676,9 +678,15 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 )
             )
 
-            // effectiveCenter 가 늦게 도착해 첫 fetch 가 location null 이었으면 한 번 refresh
+            // 첫 fetch 는 effectiveCenter 미도착(null)으로 위치 없이 실행됨 → 도착 후 한 번 refresh.
+            // 이후에는 좌표가 실제로 바뀐 경우에만 refresh — source 변경(GPS→프로필)은 재호출 불필요.
+            val prevCenterLatLng = remember { mutableStateOf<Pair<Double, Double>?>(null) }
             LaunchedEffect(effectiveCenter.value) {
-                if (effectiveCenter.value != null) viewModel.refresh()
+                val current = effectiveCenter.value ?: return@LaunchedEffect
+                if (current.latLng != prevCenterLatLng.value) {
+                    prevCenterLatLng.value = current.latLng
+                    viewModel.refresh()
+                }
             }
 
             MatchingScreen(
