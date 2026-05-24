@@ -118,8 +118,10 @@ fun NewsScreen(
         isLoading = false
     }
 
-    val filteredList = if (selectedCategory == "전체") newsList
-                       else newsList.filter { categoryToKorean(it.category) == selectedCategory }
+    val filteredList = remember(selectedCategory, newsList) {
+        if (selectedCategory == "전체") newsList
+        else newsList.filter { categoryToKorean(it.category) == selectedCategory }
+    }
 
     Scaffold(containerColor = BackgroundNs) { innerPadding ->
         // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
