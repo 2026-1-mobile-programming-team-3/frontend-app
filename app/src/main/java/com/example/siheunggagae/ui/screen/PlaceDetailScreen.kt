@@ -457,6 +457,7 @@ fun PlaceDetailScreen(
                         onCopyAddress = { copyToClipboard(s.address ?: "") },
                         onCopyPhone = { copyToClipboard(s.phone ?: "") },
                         onDialPhone = { s.phone?.let { dialPhone(it) } },
+                        myUserId = myUserId,
                     )
                 }
                 item { Spacer(Modifier.height(8.dp)) }
@@ -842,6 +843,7 @@ private fun LocationCardPL(
     onCopyAddress: () -> Unit,
     onCopyPhone: () -> Unit,
     onDialPhone: () -> Unit,
+    myUserId: Int?,
 ) {
     val mapLat = store.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
     val mapLng = store.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
@@ -1019,7 +1021,7 @@ private fun LocationCardPL(
             }
             // 수정 요청 / 클레임 버튼
             val storeId = store.storeId ?: 0
-            if (store.isOwner) {
+            if (store.isOwner && myUserId != null) {
                 OutlinedButton(
                     onClick = { onEditRequestClick(storeId) },
                     modifier = Modifier.fillMaxWidth(),
@@ -1034,7 +1036,7 @@ private fun LocationCardPL(
                         color = Brown700PL,
                     )
                 }
-            } else if (store.ownerUserId == null) {
+            } else if (store.ownerUserId == null && myUserId != null) {
                 OutlinedButton(
                     onClick = { onEditRequestClick(storeId) },
                     modifier = Modifier.fillMaxWidth(),
