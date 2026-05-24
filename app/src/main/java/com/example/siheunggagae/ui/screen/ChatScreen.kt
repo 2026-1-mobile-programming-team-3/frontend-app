@@ -70,21 +70,35 @@ private val PlaceholderC = Color(0xFFC1AFA0)
 
 // ─── 🕒 [서버 UTC 타임 -> 한국 표준시(KST) 전환 엔진] ───
 private fun formatChatTime(createdAt: String): String {
-    return try {
-        // 서버 표준 규격 ISO 8601 (ex: 2026-05-23T08:10:49Z) 파싱 연산
-        val odt = OffsetDateTime.parse(createdAt)
-        val kstZone = ZoneId.of("Asia/Seoul")
-        val kstTime = odt.atZoneSameInstant(kstZone)
-        kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-    } catch (e: Exception) {
-        try {
-            // 타임존 식별자가 유실된 생 문자열일 경우, 백엔드가 UTC 기준 취급했다고 가정한 2차 가드 보정 기믹
-            val ldt = LocalDateTime.parse(createdAt.take(19))
-            val kstTime = ldt.atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("Asia/Seoul"))
-            kstTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-        } catch (ex: Exception) {
-            createdAt.take(16).replace("T", " ") // 최종 예외 백업 스텁 방어선
+    val parsed = runCatching { java.time.ZonedDateTime.parse(createdAt) }.getOrNull()
+        ?: runCatching {
+            // ISO 8601 OffsetDateTime fallback (e.g. 2026-05-23T08:10:49Z)
+            OffsetDateTime.parse(createdAt).toZonedDateTime()
+        }.getOrNull()
+        ?: runCatching {
+            // 타임존 없는 로컬 문자열 — UTC로 간주
+            LocalDateTime.parse(createdAt.take(19)).atZone(ZoneId.of("UTC"))
+        }.getOrNull()
+        ?: return createdAt
+
+    val kst = parsed.withZoneSameInstant(ZoneId.of("Asia/Seoul"))
+    val now = java.time.ZonedDateTime.now(ZoneId.of("Asia/Seoul"))
+    val today = now.toLocalDate()
+    val msgDate = kst.toLocalDate()
+
+    return when {
+        msgDate == today -> {
+            val h = kst.hour
+            val hour12 = if (h % 12 == 0) 12 else h % 12
+            val ampm = if (h < 12) "오전" else "오후"
+            "$ampm $hour12:${"%02d".format(kst.minute)}"
         }
+        msgDate == today.minusDays(1) ->
+            "어제 ${"%02d".format(kst.hour)}:${"%02d".format(kst.minute)}"
+        msgDate.year == today.year ->
+            kst.format(DateTimeFormatter.ofPattern("M.d HH:mm"))
+        else ->
+            kst.format(DateTimeFormatter.ofPattern("yyyy.M.d"))
     }
 }
 

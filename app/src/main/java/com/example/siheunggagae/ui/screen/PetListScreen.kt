@@ -52,9 +52,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -294,19 +296,29 @@ private fun PetRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(pet.species.iconBg),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_pets),
-                contentDescription = null,
-                tint = pet.species.iconTint,
-                modifier = Modifier.size(28.dp),
+        if (!pet.photoUrl.isNullOrBlank()) {
+            AppAsyncImage(
+                model = pet.photoUrl,
+                contentDescription = "${pet.name} 사진",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
             )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(pet.species.iconBg),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_pets),
+                    contentDescription = null,
+                    tint = pet.species.iconTint,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

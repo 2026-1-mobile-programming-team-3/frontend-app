@@ -22,7 +22,8 @@ sealed class ChatUiState {
         val matchDetail: MatchDetailResponse?,
         val opponentNickname: String,
         val isMyRequest: Boolean,
-        val hasMore: Boolean = false
+        val hasMore: Boolean = false,
+        val opponentProfileUrl: String? = null, // #26: 상대방 프로필 이미지 URL (API 미지원 시 null 유지)
     ) : ChatUiState()
     data class Error(val message: String) : ChatUiState()
 }
