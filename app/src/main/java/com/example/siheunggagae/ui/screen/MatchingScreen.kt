@@ -100,9 +100,15 @@ import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.bgColor
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.Imminence
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
 import kotlinx.coroutines.launch
 
@@ -256,9 +262,13 @@ fun MatchingScreen(
                 )
             }
 
-            // FAB
+            // FAB — iOS 스타일 haptic tap.
+            val haptic = LocalHapticFeedback.current
             FloatingActionButton(
-                onClick = onRequestFlowClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRequestFlowClick()
+                },
                 containerColor = Color(0xFF9A7B5E),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -940,14 +950,25 @@ internal fun StatusTabRow(
 
 @Composable
 private fun PillTab(label: String, on: Boolean, count: Int?, onClick: () -> Unit) {
-    val bg = if (on) Color(0xFF1A1A1A) else Color.White
-    val fg = if (on) Color.White else Brown700M
+    // bg/fg morph 로 선택 전환이 부드럽게.
+    val bg by animateColorAsState(
+        targetValue = if (on) Color(0xFF1A1A1A) else Color.White,
+        animationSpec = appleSpec(),
+        label = "pillBg",
+    )
+    val fg by animateColorAsState(
+        targetValue = if (on) Color.White else Brown700M,
+        animationSpec = appleSpec(),
+        label = "pillFg",
+    )
+    val interaction = rememberAppleInteractionSource()
     Box(
         modifier = Modifier
+            .appleTapScale(interaction)
             .clip(RoundedCornerShape(50.dp))
             .background(bg)
             .then(if (!on) Modifier.border(1.dp, Color(0xFFE8D3C2), RoundedCornerShape(50.dp)) else Modifier)
-            .clickable { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 16.dp, vertical = 7.dp),
     ) {
         val text = if (count != null && count > 0) "$label $count" else label
@@ -1128,18 +1149,28 @@ private fun CategoryChip(
     onClick: () -> Unit,
 ) {
     val isVolunteer = cat?.requiresVolunteerRole() == true
-    val bg = when {
-        on -> Color(0xFF1A1A1A)
-        isVolunteer -> Color(0xFFDCFCE7)
-        else -> Color.White
-    }
-    val fg = when {
-        on -> Color.White
-        isVolunteer -> Color(0xFF16A34A)
-        else -> Brown700M
-    }
+    val bg by animateColorAsState(
+        targetValue = when {
+            on -> Color(0xFF1A1A1A)
+            isVolunteer -> Color(0xFFDCFCE7)
+            else -> Color.White
+        },
+        animationSpec = appleSpec(),
+        label = "catChipBg",
+    )
+    val fg by animateColorAsState(
+        targetValue = when {
+            on -> Color.White
+            isVolunteer -> Color(0xFF16A34A)
+            else -> Brown700M
+        },
+        animationSpec = appleSpec(),
+        label = "catChipFg",
+    )
+    val interaction = rememberAppleInteractionSource()
     Row(
         modifier = Modifier
+            .appleTapScale(interaction)
             .clip(RoundedCornerShape(50.dp))
             .background(bg)
             .then(
@@ -1149,7 +1180,7 @@ private fun CategoryChip(
                     RoundedCornerShape(50.dp),
                 ) else Modifier
             )
-            .clickable { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

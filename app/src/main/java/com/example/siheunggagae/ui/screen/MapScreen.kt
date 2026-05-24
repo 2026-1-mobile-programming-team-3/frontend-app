@@ -96,9 +96,16 @@ import com.example.siheunggagae.data.model.toStoreResponse
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
 import com.example.siheunggagae.ui.viewmodel.MapViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
@@ -416,7 +423,8 @@ fun MapScreen(
                     }
                 }
 
-                // 우측 플로팅 버튼 — peek 시트 위에 위치하도록 BottomEnd 기준.
+                // 우측 플로팅 버튼 — peek 시트 위에 위치하도록 BottomEnd 기준. iOS 스타일 tap haptic.
+                val haptic = LocalHapticFeedback.current
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -424,10 +432,15 @@ fun MapScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MapIconFab(R.drawable.ic_my_location, "내 위치") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어") { showFilterSheet = true }
+                    MapIconFab(R.drawable.ic_layers, "레이어") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showFilterSheet = true
+                    }
                     MapIconFab(R.drawable.ic_refresh, "새로고침") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.refresh()
                     }
                 }
@@ -755,12 +768,28 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
     ) {
         StoreCategory.entries.forEach { category ->
             val isSelected = category == selected
+            // bg/fg 색을 AppleEaseOut 으로 보간 — 선택 시 hard cut 대신 부드러운 morph.
+            val bg by animateColorAsState(
+                targetValue = if (isSelected) Color(0xFF1A1A1A) else Color.White,
+                animationSpec = appleSpec(),
+                label = "mapChipBg",
+            )
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Brown700Mp,
+                animationSpec = appleSpec(),
+                label = "mapChipFg",
+            )
+            val interaction = rememberAppleInteractionSource()
             Box(
                 modifier = Modifier
+                    .appleTapScale(interaction)
                     .shadow(2.dp, RoundedCornerShape(50.dp))
                     .clip(RoundedCornerShape(50.dp))
-                    .background(if (isSelected) Color(0xFF1A1A1A) else Color.White)
-                    .clickable { onSelect(category) }
+                    .background(bg)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                    ) { onSelect(category) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -769,7 +798,7 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 20.sp,
-                    color = if (isSelected) Color.White else Brown700Mp,
+                    color = fg,
                 )
             }
         }
@@ -780,14 +809,16 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
 
 @Composable
 private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> Unit = {}) {
+    val interaction = rememberAppleInteractionSource()
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
+            .appleTapScale(interaction)
             .size(40.dp)
             .shadow(4.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { onClick() },
+            .clickable(interactionSource = interaction, indication = null) { onClick() },
     ) {
         Icon(
             painter = painterResource(iconRes),
