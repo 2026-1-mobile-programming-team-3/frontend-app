@@ -95,6 +95,7 @@ private val siheungDongs = listOf(
     "대야동", "포동", "연성동", "군자동", "월곶동",
     "장곡동", "능곡동", "매화동", "화정동",
 )
+private val siheungDongsChunked = siheungDongs.chunked(4)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
@@ -319,7 +320,7 @@ fun SettingsScreen(
 
                 Text("빠른 선택", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Brown700St)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    siheungDongs.chunked(4).forEach { rowItems ->
+                    siheungDongsChunked.forEach { rowItems ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             rowItems.forEach { dong ->
                                 val selected = locationInput == dong
@@ -619,7 +620,7 @@ private fun SettingsSwitchItem(
             checked = checked, onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White, checkedTrackColor = Brown900St, checkedBorderColor = Brown900St,
-                uncheckedThumbColor = Color.White, uncheckedTrackColor = Gray300St, uncheckedBorderColor = Gray300St,
+                uncheckedThumbColor = Color.White, uncheckedTrackColor = Color(0xFFD0C4BA), uncheckedBorderColor = Color(0xFFD0C4BA),
             ),
         )
     }

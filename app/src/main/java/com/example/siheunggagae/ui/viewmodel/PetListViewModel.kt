@@ -56,11 +56,12 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
             try {
                 val resp = repository.deletePet(petId)
                 if (resp.isSuccessful) {
-                    fetchPets()
+                    val current = _uiState.value
+                    if (current is PetListUiState.Success) {
+                        _uiState.value = current.copy(pets = current.pets.filter { it.id != petId })
+                    }
                 }
-            } catch (e: Exception) {
-                // 삭제 실패 시 현재 상태 유지
-            }
+            } catch (_: Exception) { }
         }
     }
 

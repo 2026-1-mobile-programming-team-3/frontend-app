@@ -626,19 +626,27 @@ private fun HomeStoreItem(
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(store.name, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH)
-            Text(
-                text = buildString {
-                    append(storeApiToKorean(store.category))
-                    if (distanceText.isNotEmpty()) append(" · $distanceText")
-                    if (store.ratingAvg != null) append(" · ⭐ ${"%.1f".format(store.ratingAvg)}")
-                },
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 24.sp,
-                color = Brown700H,
-            )
+            Text(store.name, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackH)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = buildString {
+                        append(storeApiToKorean(store.category))
+                        if (distanceText.isNotEmpty()) append(" · $distanceText")
+                    },
+                    fontFamily = PretendardFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 18.sp,
+                    color = Brown700H,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                )
+                if (store.ratingAvg != null) {
+                    Text(" · ", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Normal, lineHeight = 18.sp, color = Brown700H)
+                    Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(14.dp), tint = StarYellowH)
+                    Text(" ${"%.1f".format(store.ratingAvg)}", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Normal, lineHeight = 18.sp, color = Brown700H)
+                }
+            }
         }
         val haptic = LocalHapticFeedback.current
         IconButton(
