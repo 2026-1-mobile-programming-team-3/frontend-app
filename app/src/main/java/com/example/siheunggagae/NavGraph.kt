@@ -641,21 +641,44 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
         }
 
         composable(Screen.Matching.route) {
-            // 뷰모델 생성 및 주입
             val context = LocalContext.current
-            val app = context.applicationContext as SiheungGagaeApp
-            val api = com.example.siheunggagae.data.network.RetrofitClient.api // Retrofit 설정에 맞게 수정 필요
+            val locationProvider = remember { com.example.siheunggagae.data.location.LocationProvider(context) }
+            val locationPermission = com.example.siheunggagae.ui.util.rememberLocationPermissionState()
+            // TokenManager does not expose getUserId / getNickname / isVolunteer — leave as null/false
+            val currentUserId: Int? = null
+            val currentUserNickname: String? = null
+
+            val api = com.example.siheunggagae.data.network.RetrofitClient.api
             val repository = remember { com.example.siheunggagae.data.repository.MatchRepository(api) }
             val viewModel: com.example.siheunggagae.ui.viewmodel.MatchingViewModel = viewModel(
-                factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(repository)
+                factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(
+                    repository = repository,
+                    isCurrentUserVolunteer = { false },
+                    getCurrentLocation = {
+                        if (locationPermission.hasPermission) {
+                            val loc = kotlinx.coroutines.runBlocking { locationProvider.getLocationOrNull() }
+                            loc?.let { it.latitude to it.longitude }
+                        } else null
+                    },
+                )
             )
 
             MatchingScreen(
-                viewModel = viewModel, // 추가된 부분!
-                onMyRequests = { navController.navigate(Screen.MyRequests.route) },
+                viewModel = viewModel,
+                onMyRequestsClick = { navController.navigate(Screen.MyRequests.route) },
                 onRequestFlowClick = { navController.navigate(Screen.RequestFlow.route) },
-                onCardClick = { requestId -> navController.navigate(Screen.MatchingPublicDetail.createRoute(requestId)) },
-                onNavigate = { route -> navController.navigateTab(route) },
+                onCardClick = { matchId, isMine ->
+                    if (isMine) {
+                        navController.navigate(Screen.MatchingDetail.createRoute(matchId))
+                    } else {
+                        navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
+                    }
+                },
+                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
+                onSearchClick = { /* no-op */ },
+                locationAvailable = locationPermission.hasPermission,
+                currentUserId = currentUserId,
+                currentUserNickname = currentUserNickname,
             )
         }
 

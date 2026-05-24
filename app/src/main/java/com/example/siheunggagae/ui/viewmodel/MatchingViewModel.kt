@@ -3,45 +3,209 @@ package com.example.siheunggagae.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
+import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.data.repository.MatchRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
-sealed class MatchingUiState {
-    object Loading : MatchingUiState()
-    data class Success(val matches: List<MatchListItem>) : MatchingUiState()
-    data class Error(val message: String) : MatchingUiState()
+enum class MatchSort { IMMINENT, RECENT, NEAREST }
+
+enum class DistanceFilter(val meters: Int?) {
+    KM1(1000), KM3(3000), KM5(5000), ALL(null)
 }
 
-class MatchingViewModel(private val repository: MatchRepository) : ViewModel() {
-    private val _uiState = MutableStateFlow<MatchingUiState>(MatchingUiState.Loading)
-    val uiState: StateFlow<MatchingUiState> = _uiState
+enum class Imminence { CRITICAL_6H, TODAY_24H, TOMORROW_D1 }
 
-    init {
-        fetchMatches()
+private val KST = ZoneId.of("Asia/Seoul")
+private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val TIME_FMT = DateTimeFormatter.ofPattern("HH:mm")
+
+internal fun computeImminence(
+    desiredDate: String?,
+    desiredTime: String?,
+    now: Instant = Instant.now(),
+): Imminence? {
+    if (desiredDate.isNullOrBlank() || desiredTime.isNullOrBlank()) return null
+    val date = runCatching { LocalDate.parse(desiredDate, DATE_FMT) }.getOrNull() ?: return null
+    val time = runCatching { LocalTime.parse(desiredTime, TIME_FMT) }.getOrNull() ?: return null
+    val target = LocalDateTime.of(date, time).atZone(KST).toInstant()
+    val deltaSec = target.epochSecond - now.epochSecond
+    return when {
+        deltaSec < 0 -> null
+        deltaSec < 6 * 3600 -> Imminence.CRITICAL_6H
+        deltaSec < 24 * 3600 -> Imminence.TODAY_24H
+        deltaSec < 48 * 3600 -> Imminence.TOMORROW_D1
+        else -> null
+    }
+}
+
+internal fun walkingMinutes(distanceM: Double): Int =
+    (distanceM / 67.0).toInt().coerceAtLeast(1)
+
+internal fun diffNewMatchIds(previous: Set<Int>, current: List<Int>): Int =
+    current.count { it !in previous }
+
+sealed class MatchingUi {
+    object Loading : MatchingUi()
+    data class Success(
+        val items: List<MatchListItem>,
+        val statusTabCounts: Map<String?, Int>,
+        val selectedStatus: String?,
+        val selectedCategory: MatchCategory?,
+        val sort: MatchSort,
+        val distance: DistanceFilter,
+        val hasMore: Boolean,
+        val isRefreshing: Boolean,
+        val newCount: Int,
+        val showVolunteerWarning: Boolean,
+    ) : MatchingUi()
+    data class Error(val message: String) : MatchingUi()
+}
+
+class MatchingViewModel(
+    private val repository: MatchRepository,
+    private val isCurrentUserVolunteer: () -> Boolean,
+    private val getCurrentLocation: () -> Pair<Double, Double>?,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<MatchingUi>(MatchingUi.Loading)
+    val state: StateFlow<MatchingUi> = _state
+
+    private var raw: List<MatchListItem> = emptyList()
+    private var page: Int = 1
+    private var lastIdSet: Set<Int> = emptySet()
+    private var newCount: Int = 0
+
+    private var selectedStatus: String? = null
+    private var selectedCategory: MatchCategory? = null
+    private var sort: MatchSort = MatchSort.IMMINENT
+    private var distance: DistanceFilter = DistanceFilter.KM5
+
+    init { fetch(reset = true) }
+
+    fun setStatus(status: String?) {
+        if (selectedStatus == status) return
+        selectedStatus = status
+        fetch(reset = true)
     }
 
-    fun fetchMatches(status: String? = null) {
+    fun setCategory(category: MatchCategory?) {
+        if (selectedCategory == category) return
+        selectedCategory = category
+        fetch(reset = true)
+    }
+
+    fun setSort(s: MatchSort) {
+        if (sort == s) return
+        if (s == MatchSort.NEAREST && getCurrentLocation() == null) return
+        sort = s
+        fetch(reset = true)
+    }
+
+    fun setDistance(d: DistanceFilter) {
+        if (distance == d) return
+        distance = d
+        fetch(reset = true)
+    }
+
+    fun refresh() = fetch(reset = true, isRefresh = true)
+
+    fun loadMore() {
+        val s = _state.value as? MatchingUi.Success ?: return
+        if (!s.hasMore || s.isRefreshing) return
+        fetch(reset = false)
+    }
+
+    fun dismissNewCount() {
+        newCount = 0
+        recompute()
+    }
+
+    private fun fetch(reset: Boolean, isRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.value = MatchingUiState.Loading
-            val apiStatus = if (status == "ALL") null else status
-
-            repository.getMatchList(status = apiStatus)
-                .onSuccess { response ->
-                    _uiState.value = MatchingUiState.Success(response.items ?: emptyList())
+            if (reset && !isRefresh) _state.value = MatchingUi.Loading
+            if (isRefresh) recompute(refreshing = true)
+            val location = getCurrentLocation()
+            val lat = location?.first
+            val lng = location?.second
+            val targetPage = if (reset) 1 else (page + 1)
+            val result = repository.getMatchList(
+                status = selectedStatus,
+                page = targetPage,
+                size = 20,
+                sort = sort.name.lowercase(),
+                category = selectedCategory?.name,
+                maxDistance = distance.meters,
+                lat = lat,
+                lng = lng,
+            )
+            result.onSuccess { resp ->
+                val newItems = resp.items.orEmpty()
+                val incomingIds = newItems.mapNotNull { it.matchId }
+                if (reset) {
+                    newCount = if (lastIdSet.isNotEmpty()) diffNewMatchIds(lastIdSet, incomingIds) else 0
+                    raw = newItems
+                    page = 1
+                    lastIdSet = incomingIds.toSet()
+                } else {
+                    raw = raw + newItems
+                    page = targetPage
+                    lastIdSet = (lastIdSet + incomingIds).toSet()
                 }
-                .onFailure { error ->
-                    _uiState.value = MatchingUiState.Error(error.message ?: "네트워크 오류 발생")
-                }
+                recompute(hasMore = newItems.size >= 20)
+            }.onFailure { err ->
+                _state.value = MatchingUi.Error(err.message ?: "매칭을 불러오지 못했어요")
+            }
         }
     }
 
-    class Factory(private val repository: MatchRepository) : ViewModelProvider.Factory {
+    private fun recompute(hasMore: Boolean? = null, refreshing: Boolean = false) {
+        val current = _state.value as? MatchingUi.Success
+        val counts = computeStatusTabCounts(raw)
+        val showWarn = selectedCategory?.let {
+            it.requiresVolunteerRole() && !isCurrentUserVolunteer()
+        } ?: false
+        _state.value = MatchingUi.Success(
+            items = raw,
+            statusTabCounts = counts,
+            selectedStatus = selectedStatus,
+            selectedCategory = selectedCategory,
+            sort = sort,
+            distance = distance,
+            hasMore = hasMore ?: current?.hasMore ?: true,
+            isRefreshing = refreshing,
+            newCount = newCount,
+            showVolunteerWarning = showWarn,
+        )
+    }
+
+    private fun computeStatusTabCounts(items: List<MatchListItem>): Map<String?, Int> {
+        val byStatus = items.groupBy { it.status }
+        return mapOf(
+            null to items.size,
+            "RECRUITING" to (byStatus["RECRUITING"]?.size ?: 0),
+            "REVIEWING" to (byStatus["REVIEWING"]?.size ?: 0),
+            "IN_PROGRESS" to (byStatus["IN_PROGRESS"]?.size ?: 0),
+            "DONE" to (byStatus["DONE"]?.size ?: 0),
+        )
+    }
+
+    class Factory(
+        private val repository: MatchRepository,
+        private val isCurrentUserVolunteer: () -> Boolean,
+        private val getCurrentLocation: () -> Pair<Double, Double>?,
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return MatchingViewModel(repository) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T =
+            MatchingViewModel(repository, isCurrentUserVolunteer, getCurrentLocation) as T
     }
 }

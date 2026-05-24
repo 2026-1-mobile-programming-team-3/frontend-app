@@ -82,18 +82,29 @@ CLAUDE.md의 전역 규칙(컬러·Typography·공통 컴포넌트), 코드 패�
 - **봉사 배너**: PinkSurface, 16dp padding, Handshake(Orange500) + "이동 지원 봉사자가 되어 보세요" + "신청 →"(Brown900 → VolunteerApply)
 - ViewModel: HomeViewModel (`data class HomeUiState`)
 
-### [MatchingScreen] 매칭
+### [MatchingScreen] 매칭 리스트
 
-- TopBar: "매칭" 26sp ExtraBold + Assignment 아이콘 카드버튼(40×40dp, → MyRequests)
-- 요약 카드 Row(gap=12dp, equal weight)
-  - 내 요청(PinkSurface): Assignment(Pink500) + "내 요청" + "N건 검토 중" 16sp Bold
-  - 봉사 활동(#F0FDF4): Favorite(Green500) + "봉사 활동" + "N건 진행 중"
-- 탭 필터: 전체 / 모집중 / 검토중 / 진행중 / 완료 (선택=Bold Black, 미선택=Brown400)
-- 섹션 헤더: "이동 지원 요청" + "🗺 지도 보기" Orange500
-- 요청 카드(radius=16dp, elevation=2dp): 우상단 상태 chip + 날짜 / 제목 16sp SemiBold (2줄) / "[지역] · [거리] · [날짜·시간]" 13sp / "신청 N건"(있을 때, Orange500)
-- 카드 롱프레스 모달: 북마크 / 공유 / 신고 / 숨김 / 사용자 차단 / 숨김+차단
-- FAB: 56×56dp, radius=16dp, bg=FABBrown(#9A7B5E), Add 아이콘, 우하단 margin=16dp (→ RequestFlow)
-- ViewModel: MatchingViewModel (`sealed MatchingUiState`)
+P0+P1 14항목 개선 (2026-05-24 revamp). 당근/번개장터식 정보 밀도 + 임박순 정렬 + 거리·카테고리 필터.
+
+- **TopBar**: "매칭" 26sp ExtraBold + 우측 `ic_search` (이번 스코프 비활성)·`ic_assignment` (내 요청, MyRequests 진입)
+- **Pill 상태 탭** (LazyRow, padding h=18 v=12 bottom): 전체 / 모집중 N / 검토중 N / 진행중 N / 완료. 선택 `#1A1A1A` bg White 13sp 700, 미선택 White bg BorderBeige border Brown700 13sp 500. 카운트 > 0 일 때만 숫자 표기, "전체"·"완료"는 카운트 안 붙임.
+- **정렬·거리 row** (h=18 v=10 bottom): 두 pill — "임박순 ▾" / "5km 이내 ▾". 활성(디폴트 아님) 시 border Brown900. 탭 시 ModalBottomSheet (정렬 시트 / 거리 시트) → 라디오 선택.
+- **카테고리 칩** (LazyRow, h=18 v=14 bottom): 전체 / 산책동행 (ic_paw) / 병원동행 (ic_stethoscope, 봉사자 전용 Green) / 장보기 (ic_shopping_cart) / 이동 (ic_car) / 봉사 (ic_award, 봉사자 전용 Green). 봉사자 전용 칩은 선택 안 된 상태에서 `#DCFCE7` bg + `#16A34A` border/text. 선택 시 검정 pill로 통일.
+- **봉사자 안내 배너**: 비봉사자 사용자가 봉사자 전용 카테고리 선택 시 `#F0FDF4` bg + `#00A63E` border + `ic_award` 아이콘 + 안내 텍스트 + "자격 신청" CTA → VolunteerApply 진입.
+- **카드** (radius 16, shadow 1, padding 14): 좌측 60×60 카테고리 그라디언트 썸네일 + 우상단 ⋮ 메뉴 + 칩 행(상태/봉사자 전용/임박 배지) + 제목 15sp 800 + meta(`ic_location_on` 동·도보 N분·"· 내가 작성") + 신청자 수(`ic_users` "신청 N명").
+- **카테고리 → 썸네일 매핑**: WALK = OrangeSand→Orange500, VET = `#DCFCE7`→`#16A34A`, SHOPPING = PinkSurface→Pink500, MOVE = `#DBEAFE`→`#388AF5`, VOLUNTEER = MintLight→Green600, null = 회색 그라디언트.
+- **임박도 배지** (`computeImminence` desired_date+desired_time KST 기준 vs now): 6h 내 → PinkSurface/Pink500 "마감 임박 · Nh|Nm" / 24h 내 → OrangeSand/Orange500 "오늘 HH:MM" / 48h 내 → TagGray/Brown700 "내일 · D-1" / 그 외 → 배지 없음.
+- **완료(DONE) 카드**: 전체 alpha 0.55 (당근 "거래완료" 패턴).
+- **본인 글 식별**: `authorUserId == currentUserId` 우선 비교, 없으면 `authorNickname == currentUserNickname` fallback. 본인 글은 meta 라인에 "· 내가 작성" Brown700 SemiBold + 신청자 수 Pink500 ExtraBold. (현재 TokenManager에 userId/nickname accessor가 없어 `isMine`은 항상 false. 백엔드 §1.3 + TokenManager 확장 후 활성화.)
+- **⋮ 메뉴** (CardMoreSheet, ModalBottomSheet): 본인 글 → 수정 / 끌어올림(disabled) / 삭제. 다른 사람 글 → 공유하기 / 신고하기(disabled). 실제 액션은 후속.
+- **pull-to-refresh**: `PullToRefreshBox` (material3). refresh 시 새 N건 감지 (`diffNewMatchIds`) → 상단 floating pill "새 요청 N건 · 탭하여 보기" (Brown900 bg White text) → 탭 시 카운트 dismiss.
+- **무한 스크롤**: 마지막 보이는 인덱스 ≥ items.size - 3 도달 시 다음 페이지 fetch (size 20).
+- **스켈레톤 카드**: 로딩 시 카드 3장 placeholder (alpha 1.0/0.8/0.6, `#F4F4F4` blocks).
+- **빈 상태** (`EmptyState`): 96dp OrangeSand 원형 + `ic_paw` 40dp Orange500 + "근처에 요청이 없어요" 16sp 800 + "거리를 더 넓게 보거나 직접 요청을 작성해 보세요" 13sp Brown700 + CTA 두 개 (Outline "거리 넓히기" → setDistance(ALL) / Fill "요청 작성" → RequestFlow).
+- **FAB**: 56dp `FABBrown(#9A7B5E)` radius 16 + `ic_add` → RequestFlow 진입. end=20dp, bottom=100dp (BottomNav 위).
+- **ViewModel**: `MatchingViewModel(MatchRepository, isCurrentUserVolunteer, getCurrentLocation)` — setStatus/setCategory/setSort/setDistance/refresh/loadMore/dismissNewCount. State: `MatchingUi.Loading` / `Success(items, statusTabCounts, selectedStatus, selectedCategory, sort, distance, hasMore, isRefreshing, newCount, showVolunteerWarning)` / `Error(message)`.
+- **헬퍼**: `computeImminence(date, time, now)` / `walkingMinutes(distanceM)` / `diffNewMatchIds(prev, current)` — internal, 단위 테스트 11개.
+- **백엔드 의존성**: `docs/backend-requests/2026-05-24-matching-revamp.md` 참조. category 응답 없음 시 카테고리 칩은 "전체"만 노출 (현재 클라이언트는 모든 카테고리 칩 표시 — 백엔드 미반영 시 빈 결과 표시), distance_m 없음 시 도보 분 생략, authorUserId 없음 시 닉네임 fallback.
 
 ### [MapScreen] 지도
 

@@ -194,6 +194,11 @@ interface AuthApiService {
         @Query("to_date") toDate: String? = null,
         @Query("page") page: Int? = null,
         @Query("size") size: Int? = null,
+        @Query("sort") sort: String? = null,
+        @Query("category") category: String? = null,
+        @Query("max_distance") maxDistance: Int? = null,
+        @Query("lat") lat: Double? = null,
+        @Query("lng") lng: Double? = null,
     ): Response<MatchListResponse>
 
     @POST("api/v1/matches")

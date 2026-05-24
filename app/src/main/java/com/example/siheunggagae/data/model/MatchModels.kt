@@ -32,6 +32,14 @@ data class MatchUpdateRequest(
     val petId: Int? = null,
 )
 
+enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER }
+
+/** 봉사자 자격 보유자만 작성·신청 가능한 카테고리. 백엔드 협의 후 확정. */
+fun MatchCategory.requiresVolunteerRole(): Boolean = when (this) {
+    MatchCategory.VET, MatchCategory.VOLUNTEER -> true
+    else -> false
+}
+
 data class MatchListItem(
     @SerializedName("match_id") val matchId: Int? = null,
     val title: String? = null,
@@ -48,6 +56,12 @@ data class MatchListItem(
     @SerializedName("unread_message_count") val unreadMessageCount: Int = 0,
     @SerializedName("my_application_status") val myApplicationStatus: String? = null,
     @SerializedName("received_rating") val receivedRating: Int? = null,
+    // ── 신규 (매칭 화면 개선) ──
+    val category: MatchCategory? = null,
+    @SerializedName(value = "author_user_id", alternate = ["authorUserId"])
+    val authorUserId: Int? = null,
+    @SerializedName(value = "distance_m", alternate = ["distanceM"])
+    val distanceM: Double? = null,
 )
 
 data class MatchListResponse(
