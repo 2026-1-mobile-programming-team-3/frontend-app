@@ -555,6 +555,7 @@ private fun ChatInputBar(inputText: String, onTextChange: (String) -> Unit, onSe
         modifier = Modifier
             .fillMaxWidth()
             .background(BgC)
+            .imePadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,

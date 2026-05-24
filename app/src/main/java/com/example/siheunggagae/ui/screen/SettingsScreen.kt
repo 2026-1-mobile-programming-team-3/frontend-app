@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -365,7 +366,7 @@ fun SettingsScreen(
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding()
+                modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
                     .padding(horizontal = 24.dp).padding(top = 4.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -413,7 +414,7 @@ fun SettingsScreen(
             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding()
+                modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
                     .padding(horizontal = 24.dp).padding(top = 4.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {

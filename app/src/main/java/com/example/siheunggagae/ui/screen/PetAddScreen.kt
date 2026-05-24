@@ -305,7 +305,7 @@ fun PetAddScreen(
                     age = age,
                     ageUnit = ageUnit,
                     onDecrement = { if (age > 1) age-- },
-                    onIncrement = { age++ },
+                    onIncrement = { val max = if (ageUnit == "개월") 36 else 30; if (age < max) age++ },
                     onAgeUnitSelect = { ageUnit = it },
                     gender = gender,
                     onGenderSelect = { gender = it },
