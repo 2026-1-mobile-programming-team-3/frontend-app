@@ -48,8 +48,8 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
             _uiState.value = RequestUiState.Loading
             try {
                 val response = api.getMatchDetail(matchId)
-                if (response.isSuccessful && response.body() != null) {
-                    val data = response.body()!!
+                val data = response.body()
+                if (response.isSuccessful && data != null) {
                     title = data.title ?: ""
                     content = data.content ?: ""
                     address = data.address ?: ""
@@ -62,6 +62,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                     _uiState.value = RequestUiState.Error("데이터를 불러올 수 없습니다.")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = RequestUiState.Error("네트워크 오류")
             }
         }
@@ -92,6 +93,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                 if (response.isSuccessful) _uiState.value = RequestUiState.Success
                 else _uiState.value = RequestUiState.Error("수정에 실패했습니다.")
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = RequestUiState.Error("네트워크 오류")
             }
         }
@@ -102,12 +104,14 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
             _uiState.value = RequestUiState.Loading
             try {
                 val response = api.getMe()
-                if (response.isSuccessful && response.body() != null) {
-                    _uiState.value = RequestUiState.PetsLoaded(response.body()!!.pets)
+                val body = response.body()
+                if (response.isSuccessful && body != null) {
+                    _uiState.value = RequestUiState.PetsLoaded(body.pets)
                 } else {
                     _uiState.value = RequestUiState.Error("반려동물 정보를 불러오지 못했습니다.")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = RequestUiState.Error("네트워크 오류가 발생했습니다.")
             }
         }
@@ -152,6 +156,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                     _uiState.value = RequestUiState.Error(message)
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = RequestUiState.Error("네트워크 오류가 발생했습니다.")
             }
         }

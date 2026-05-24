@@ -64,8 +64,9 @@ class PetAddViewModel(
         viewModelScope.launch {
             try {
                 val resp = repository.getMe()
-                if (resp.isSuccessful && resp.body() != null) {
-                    _initialPet.value = resp.body()!!.pets.find { it.id == petId }
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    _initialPet.value = body.pets.find { it.id == petId }
                     _uiState.value = PetAddUiState.Idle
                 } else {
                     _uiState.value = PetAddUiState.Error("반려동물 정보를 불러오지 못했습니다")

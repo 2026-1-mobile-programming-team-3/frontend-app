@@ -44,8 +44,9 @@ class ProfileEditViewModel(
             _uiState.value = ProfileEditUiState.Loading
             try {
                 val resp = repository.getMe()
-                _uiState.value = if (resp.isSuccessful && resp.body() != null) {
-                    ProfileEditUiState.Loaded(resp.body()!!)
+                val body = resp.body()
+                _uiState.value = if (resp.isSuccessful && body != null) {
+                    ProfileEditUiState.Loaded(body)
                 } else {
                     ProfileEditUiState.Error("사용자 정보를 불러오지 못했습니다")
                 }
