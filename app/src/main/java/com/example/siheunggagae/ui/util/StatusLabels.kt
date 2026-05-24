@@ -14,3 +14,14 @@ fun matchStatusToKorean(status: String?): String = when (status?.trim()?.upperca
     null, ""                -> "상태 없음"
     else                    -> status!!
 }
+
+/**
+ * 매장 등록 요청 상태 영문 코드 → 한국어.
+ */
+fun storeRequestStatusToKorean(status: String?): String = when (status?.trim()?.uppercase()) {
+    "PENDING"  -> "검토 중"
+    "APPROVED" -> "승인됨"
+    "REJECTED" -> "거절됨"
+    null, ""   -> "상태 없음"
+    else       -> status!!
+}
