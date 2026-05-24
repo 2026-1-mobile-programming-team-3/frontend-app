@@ -1,13 +1,11 @@
 package com.example.siheunggagae.ui.screen
 
 import android.content.Intent
-import android.graphics.ImageDecoder
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,11 +46,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,10 +58,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import com.example.siheunggagae.R
 import com.example.siheunggagae.ui.viewmodel.ProfileEditUiState
 import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private val BgPE         = Color(0xFFFEFEFE)
 private val TextBlackPE  = Color(0xFF1E120A)
@@ -86,20 +84,6 @@ fun ProfileEditScreen(
     val localImageUri by remember(viewModel) {
         viewModel?.localImageUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
     }.collectAsState()
-
-    // 선택된 이미지 비트맵 (IO 스레드에서 로드)
-    var imageBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(localImageUri) {
-        imageBitmap = if (localImageUri != null) {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val uri = Uri.parse(localImageUri)
-                    val source = ImageDecoder.createSource(context.contentResolver, uri)
-                    ImageDecoder.decodeBitmap(source).asImageBitmap()
-                }.getOrNull()
-            }
-        } else null
-    }
 
     // 갤러리 피커
     val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
@@ -226,8 +210,19 @@ fun ProfileEditScreen(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
+                        val existingProfileUrl =
+                            (uiState as? ProfileEditUiState.Loaded)?.user?.profileImageUrl
+                        val imageModel: Any? =
+                            localImageUri?.let { Uri.parse(it) } ?: existingProfileUrl
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(imageModel)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "프로필 사진",
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(R.drawable.ic_person),
+                            error = painterResource(R.drawable.ic_person),
                             modifier = Modifier
                                 .size(88.dp)
                                 .clip(CircleShape)
@@ -237,24 +232,7 @@ fun ProfileEditScreen(
                                         PickVisualMediaRequest(PickVisualMedia.ImageOnly)
                                     )
                                 },
-                        ) {
-                            if (imageBitmap != null) {
-                                Image(
-                                    bitmap = imageBitmap!!,
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            } else {
-                                Text(
-                                    text = nickname.take(1).ifEmpty { "?" },
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 32.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                )
-                            }
-                        }
+                        )
                         // 카메라 아이콘 뱃지
                         Box(
                             contentAlignment = Alignment.Center,
