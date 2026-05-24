@@ -209,8 +209,10 @@ class MapViewWrapper(private val mapView: MapView) {
         val layer = map.labelManager?.layer ?: return
         val existing = markers[MY_LOCATION_ID]
         if (existing != null) {
-            runCatching { existing.moveTo(LatLng.from(lat, lng)) }
-            return
+            val moved = runCatching { existing.moveTo(LatLng.from(lat, lng)) }.isSuccess
+            if (moved) return
+            // moveTo 실패(세션 무효 등) → stale label 제거 후 fall-through 해 재생성
+            markers.remove(MY_LOCATION_ID)?.remove()
         }
         val bmp = bitmapCache.get(BitmapKey.MyLocation) ?: createMyLocationBitmap().also {
             bitmapCache.put(BitmapKey.MyLocation, it)
@@ -249,7 +251,7 @@ class MapViewWrapper(private val mapView: MapView) {
         return object : com.example.siheunggagae.map.MarkerProjector {
             override fun toScreen(lat: Double, lng: Double): Pair<Int, Int>? = runCatching {
                 val pt = map.toScreenPoint(com.kakao.vectormap.LatLng.from(lat, lng))
-                    ?: return null
+                    ?: return@runCatching null
                 pt.x to pt.y
             }.getOrNull()
         }
