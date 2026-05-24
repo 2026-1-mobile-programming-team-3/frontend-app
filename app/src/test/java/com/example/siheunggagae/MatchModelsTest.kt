@@ -50,4 +50,11 @@ class MatchModelsTest {
         assertEquals(42, item.authorUserId)
         assertEquals(120.5, item.distanceM!!, 0.01)
     }
+
+    @Test
+    fun deserializes_other_category() {
+        val json = """{"items":[{"match_id":1,"status":"DONE","category":"OTHER"}]}"""
+        val item = gson.fromJson(json, MatchListResponse::class.java).items!![0]
+        assertEquals(MatchCategory.OTHER, item.category)
+    }
 }

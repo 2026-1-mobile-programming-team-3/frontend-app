@@ -138,13 +138,18 @@ class MatchingViewModel(
             val lat = location?.first
             val lng = location?.second
             val targetPage = if (reset) 1 else (page + 1)
+
+            // 백엔드 검증: lat/lng 한쪽만 보내면 422. 위치 없으면 nearest/max_distance 도 비활성.
+            val safeSort = if (sort == MatchSort.NEAREST && location == null) MatchSort.IMMINENT else sort
+            val safeMaxDistance = if (location == null) null else distance.meters
+
             val result = repository.getMatchList(
                 status = selectedStatus,
                 page = targetPage,
                 size = 20,
-                sort = sort.name.lowercase(),
+                sort = safeSort.name.lowercase(),
                 category = selectedCategory?.name,
-                maxDistance = distance.meters,
+                maxDistance = safeMaxDistance,
                 lat = lat,
                 lng = lng,
             )

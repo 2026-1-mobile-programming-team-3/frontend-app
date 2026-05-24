@@ -7,6 +7,7 @@ import com.google.gson.annotations.SerializedName
 data class MatchCreateRequest(
     val title: String,
     val content: String,
+    val category: MatchCategory,           // 신규 필수 (백엔드 §2)
     val latitude: Float,
     val longitude: Float,
     val address: String? = null,
@@ -24,6 +25,7 @@ data class MatchCreateResponse(
 data class MatchUpdateRequest(
     val title: String? = null,
     val content: String? = null,
+    val category: MatchCategory? = null,   // 신규 옵셔널 (백엔드 §3)
     val latitude: Float? = null,
     val longitude: Float? = null,
     val address: String? = null,
@@ -32,13 +34,10 @@ data class MatchUpdateRequest(
     val petId: Int? = null,
 )
 
-enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER }
+enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER, OTHER }
 
-/** 봉사자 자격 보유자만 작성·신청 가능한 카테고리. 백엔드 협의 후 확정. */
-fun MatchCategory.requiresVolunteerRole(): Boolean = when (this) {
-    MatchCategory.VET, MatchCategory.VOLUNTEER -> true
-    else -> false
-}
+/** 봉사자 자격(VOLUNTEER role) 보유자만 작성 가능한 카테고리. 백엔드 확정: VOLUNTEER 단일. */
+fun MatchCategory.requiresVolunteerRole(): Boolean = this == MatchCategory.VOLUNTEER
 
 data class MatchListItem(
     @SerializedName("match_id") val matchId: Int? = null,
@@ -98,6 +97,7 @@ data class MatchDetailResponse(
     val status: String? = null,
     val applicationsCount: Int? = null,
     val createdAt: String? = null,
+    val category: MatchCategory? = null,
 )
 
 data class MatchStatusUpdateRequest(

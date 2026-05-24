@@ -18,15 +18,16 @@ class MatchHelpersTest {
         assertEquals(29, walkingMinutes(2000.0))
     }
 
-    @Test fun requiresVolunteerRole_VET_and_VOLUNTEER_true() {
-        assertTrue(MatchCategory.VET.requiresVolunteerRole())
+    @Test fun requiresVolunteerRole_only_VOLUNTEER_true() {
         assertTrue(MatchCategory.VOLUNTEER.requiresVolunteerRole())
     }
 
     @Test fun requiresVolunteerRole_others_false() {
         assertFalse(MatchCategory.WALK.requiresVolunteerRole())
+        assertFalse(MatchCategory.VET.requiresVolunteerRole())       // 추가됨
         assertFalse(MatchCategory.SHOPPING.requiresVolunteerRole())
         assertFalse(MatchCategory.MOVE.requiresVolunteerRole())
+        assertFalse(MatchCategory.OTHER.requiresVolunteerRole())     // 신규 enum
     }
 
     @Test fun diffNewMatchIds_returns_only_new() {

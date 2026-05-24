@@ -762,6 +762,7 @@ private fun CardThumbnail(category: MatchCategory?) {
         MatchCategory.SHOPPING -> Brush.linearGradient(listOf(Color(0xFFFEE7EC), Color(0xFFF04268)))
         MatchCategory.MOVE -> Brush.linearGradient(listOf(Color(0xFFDBEAFE), Color(0xFF388AF5)))
         MatchCategory.VOLUNTEER -> Brush.linearGradient(listOf(Color(0xFFD0FEE1), Color(0xFF00A63E)))
+        MatchCategory.OTHER -> Brush.linearGradient(listOf(Color(0xFFF4F4F4), Color(0xFFC4A882)))
         null -> Brush.linearGradient(listOf(Color(0xFFF4F4F4), Color(0xFFE0E0E0)))
     }
     val iconRes = when (category) {
@@ -770,6 +771,7 @@ private fun CardThumbnail(category: MatchCategory?) {
         MatchCategory.SHOPPING -> R.drawable.ic_shopping_cart
         MatchCategory.MOVE -> R.drawable.ic_car
         MatchCategory.VOLUNTEER -> R.drawable.ic_award
+        MatchCategory.OTHER -> R.drawable.ic_users
         null -> R.drawable.ic_users
     }
     Box(
@@ -1108,6 +1110,7 @@ internal fun CategoryChipsRow(
         item { CategoryChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING) { onSelect(MatchCategory.SHOPPING) } }
         item { CategoryChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE) { onSelect(MatchCategory.MOVE) } }
         item { CategoryChip(MatchCategory.VOLUNTEER, "봉사", R.drawable.ic_award, selected == MatchCategory.VOLUNTEER) { onSelect(MatchCategory.VOLUNTEER) } }
+        item { CategoryChip(MatchCategory.OTHER, "기타", R.drawable.ic_users, selected == MatchCategory.OTHER) { onSelect(MatchCategory.OTHER) } }
     }
 }
 
