@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -184,10 +185,13 @@ fun HomeScreen(
     Scaffold(
         containerColor = BackgroundH,
     ) { innerPadding ->
+        // Apple Large Title collapse — scroll 진행에 따라 "시흥가개" 26sp → 18sp 점진 축소.
+        val scrollState = rememberScrollState()
+        val collapseProgress = (scrollState.value / 200f).coerceIn(0f, 1f)
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
         ) {
             HomeTopBar(
                 nickname = uiState.nickname.ifEmpty { "사용자" },
@@ -195,6 +199,7 @@ fun HomeScreen(
                 unreadCount = unreadCount,
                 onNotificationClick = onNotificationClick,
                 onDongClick = { showDongModal = true },
+                collapseProgress = collapseProgress,
             )
             Spacer(Modifier.height(8.dp))
             WalkIndexSection(
@@ -257,7 +262,12 @@ fun HomeTopBar(
     unreadCount: Int = 0,
     onNotificationClick: () -> Unit = {},
     onDongClick: () -> Unit = {},
+    collapseProgress: Float = 0f,
 ) {
+    // 26sp(0f) → 18sp(1f) 보간. lineHeight 도 같이 줄임.
+    val titleSize = (26f - 8f * collapseProgress).sp
+    val titleLineHeight = (32f - 8f * collapseProgress).sp
+    val greetingAlpha = (1f - collapseProgress * 1.4f).coerceIn(0f, 1f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -267,23 +277,26 @@ fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text(
-                text = "안녕하세요, ${nickname}님",
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Brown700H,
-            )
+            if (greetingAlpha > 0f) {
+                Text(
+                    text = "안녕하세요, ${nickname}님",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700H,
+                    modifier = Modifier.alpha(greetingAlpha),
+                )
+            }
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = Color(0xFF101828))) { append("시흥") }
                     withStyle(SpanStyle(color = StarYellowH)) { append("가개") }
                 },
                 fontFamily = PretendardFamily,
-                fontSize = 26.sp,
+                fontSize = titleSize,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 32.sp,
+                lineHeight = titleLineHeight,
             )
         }
         Row(

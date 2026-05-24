@@ -335,9 +335,10 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(50.dp))
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(50.dp))
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Color.White)
+                    // 살짝 frosted — Material3 가 native blur 를 ModalBottomSheet 외엔 노출하지 않으므로 alpha + 강화된 elevation 으로 iOS Liquid Glass 톤 흉내.
+                    .background(Color.White.copy(alpha = 0.92f))
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -380,6 +381,12 @@ private fun BottomNavItem(
         animationSpec = DockDpAnim,
         label = "dockPad",
     )
+    // 선택 시 아이콘 약간 키워서 "weight" 변화처럼 — Material Symbols Extended 가 weight axis 를 노출하지 않아 size morph 로 대체.
+    val iconSize by animateDpAsState(
+        targetValue = if (selected) 24.dp else 22.dp,
+        animationSpec = DockDpAnim,
+        label = "dockIconSize",
+    )
     val interactionSource = remember { MutableInteractionSource() }
 
     Row(
@@ -400,14 +407,14 @@ private fun BottomNavItem(
                 imageVector = entry.icon,
                 contentDescription = entry.label,
                 tint = iconColor,
-                modifier = Modifier.size(DockIconSize),
+                modifier = Modifier.size(iconSize),
             )
         } else if (entry.iconRes != null) {
             Icon(
                 painter = painterResource(entry.iconRes),
                 contentDescription = entry.label,
                 tint = iconColor,
-                modifier = Modifier.size(DockIconSize),
+                modifier = Modifier.size(iconSize),
             )
         }
         AnimatedVisibility(
