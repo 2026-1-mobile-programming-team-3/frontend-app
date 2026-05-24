@@ -40,16 +40,28 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val resp = repository.getMe()
+                if (resp.isSuccessful && resp.body() != null) {
+                    _uiState.value = PetListUiState.Success(resp.body()!!.pets)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     fun deletePet(petId: Int) {
         viewModelScope.launch {
             try {
                 val resp = repository.deletePet(petId)
                 if (resp.isSuccessful) {
-                    fetchPets()
+                    val current = _uiState.value
+                    if (current is PetListUiState.Success) {
+                        _uiState.value = current.copy(pets = current.pets.filter { it.id != petId })
+                    }
                 }
-            } catch (e: Exception) {
-                // 삭제 실패 시 현재 상태 유지
-            }
+            } catch (_: Exception) { }
         }
     }
 
