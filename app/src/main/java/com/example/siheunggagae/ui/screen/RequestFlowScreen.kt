@@ -81,6 +81,9 @@ import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
+import com.example.siheunggagae.data.model.KakaoLocalDocument
+import com.example.siheunggagae.data.network.KakaoLocalClient
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -1067,16 +1070,37 @@ private fun LocationSearchBottomSheet(
     onPlaceSelected: (SearchPlaceItem) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<KakaoLocalDocument>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
 
-    val siheungPlaces = listOf(
-        SearchPlaceItem("정왕역 (4호선)", "경기 시흥시 정왕역로 170", 37.3517f, 126.7427f),
-        SearchPlaceItem("시흥시청", "경기 시흥시 시청로 20", 37.3801f, 126.8029f),
-        SearchPlaceItem("배grouped 생명공원", "경기 시흥시 배고5로 55", 37.3685f, 126.7171f),
-        SearchPlaceItem("시흥 스마트허브 병원", "경기 시흥시 공단대로 247", 37.3384f, 126.7291f),
-        SearchPlaceItem("옥구공원 반려견 놀이터", "경기 시흥시 서해안로 277", 37.3592f, 126.7022f)
-    )
-    val filteredPlaces = siheungPlaces.filter {
-        it.placeName.contains(searchQuery) || it.addressName.contains(searchQuery)
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            searchResults = emptyList()
+            isSearching = false
+            searchError = null
+            return@LaunchedEffect
+        }
+        delay(300L)
+        isSearching = true
+        searchError = null
+        val response = runCatching {
+            KakaoLocalClient.api.searchKeyword(
+                query = "시흥 $searchQuery",
+                x = 126.8030,
+                y = 37.3799,
+                radius = 20000,
+                size = 15,
+            )
+        }
+        isSearching = false
+        val body = response.getOrNull()?.body()
+        if (response.isSuccess && body != null) {
+            searchResults = body.documents
+        } else {
+            searchError = "검색 중 오류가 발생했어요"
+            searchResults = emptyList()
+        }
     }
 
     ModalBottomSheet(
@@ -1105,25 +1129,99 @@ private fun LocationSearchBottomSheet(
             Spacer(Modifier.height(16.dp))
 
             LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
-                if (searchQuery.isNotBlank() && filteredPlaces.isEmpty()) {
-                    item {
-                        Text(text = "검색 결과가 없습니다.", color = GrayText, modifier = Modifier.padding(vertical = 16.dp), fontFamily = PretendardFamily)
+                when {
+                    searchQuery.isBlank() -> {
+                        item {
+                            Text(
+                                text = "장소나 매장명을 입력해 주세요",
+                                fontFamily = PretendardFamily,
+                                fontSize = 13.sp,
+                                color = Brown700F,
+                                modifier = Modifier.padding(vertical = 16.dp),
+                            )
+                        }
                     }
-                } else {
-                    items(if (searchQuery.isBlank()) siheungPlaces else filteredPlaces) { place ->
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onPlaceSelected(place)
-                                    onDismiss()
+                    isSearching -> {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = Orange500F,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                    }
+                    searchError != null -> {
+                        item {
+                            Text(
+                                text = searchError!!,
+                                fontFamily = PretendardFamily,
+                                fontSize = 13.sp,
+                                color = Color(0xFFE84B6A),
+                                modifier = Modifier.padding(vertical = 16.dp),
+                            )
+                        }
+                    }
+                    searchResults.isEmpty() -> {
+                        item {
+                            Text(
+                                text = "검색 결과가 없어요",
+                                fontFamily = PretendardFamily,
+                                fontSize = 13.sp,
+                                color = Brown700F,
+                                modifier = Modifier.padding(vertical = 16.dp),
+                            )
+                        }
+                    }
+                    else -> {
+                        items(searchResults) { doc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onPlaceSelected(
+                                            SearchPlaceItem(
+                                                placeName = doc.placeName,
+                                                addressName = doc.roadAddressName ?: doc.addressName ?: "",
+                                                latitude = doc.latitude.toFloatOrNull() ?: 0f,
+                                                longitude = doc.longitude.toFloatOrNull() ?: 0f,
+                                            )
+                                        )
+                                        onDismiss()
+                                    }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_location_on),
+                                    contentDescription = null,
+                                    tint = Orange500F,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = doc.placeName,
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextBlack,
+                                    )
+                                    val addr = doc.roadAddressName ?: doc.addressName
+                                    if (!addr.isNullOrBlank()) {
+                                        Text(
+                                            text = addr,
+                                            fontFamily = PretendardFamily,
+                                            fontSize = 11.sp,
+                                            color = Brown700F,
+                                        )
+                                    }
                                 }
-                                .padding(vertical = 12.dp)
-                        ) {
-                            Text(text = place.placeName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextBlack, fontFamily = PretendardFamily)
-                            Spacer(Modifier.height(2.dp))
-                            Text(text = place.addressName, fontSize = 13.sp, color = GrayText, fontFamily = PretendardFamily)
-                            Spacer(Modifier.height(10.dp))
+                            }
                             HorizontalDivider(color = Color(0xFFF4F4F4))
                         }
                     }
