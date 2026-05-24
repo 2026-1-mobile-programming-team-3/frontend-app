@@ -5,6 +5,8 @@ import com.example.siheunggagae.MapViewWrapper
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.SiheungGagaeApp
+import com.example.siheunggagae.ui.component.AppAsyncImage
+import com.example.siheunggagae.ui.component.CountUpText
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -48,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -392,19 +395,46 @@ fun WalkIndexSection(
     Column(
         modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
-        Text(text = "오늘 산책지수", fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
-        Spacer(Modifier.height(6.dp))
         Text(
-            text = buildAnnotatedString {
-                if (walkScore > 0) {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = scoreColor, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("${walkScore}점") }
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("으로 $scoreComment") }
-                } else {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = GrayTextH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) { append("로딩 중...") }
-                }
-            },
-            lineHeight = 32.sp,
+            text = "오늘 산책지수",
+            fontFamily = PretendardFamily,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Brown700H,
         )
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            if (walkScore == 0) {
+                Text(
+                    text = "—",
+                    fontFamily = PretendardFamily,
+                    fontSize = 52.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = GrayTextH,
+                )
+            } else {
+                CountUpText(
+                    value = walkScore,
+                    suffix = "점",
+                    durationMs = 1200,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontFamily = PretendardFamily,
+                        fontSize = 52.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                    ),
+                    color = scoreColor,
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "으로 $scoreComment",
+                fontFamily = PretendardFamily,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Normal,
+                color = TextBlackH,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         Spacer(Modifier.height(4.dp))
         Text(text = weatherText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = GrayTextH)
 
@@ -535,8 +565,38 @@ fun NearbyStoresSection(
                 Text(regionDong, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF374151))
             }
 
-            // 탭 시 전체 지도로 이동
-            Box(modifier = Modifier.fillMaxSize().clickable { onMapClick() })
+            // 탭 시 전체 지도로 이동 (appleTapScale + haptic)
+            val miniMapInteraction = rememberAppleInteractionSource()
+            val haptic = LocalHapticFeedback.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .appleTapScale(miniMapInteraction)
+                    .clickable(interactionSource = miniMapInteraction, indication = null) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onMapClick()
+                    }
+            )
+
+            // 우상단 CTA pill
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .shadow(2.dp, RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White.copy(alpha = 0.92f))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "전체 지도 →",
+                    fontFamily = PretendardFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Brown900H,
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -713,12 +773,23 @@ fun PetNewsSection(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Image(
-                painter = painterResource(R.drawable.img_home_news_thumb),
-                contentDescription = "뉴스 썸네일",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
-            )
+            val newsImageUrl = mainNews?.imageUrl
+            if (!newsImageUrl.isNullOrBlank()) {
+                AppAsyncImage(
+                    model = newsImageUrl,
+                    contentDescription = "뉴스 썸네일",
+                    placeholderRes = R.drawable.img_home_news_thumb,
+                    errorRes = R.drawable.img_home_news_thumb,
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.img_home_news_thumb),
+                    contentDescription = "뉴스 썸네일",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 if (mainNews != null) {
                     val (tColor, tBg) = newsTagColors(mainNews.category ?: "")
