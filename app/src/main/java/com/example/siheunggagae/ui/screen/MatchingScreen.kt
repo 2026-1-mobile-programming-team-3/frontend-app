@@ -82,6 +82,7 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
+import com.example.siheunggagae.ui.component.ShimmerBox
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -323,14 +324,14 @@ private fun SkeletonCards() {
                     .alpha(a),
             ) {
                 Row(Modifier.padding(14.dp)) {
-                    Box(Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF4F4F4)))
+                    ShimmerBox(Modifier.size(60.dp), shape = RoundedCornerShape(12.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Box(Modifier.height(14.dp).fillMaxWidth(0.5f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(14.dp).fillMaxWidth(0.5f), shape = RoundedCornerShape(6.dp))
                         Spacer(Modifier.height(8.dp))
-                        Box(Modifier.height(14.dp).fillMaxWidth(0.8f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(14.dp).fillMaxWidth(0.8f), shape = RoundedCornerShape(6.dp))
                         Spacer(Modifier.height(8.dp))
-                        Box(Modifier.height(10.dp).fillMaxWidth(0.6f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(10.dp).fillMaxWidth(0.6f), shape = RoundedCornerShape(6.dp))
                     }
                 }
             }
