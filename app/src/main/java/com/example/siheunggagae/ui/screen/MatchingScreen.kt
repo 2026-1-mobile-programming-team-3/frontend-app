@@ -168,6 +168,7 @@ fun MatchingScreen(
                     SortDistanceRow(
                         sort = success?.sort ?: MatchSort.IMMINENT,
                         distance = success?.distance ?: DistanceFilter.KM5,
+                        locationAvailable = locationAvailable,
                         onSortClick = { showSortSheet = true },
                         onDistanceClick = { showDistanceSheet = true },
                     )
@@ -177,6 +178,23 @@ fun MatchingScreen(
                     )
                     if (success?.showVolunteerWarning == true) {
                         VolunteerWarningBanner(onApplyClick = onVolunteerApplyClick)
+                    }
+                    // 새 N건 알림 — Column 흐름에 자연스럽게 배치 (이전엔 top=200dp 하드코딩 overlay).
+                    val newCountInFlow = (state as? MatchingUi.Success)?.newCount ?: 0
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = newCountInFlow > 0,
+                        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            NewCountPill(
+                                count = newCountInFlow,
+                                onClick = { viewModel.dismissNewCount() },
+                            )
+                        }
                     }
 
                     when (val s = state) {
@@ -205,7 +223,9 @@ fun MatchingScreen(
                                         }
                                         val imm = computeImminence(item.desiredDate, item.desiredTime)
                                         val distanceLabel = buildMatchDistanceLabel(item)
+                                        // animateItem(): 새 카드 추가·재정렬 시 부드러운 슬라이드/페이드 (Compose 1.7+).
                                         MatchCardR(
+                                            modifier = Modifier.animateItem(),
                                             item = item,
                                             isMine = isMine,
                                             imminence = imm,
@@ -225,19 +245,7 @@ fun MatchingScreen(
                 }
             }
 
-            // 새 N건 floating pill
-            val newCount = (state as? MatchingUi.Success)?.newCount ?: 0
-            if (newCount > 0) {
-                NewCountPill(
-                    count = newCount,
-                    onClick = { viewModel.dismissNewCount() },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 200.dp),
-                )
-            }
-
-            // FAB — iOS 스타일 haptic tap.
+            // FAB — iOS 스타일 원형 + haptic tap.
             val haptic = LocalHapticFeedback.current
             FloatingActionButton(
                 onClick = {
@@ -246,7 +254,7 @@ fun MatchingScreen(
                 },
                 containerColor = Color(0xFF9A7B5E),
                 contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 100.dp),
@@ -386,6 +394,7 @@ internal fun MatchCardR(
     distanceLabel: String,
     onClick: () -> Unit,
     onMoreClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val status = item.status ?: "RECRUITING"
     val cardAlpha = if (status == "DONE") 0.55f else 1f
@@ -393,7 +402,7 @@ internal fun MatchCardR(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
         shadowElevation = 1.dp,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
             .alpha(cardAlpha)
@@ -695,6 +704,7 @@ private fun PillTab(label: String, on: Boolean, count: Int?, onClick: () -> Unit
 internal fun SortDistanceRow(
     sort: MatchSort,
     distance: DistanceFilter,
+    locationAvailable: Boolean,
     onSortClick: () -> Unit,
     onDistanceClick: () -> Unit,
 ) {
@@ -702,8 +712,14 @@ internal fun SortDistanceRow(
         modifier = Modifier.padding(horizontal = 18.dp).padding(bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SortDistancePill(label = sort.label(), onClick = onSortClick, active = true)
-        SortDistancePill(label = distance.label(), onClick = onDistanceClick, active = distance != DistanceFilter.ALL)
+        SortDistancePill(label = sort.label(), onClick = onSortClick, active = true, enabled = true)
+        // 위치 미확보 시 거리 필터 비활성 — 회색 + 클릭 무시.
+        SortDistancePill(
+            label = if (locationAvailable) distance.label() else "위치 확인 중",
+            onClick = onDistanceClick,
+            active = locationAvailable && distance != DistanceFilter.ALL,
+            enabled = locationAvailable,
+        )
     }
 }
 
@@ -721,9 +737,10 @@ internal fun DistanceFilter.label(): String = when (this) {
 }
 
 @Composable
-private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean) {
+private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean, enabled: Boolean = true) {
     Row(
         modifier = Modifier
+            .alpha(if (enabled) 1f else 0.4f)
             .clip(RoundedCornerShape(50.dp))
             .background(Color.White)
             .border(
@@ -731,7 +748,7 @@ private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean
                 if (active) Brown900M else Color(0xFFE8D3C2),
                 RoundedCornerShape(50.dp),
             )
-            .clickable { onClick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
