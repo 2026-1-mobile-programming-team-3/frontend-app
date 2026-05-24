@@ -93,6 +93,8 @@ import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.toStoreResponse
+import com.example.siheunggagae.map.MarkerSpec
+import com.example.siheunggagae.map.computeMarkerSpecs
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -123,14 +125,6 @@ private val Pink500Mp    = Color(0xFFF04268)
 private val TextBlack    = Color(0xFF1E120A)
 private val StarYellow   = Color(0xFFFDC700)
 
-private val categoryColors = mapOf(
-    "CAFE"       to 0xFF8A6E58.toInt(),
-    "PARK"       to 0xFF4CAF50.toInt(),
-    "HOSPITAL"   to 0xFFF04268.toInt(),
-    "GROOMING"   to 0xFF9C27B0.toInt(),
-    "RESTAURANT" to 0xFFF7A35B.toInt(),
-)
-private val defaultMarkerColor = 0xFF614B3A.toInt()
 private val volunteerMarkerColor = 0xFF2196F3.toInt()
 
 private fun storeCategoryToKorean(category: String?): String =
@@ -257,50 +251,71 @@ fun MapScreen(
         )
     }
 
-    // viewport 마커 동기화 — zoom 11+ 에서 bbox 기반 데이터, 줌에 따라 클러스터링
-    LaunchedEffect(mapReady, uiState.viewportStores, uiState.visibleCategories, uiState.currentZoom) {
+    // viewport 마커 동기화 — picture-on-update 가 아니라 spec diff 기반 sync
+    LaunchedEffect(
+        mapReady,
+        uiState.viewportStores,
+        uiState.visibleCategories,
+        uiState.currentZoom,
+        uiState.selectedStore?.resolvedId,
+    ) {
         if (!mapReady) return@LaunchedEffect
-        mapWrapper.clearMarkersWithPrefix("store_")
-        mapWrapper.clearMarkersWithPrefix("cluster_")
+        val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
         val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
-        computeViewportMarkers(filtered, uiState.currentZoom).forEach { marker ->
-            if (marker.singleStore != null) {
-                val color = categoryColors[marker.singleStore.category] ?: defaultMarkerColor
-                mapWrapper.addMarker(
-                    id = marker.id,
-                    lat = marker.lat,
-                    lng = marker.lng,
-                    markerColor = color,
-                    category = marker.singleStore.category,
-                    name = marker.singleStore.name,
-                    onTap = { viewModel.selectStore(marker.singleStore.toStoreResponse()) },
-                )
-            } else {
-                mapWrapper.addClusterMarker(
-                    id = marker.id,
-                    lat = marker.lat,
-                    lng = marker.lng,
-                    count = marker.count,
-                )
+        val byId = filtered.associateBy { it.storeId }
+        val specs = computeMarkerSpecs(filtered, projector, uiState.currentZoom, uiState.selectedStore?.resolvedId)
+            .map { spec ->
+                when (spec) {
+                    is MarkerSpec.Single -> {
+                        val storeIdInt = spec.id.removePrefix("store_").toIntOrNull()
+                        spec.copy(onTap = {
+                            byId[storeIdInt]?.toStoreResponse()?.let { viewModel.selectStore(it) }
+                        })
+                    }
+                    is MarkerSpec.Cluster -> spec.copy(onTap = {
+                        mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
+                    })
+                }
             }
-        }
+        mapWrapper.syncMarkers("store", specs)
     }
 
-    // 봉사요청 마커 동기화
-    LaunchedEffect(mapReady, uiState.isVolunteerMode, uiState.volunteerMarkers) {
+    // 봉사요청 마커 동기화 (같은 픽셀 거리 클러스터링 사용)
+    LaunchedEffect(mapReady, uiState.isVolunteerMode, uiState.volunteerMarkers, uiState.currentZoom) {
         if (!mapReady) return@LaunchedEffect
-        mapWrapper.clearMarkersWithPrefix("vol_")
-        if (uiState.isVolunteerMode) {
-            uiState.volunteerMarkers.forEach { vol ->
-                mapWrapper.addMarker(
-                    id = "vol_${vol.requestId}",
-                    lat = vol.latitude,
-                    lng = vol.longitude,
-                    markerColor = volunteerMarkerColor,
-                    onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(vol.requestId)) },
-                )
-            }
+        if (!uiState.isVolunteerMode) {
+            mapWrapper.syncMarkers("vol", emptyList())
+            return@LaunchedEffect
         }
+        val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
+        // 봉사요청을 StoreViewportItem 형태로 어댑팅 — 카테고리 "VOLUNTEER" 단일
+        val asItems = uiState.volunteerMarkers.map { v ->
+            com.example.siheunggagae.data.model.StoreViewportItem(
+                storeId = v.requestId,
+                name = v.title ?: "",
+                latitude = v.latitude,
+                longitude = v.longitude,
+                category = "VOLUNTEER",
+            )
+        }
+        val specs = computeMarkerSpecs(asItems, projector, uiState.currentZoom, selectedId = null)
+            .map { spec ->
+                when (spec) {
+                    is MarkerSpec.Single -> {
+                        val volId = spec.id.removePrefix("store_").toIntOrNull() ?: return@map spec
+                        spec.copy(
+                            id = "vol_$volId",
+                            color = volunteerMarkerColor,
+                            onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(volId)) },
+                        )
+                    }
+                    is MarkerSpec.Cluster -> spec.copy(
+                        id = "volcluster_" + spec.id.removePrefix("cluster_"),
+                        onTap = { mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120) },
+                    )
+                }
+            }
+        mapWrapper.syncMarkers("vol", specs)
     }
 
     // skipHiddenState=true 로 시트가 완전히 숨겨지지 않게 — 사용자가 한 번 접으면 다시 펼 방법이 없는 버그 방지.
@@ -315,7 +330,8 @@ fun MapScreen(
     LaunchedEffect(uiState.selectedStore) {
         val store = uiState.selectedStore
         if (store != null && mapReady) {
-            mapWrapper.moveCamera(store.latitude, store.longitude)
+            val z = mapWrapper.getCurrentZoom().coerceAtLeast(16)
+            mapWrapper.animateCamera(store.latitude, store.longitude, z, durationMs = 350)
             sheetState.bottomSheetState.partialExpand()
         }
     }
@@ -1353,41 +1369,6 @@ private fun MapPlaceItem(
             )
         }
     }
-}
-
-// ─── Viewport 마커 클러스터링 ──────────────────────────────────────────────────
-
-private data class ViewportMarker(
-    val id: String,
-    val lat: Double,
-    val lng: Double,
-    val count: Int,
-    val singleStore: StoreViewportItem?,  // null = 클러스터
-)
-
-/**
- * zoom >= 14: 개별 마커
- * zoom 11~13: 소수점 자리 수 기반 그리드 클러스터링
- *   zoom 11~12 → 1자리(≈11km 격자), zoom 13 → 2자리(≈1km 격자)
- */
-private fun computeViewportMarkers(stores: List<StoreViewportItem>, zoom: Int): List<ViewportMarker> {
-    if (zoom >= 14) {
-        return stores.map { ViewportMarker("store_${it.storeId}", it.latitude, it.longitude, 1, it) }
-    }
-    val decimals = if (zoom <= 12) 1 else 2
-    return stores
-        .groupBy { "${"%.${decimals}f".format(it.latitude)},${"%.${decimals}f".format(it.longitude)}" }
-        .map { (key, group) ->
-            val centerLat = group.sumOf { it.latitude } / group.size
-            val centerLng = group.sumOf { it.longitude } / group.size
-            ViewportMarker(
-                id = "cluster_$key",
-                lat = centerLat,
-                lng = centerLng,
-                count = group.size,
-                singleStore = if (group.size == 1) group.first() else null,
-            )
-        }
 }
 
 // ─── 검색 오버레이 (병화-4) ───────────────────────────────────────────────────
