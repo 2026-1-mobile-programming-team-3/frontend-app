@@ -60,6 +60,7 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.siheunggagae.R
 import com.example.siheunggagae.ui.viewmodel.ProfileEditUiState
 import com.example.siheunggagae.ui.viewmodel.ProfileEditViewModel
@@ -217,7 +218,7 @@ fun ProfileEditScreen(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(imageModel)
-                                .crossfade(true)
+                                .crossfade(200)
                                 .build(),
                             contentDescription = "프로필 사진",
                             contentScale = ContentScale.Crop,
