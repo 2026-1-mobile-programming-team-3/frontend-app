@@ -251,74 +251,185 @@ fun PlaceDetailScreen(
                     bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             ) {
-                // 상단 배너 — 상태바까지 연장된 그라디언트
+                // ── 히어로 헤더 ────────────────────────────────────────────────────
                 item {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Brush.linearGradient(listOf(MapMintPL, Color(0xFFB2DFBF), Color(0xFFD8F2DC)))),
+                            .background(
+                                Brush.linearGradient(listOf(MapMintPL, Color(0xFFB2DFBF), Color(0xFFD8F2DC)))
+                            ),
                     ) {
-                        Spacer(Modifier.statusBarsPadding())
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(150.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_location_on),
-                                contentDescription = null,
-                                tint = Pink500PL,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        }
-                    }
-                }
-
-                // 장소 기본 정보
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(horizontal = 20.dp, vertical = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = s.name ?: "",
-                            fontFamily = PretendardFamily,
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 36.sp,
-                            color = TextBlackPL,
-                        )
-                        if (s.ratingAvg != null) {
-                            Spacer(Modifier.height(8.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Icon(imageVector = Icons.Filled.Star, null, tint = StarYellowPL, modifier = Modifier.size(20.dp))
-                                Text(
-                                    text = "%.1f".format(s.ratingAvg),
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    lineHeight = 24.sp,
-                                    color = TextBlackPL,
+                        // 상태바 높이 + 콘텐츠 높이
+                        Column {
+                            Spacer(Modifier.statusBarsPadding())
+                            Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                                // 다크 오버레이 (하단 → 상단)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                0f to Color.Transparent,
+                                                1f to Color(0x80000000),
+                                                startY = 0f,
+                                            )
+                                        ),
                                 )
-                                Text(
-                                    text = "(후기 ${reviews.size})",
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    lineHeight = 24.sp,
-                                    color = Brown700PL,
-                                )
+                                // 플로팅 버튼 (상단)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    // 뒤로가기
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .shadow(2.dp, RoundedCornerShape(12.dp))
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.White)
+                                            .clickable { onBack() },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                            contentDescription = "뒤로",
+                                            tint = TextBlackPL,
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                    }
+                                    // 즐겨찾기 + 공유
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .shadow(2.dp, RoundedCornerShape(12.dp))
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color.White)
+                                                .clickable { toggleFavorite() },
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_favorite),
+                                                contentDescription = "즐겨찾기",
+                                                tint = if (isFavorited) Pink500PL else Brown700PL,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .shadow(2.dp, RoundedCornerShape(12.dp))
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color.White)
+                                                .clickable { shareStore() },
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_share),
+                                                contentDescription = "공유",
+                                                tint = Brown700PL,
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
+                                }
+                                // 매장 정보 (하단 좌측)
+                                Column(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    // 카테고리 배지
+                                    val catLabel = when (s.category) {
+                                        "PET_HOTEL"  -> "🏨 반려동물 호텔"
+                                        "CAFE"       -> "☕ 카페"
+                                        "RESTAURANT" -> "🍽 식당"
+                                        "PARK"       -> "🌳 공원"
+                                        else         -> null
+                                    }
+                                    if (catLabel != null) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(50.dp))
+                                                .background(Color(0x40FFFFFF))
+                                                .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(50.dp))
+                                                .padding(horizontal = 10.dp, vertical = 3.dp),
+                                        ) {
+                                            Text(
+                                                text = catLabel,
+                                                fontFamily = PretendardFamily,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White,
+                                            )
+                                        }
+                                    }
+                                    // 매장명
+                                    Text(
+                                        text = s.name ?: "",
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        lineHeight = 28.sp,
+                                        color = Color.White,
+                                    )
+                                    // 별점 + 영업상태
+                                    if (s.ratingAvg != null || s.operatingHours != null) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            if (s.ratingAvg != null) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Star,
+                                                    contentDescription = null,
+                                                    tint = StarYellowPL,
+                                                    modifier = Modifier.size(14.dp),
+                                                )
+                                                Text(
+                                                    text = "%.1f".format(s.ratingAvg),
+                                                    fontFamily = PretendardFamily,
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                )
+                                                Text(
+                                                    text = "(후기 ${reviews.size})",
+                                                    fontFamily = PretendardFamily,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Normal,
+                                                    color = Color(0xCCFFFFFF),
+                                                )
+                                            }
+                                            val isOpen = s.operatingHours?.let { isOpenNow(it) }
+                                            if (isOpen != null) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(50.dp))
+                                                        .background(if (isOpen) GreenBgPL else Color(0xFFFFE4E6))
+                                                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                                                ) {
+                                                    Text(
+                                                        text = if (isOpen) "영업 중" else "영업 마감",
+                                                        fontFamily = PretendardFamily,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = if (isOpen) Green500PL else Pink500PL,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                item { Spacer(Modifier.height(8.dp)) }
 
                 // 상세 정보
                 item {
