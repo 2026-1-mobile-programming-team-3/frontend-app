@@ -66,7 +66,6 @@ private val PinkSurfaceC = Color(0xFFFEE8ED)
 private val Gray300C     = Color(0xFFE9E9E9)
 private val InputBgC     = Color(0xFFF3F3F3)
 private val PlaceholderC = Color(0xFFC1AFA0)
-private val StarYellowC  = Color(0xFFFDC700)
 
 // ─── 🕒 [서버 UTC 타임 -> 한국 표준시(KST) 전환 엔진] ───
 private fun formatChatTime(createdAt: String): String {
@@ -429,10 +428,12 @@ private fun ChatTopBar(
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackC)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(11.dp), tint = StarYellowC)
-                Text(text = "4.9 · 동네 매칭 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700C)
-            }
+            Text(
+                text = "동네 매칭 회원",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                color = Brown700C,
+            )
         }
         if (showAcceptBtn) {
             Box(

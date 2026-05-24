@@ -64,6 +64,7 @@ import com.kakao.vectormap.MapView as KakaoNativeMapView
 import com.example.siheunggagae.MapViewWrapper
 import androidx.compose.runtime.DisposableEffect
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
 
 private val Brown700P     = Color(0xFF8A6E58)
@@ -79,6 +80,7 @@ private val Gray300P      = Color(0xFFE8E8E8)
 private val TextBlackP    = Color(0xFF1E120A)
 private val Green600P     = Color(0xFF00A63E)
 private val Brown900C     = Color(0xFF614C3B)
+private val StarYellowP   = Color(0xFFFDC700)
 
 @Composable
 fun MatchingPublicDetailScreen(
@@ -156,7 +158,7 @@ fun MatchingPublicDetailScreen(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            PublicStatusBanner(statusText = request.status ?: "모집 중")
+                            PublicStatusBanner(statusText = matchStatusToKorean(request.status))
                             PublicRequestInfoCard(request = request)
                         }
 
@@ -456,7 +458,10 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = authorNickname, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackP)
             Spacer(Modifier.height(2.dp))
-            Text(text = "⭐ 4.9 · 시흥개개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(11.dp), tint = StarYellowP)
+                Text(text = "4.9 · 시흥개개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
+            }
         }
         Row(
             modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(Color.White).border(1.dp, BrownBorderP, RoundedCornerShape(50.dp)).clickable { onChat() }.padding(horizontal = 12.dp, vertical = 6.dp),

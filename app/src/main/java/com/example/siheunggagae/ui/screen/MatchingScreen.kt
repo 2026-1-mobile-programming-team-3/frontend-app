@@ -93,6 +93,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
 
 private val Brown900M     = Color(0xFF614B3A)
@@ -544,7 +545,7 @@ private fun StatusChip(status: String) {
         "REVIEWING" -> Triple(Color(0xFFFEF3C7), Color(0xFFCA8A04), "검토중")
         "IN_PROGRESS" -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "진행중")
         "DONE" -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), "완료")
-        else -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), status)
+        else -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), matchStatusToKorean(status))
     }
     Box(
         modifier = Modifier

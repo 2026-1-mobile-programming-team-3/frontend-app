@@ -62,6 +62,7 @@ import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
 import com.example.siheunggagae.ui.viewmodel.MatchDetailViewModel
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
 
 private val Brown700D = Color(0xFF8A6E58)
@@ -354,7 +355,7 @@ fun MatchingDetailScreen(
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            StatusBannerD(statusText = request.status ?: "상태 없음")
+                            StatusBannerD(statusText = matchStatusToKorean(request.status))
                             RequestInfoCardD(request = request)
                             PublicMapCard(latitude = request.latitude, longitude = request.longitude)
                             Spacer(Modifier.height(8.dp))
@@ -473,7 +474,15 @@ fun MatchingDetailScreen(
                                                 contentAlignment = Alignment.Center,
                                                 modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(PinkSurfaceD).padding(horizontal = 12.dp, vertical = 6.dp)
                                             ) {
-                                                Text("매칭 완료 🤝", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
+                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Icon(
+                                                        painter = painterResource(R.drawable.ic_handshake),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(12.dp),
+                                                        tint = Pink500D,
+                                                    )
+                                                    Text("매칭 완료", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
+                                                }
                                             }
                                         }
                                     }

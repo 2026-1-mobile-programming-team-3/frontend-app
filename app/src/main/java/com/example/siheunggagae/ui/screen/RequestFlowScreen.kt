@@ -49,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -82,6 +83,7 @@ import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.YearMonth
 
 private val Brown900F    = Color(0xFF614B3A)
@@ -841,12 +843,16 @@ private fun CalendarSection(
                     ) {
                         if (day != null) {
                             val isSelected = day == selectedDay
+                            val cellDate = yearMonth.atDay(day)
+                            val today = LocalDate.now()
+                            val isPast = cellDate.isBefore(today)
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
                                     .background(if (isSelected) Orange100F else Color.Transparent)
-                                    .clickable { onSelectDay(day) },
+                                    .alpha(if (isPast) 0.3f else 1f)
+                                    .clickable(enabled = !isPast) { onSelectDay(day) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
