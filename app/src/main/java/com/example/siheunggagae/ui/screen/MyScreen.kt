@@ -32,6 +32,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -68,6 +71,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+
+// Apple HIG ease (NavGraph 상수와 동일 톤). 화면 내 state morph 에 재사용.
+private val MyAppleEaseOut = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
 
 // 스펙 컬러
 private val Brown900My   = Color(0xFF614B3A)
@@ -148,14 +154,16 @@ fun MyScreen(
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val user  = (uiState as? MyUiState.Success)?.user
-    val stats = (uiState as? MyUiState.Success)?.stats
-
     Scaffold(
         topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
         containerColor = Background9,
     ) { padding ->
-        when (uiState) {
+        Crossfade(
+            targetState = uiState,
+            animationSpec = tween(durationMillis = 280, easing = MyAppleEaseOut),
+            label = "myState",
+        ) { state ->
+        when (state) {
             is MyUiState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
@@ -174,7 +182,7 @@ fun MyScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
-                            text = (uiState as MyUiState.Error).message,
+                            text = state.message,
                             fontFamily = PretendardFamily,
                             fontSize = 14.sp,
                             color = Brown700My,
@@ -193,7 +201,9 @@ fun MyScreen(
                     }
                 }
             }
-            else -> {
+            is MyUiState.Success -> {
+                val user = state.user
+                val stats = state.stats
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -224,7 +234,7 @@ fun MyScreen(
                         onFavoriteClick = onFavoriteStoresClick
                     )
                     Spacer(Modifier.height(12.dp))
-                    MySectionLabel("봉사 뱃지", fontSize = 18)
+                    MySectionLabel("봉사 뱃지")
                     Spacer(Modifier.height(6.dp))
                     VolunteerBadgeCard(
                         badge = stats?.badge,
@@ -255,6 +265,7 @@ fun MyScreen(
                 }
             }
         }
+        }  // end Crossfade
     }
 
     if (showLogoutDialog) {
@@ -326,18 +337,21 @@ private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
             lineHeight = 32.sp,
             color = TextBlack,
         )
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(36.dp)
-                .clickable { onSettingsClick() }
+        // design.md §17: 메인탭 우측 보조 아이콘 = 40×40dp 카드 (Home/Matching 과 정합).
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            modifier = Modifier.size(40.dp).clickable { onSettingsClick() },
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_settings),
-                contentDescription = "설정",
-                tint = Brown700My,
-                modifier = Modifier.size(22.dp),
-            )
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_settings),
+                    contentDescription = "설정",
+                    tint = Brown700My,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
         }
     }
 }
@@ -430,10 +444,12 @@ private fun ProfileCard(
                 )
             }
         }
+        // 편집 chip — PinkSurface 위에서 잘 보이도록 흰 배경 + Brown900 border.
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
-                .background(Color(0xFFFEFEFE))
+                .background(Color.White)
+                .border(1.dp, Brown900My, RoundedCornerShape(50.dp))
                 .clickable { onEditClick() }
                 .padding(horizontal = 13.dp, vertical = 6.dp),
         ) {
@@ -441,9 +457,9 @@ private fun ProfileCard(
                 text = "편집",
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 lineHeight = 16.sp,
-                color = Brown700My,
+                color = Brown900My,
             )
         }
     }
@@ -493,20 +509,21 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
                         color = Brown700My,
                         modifier = Modifier.weight(1f),
                     )
+                    // 추가하기 CTA — Orange500 (design.md §5 "Orange500 = 진입점/액션").
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50.dp))
-                            .background(Divider9)
+                            .background(Orange500My)
                             .clickable { onPetListClick() }
-                            .padding(horizontal = 14.dp, vertical = 3.dp),
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
                         Text(
                             text = "추가하기",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Bold,
                             lineHeight = 16.sp,
-                            color = Brown700My
+                            color = Color.White,
                         )
                     }
                 }
@@ -556,20 +573,22 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
                             color = Brown700My
                         )
                     }
+                    // 전체 보기 — 보조 액션이므로 Outline.
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50.dp))
-                            .background(Divider9)
+                            .background(Color.White)
+                            .border(1.dp, BrownBorderY, RoundedCornerShape(50.dp))
                             .clickable { onPetListClick() }
-                            .padding(horizontal = 14.dp, vertical = 3.dp),
+                            .padding(horizontal = 14.dp, vertical = 5.dp),
                     ) {
                         Text(
                             text = "전체 보기",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Bold,
                             lineHeight = 16.sp,
-                            color = Brown700My
+                            color = Brown900My,
                         )
                     }
                 }
@@ -898,7 +917,7 @@ private fun SettingsItem(
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
-                    color = Orange500My
+                    color = Brown700My,
                 )
             }
         }
@@ -940,15 +959,15 @@ private fun LogoutButton(onClick: () -> Unit = {}) {
 // ─── 공통: 섹션 라벨 ───────────────────────────────────────────────────────────
 
 @Composable
-private fun MySectionLabel(label: String, fontSize: Int = 12) {
+private fun MySectionLabel(label: String) {
     Text(
         text = label,
         fontFamily = PretendardFamily,
-        fontSize = fontSize.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        lineHeight = if (fontSize == 12) 16.sp else 27.sp,
-        color = if (fontSize == 12) Brown700My else TextBlack,
-        modifier = Modifier.padding(horizontal = 16.dp),
+        lineHeight = 16.sp,
+        color = Brown700My,
+        modifier = Modifier.padding(horizontal = 20.dp),
     )
 }
 
@@ -1044,7 +1063,7 @@ fun MyScreenSuccessPreview() {
                     favoriteCount = previewStats.favoriteCount ?: 0,
                 )
                 Spacer(Modifier.height(12.dp))
-                MySectionLabel("봉사 뱃지", fontSize = 18)
+                MySectionLabel("봉사 뱃지")
                 Spacer(Modifier.height(6.dp))
                 VolunteerBadgeCard(badge = previewStats.badge)
                 Spacer(Modifier.height(12.dp))
