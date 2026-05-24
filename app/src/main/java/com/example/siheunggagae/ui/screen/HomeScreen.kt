@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -187,7 +188,7 @@ fun HomeScreen(
     ) { innerPadding ->
         // Apple Large Title collapse — scroll 진행에 따라 "시흥가개" 26sp → 18sp 점진 축소.
         val scrollState = rememberScrollState()
-        val collapseProgress = (scrollState.value / 200f).coerceIn(0f, 1f)
+        val collapseProgress by remember { derivedStateOf { (scrollState.value / 200f).coerceIn(0f, 1f) } }
         Column(
             modifier = Modifier
                 .padding(innerPadding)

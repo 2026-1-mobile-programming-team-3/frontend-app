@@ -25,10 +25,39 @@ data class EffectiveCenter(
     val latLng: Pair<Double, Double> get() = lat to lng
 }
 
+/**
+ * 화면 간 이동 시 중복 API 호출(reverseGeocode + getMe) 방지용 인메모리 캐시.
+ * 3분 TTL — GPS 이동 반영과 스크린 전환 중복 제거 사이 균형.
+ * 위치 권한이 변경되면 invalidate() 호출.
+ */
+internal object EffectiveCenterCache {
+    private const val TTL_MS = 3 * 60 * 1000L
+
+    @Volatile private var cached: EffectiveCenter? = null
+    @Volatile private var cachedAt: Long = 0L
+
+    fun get(): EffectiveCenter? {
+        val entry = cached ?: return null
+        return if (System.currentTimeMillis() - cachedAt < TTL_MS) entry else null
+    }
+
+    fun put(center: EffectiveCenter) {
+        cached = center
+        cachedAt = System.currentTimeMillis()
+    }
+
+    fun invalidate() {
+        cached = null
+        cachedAt = 0L
+    }
+}
+
 suspend fun resolveEffectiveCenter(
     api: AuthApiService,
     locationProvider: LocationProvider,
 ): EffectiveCenter {
+    EffectiveCenterCache.get()?.let { return it }
+
     val gps = locationProvider.getLocationOrNull()
     if (gps != null) {
         val rev = runCatching { api.reverseGeocode(gps.latitude, gps.longitude).body() }.getOrNull()
@@ -38,7 +67,7 @@ suspend fun resolveEffectiveCenter(
                 lng = gps.longitude,
                 source = EffectiveCenter.Source.GPS,
                 regionDong = rev.label,
-            )
+            ).also { EffectiveCenterCache.put(it) }
         }
     }
     val regionDong = runCatching { api.getMe().body()?.regionDong }.getOrNull()
@@ -48,12 +77,12 @@ suspend fun resolveEffectiveCenter(
             lng = lng,
             source = EffectiveCenter.Source.USER_PROFILE,
             regionDong = regionDong,
-        )
+        ).also { EffectiveCenterCache.put(it) }
     }
     return EffectiveCenter(
         lat = SiheungRegions.CITY_HALL.first,
         lng = SiheungRegions.CITY_HALL.second,
         source = EffectiveCenter.Source.DEFAULT,
         regionDong = null,
-    )
+    ).also { EffectiveCenterCache.put(it) }
 }

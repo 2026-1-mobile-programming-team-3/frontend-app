@@ -157,9 +157,9 @@ class MapViewModel(
 
     fun selectCategory(category: StoreCategory) {
         _uiState.update { it.copy(selectedCategory = category) }
-        val location = _uiState.value.location ?: return
+        val (lat, lng) = _uiState.value.cameraTarget ?: return
         viewModelScope.launch {
-            loadStores(location.latitude, location.longitude, category)
+            loadStores(lat, lng, category)
         }
         val bbox = lastBbox
         val zoom = _uiState.value.currentZoom

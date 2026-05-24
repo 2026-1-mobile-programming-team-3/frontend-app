@@ -1499,7 +1499,7 @@ private fun MapSearchOverlay(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(results) { result ->
+                    items(results, key = { it.resolvedId ?: it.hashCode() }) { result ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
