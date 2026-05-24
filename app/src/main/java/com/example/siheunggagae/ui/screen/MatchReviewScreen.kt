@@ -4,6 +4,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +47,14 @@ private val Pink500C     = Color(0xFFF14369)
 private val Gray300C     = Color(0xFFE9E9E9)
 private val InputBgC     = Color(0xFFF8F8F8)
 private val PlaceholderC = Color(0xFFC1AFA0)
+
+private val ratingLabels = mapOf(
+    1 to "아쉬웠어요 😢",
+    2 to "조금 아쉬워요 😕",
+    3 to "보통이에요 😐",
+    4 to "좋았어요 😊",
+    5 to "훌륭했어요! 🤩",
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,7 +104,7 @@ fun MatchReviewScreen(
                     rating = state.review.rating ?: 5
                     reviewText = state.review.content ?: ""
                 } else {
-                    snackbarHostState.showSnackbar("후기가 성공적으로 반영되었습니다! ⭐")
+                    snackbarHostState.showSnackbar("후기가 성공적으로 반영되었습니다!")
                     viewModel.resetState()
                     onBack()
                 }
@@ -137,16 +152,38 @@ fun MatchReviewScreen(
                         fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackC
                     )
                     Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (i in 1..5) {
-                            val isSelected = i <= rating
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "$i 점",
-                                tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8E8E8),
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clickable(enabled = !isReadOnly) { rating = i }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (i in 1..5) {
+                                val isSelected = i <= rating
+                                val starScale by animateFloatAsState(
+                                    targetValue = if (isSelected) 1.15f else 1f,
+                                    animationSpec = spring(stiffness = Spring.StiffnessHigh),
+                                    label = "starScale_$i",
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "$i 점",
+                                    tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8D3C2),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .scale(starScale)
+                                        .clickable(enabled = !isReadOnly) { rating = i }
+                                )
+                            }
+                        }
+                        AnimatedVisibility(
+                            visible = rating > 0,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            Text(
+                                text = ratingLabels[rating] ?: "",
+                                fontFamily = PretendardFamily,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFF7A35B),
+                                modifier = Modifier.padding(top = 12.dp),
                             )
                         }
                     }
@@ -227,7 +264,7 @@ fun MatchReviewScreen(
                                 viewModel.modifyReview(matchId, rating, reviewText) {
                                     isReadOnly = true
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("후기가 깔끔하게 수정되었습니다! ✏️")
+                                        snackbarHostState.showSnackbar("후기가 깔끔하게 수정되었습니다!")
                                     }
                                 }
                             } else {

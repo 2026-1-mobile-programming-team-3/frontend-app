@@ -407,6 +407,8 @@ internal fun MatchCardR(
 ) {
     val status = item.status ?: "RECRUITING"
     val cardAlpha = if (status == "DONE") 0.55f else 1f
+    val interaction = rememberAppleInteractionSource()
+    val haptic = LocalHapticFeedback.current
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -415,7 +417,11 @@ internal fun MatchCardR(
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
             .alpha(cardAlpha)
-            .clickable { onClick() },
+            .appleTapScale(interaction)
+            .clickable(interactionSource = interaction, indication = null) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
     ) {
         Box {
             Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
