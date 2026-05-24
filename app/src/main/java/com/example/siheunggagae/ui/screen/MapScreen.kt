@@ -26,6 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.window.Dialog
+import com.example.siheunggagae.data.local.SiheungRegions
+import com.example.siheunggagae.data.location.EffectiveCenter
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -159,6 +163,7 @@ fun MapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showDongPicker by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -358,6 +363,21 @@ fun MapScreen(
                         .fillMaxWidth()
                         .padding(top = 16.dp, start = 16.dp, end = 16.dp),
                 ) {
+                    // GPS 가 시흥 밖일 때 fallback 안내 배너 — design.md §5 색 의미론: 위치=Mint
+                    AnimatedVisibility(
+                        visible = uiState.centerFallback != null,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    ) {
+                        uiState.centerFallback?.let { cf ->
+                            FallbackCenterBanner(
+                                center = cf,
+                                onChangeClick = { showDongPicker = true },
+                                onDismiss = { viewModel.dismissFallbackBanner() },
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                    }
                     MapSearchCard(onClick = { showSearch = true })
                     Spacer(Modifier.height(8.dp))
                     MapCategoryChipRow(
@@ -465,6 +485,158 @@ fun MapScreen(
                 onNavigate(Screen.PlaceDetail.createRoute(storeId))
             },
         )
+    }
+
+    if (showDongPicker) {
+        DongPickerDialog(
+            currentDong = uiState.centerFallback?.regionDong,
+            onDismiss = { showDongPicker = false },
+            onSelect = { dong ->
+                viewModel.moveToDong(dong)
+                showDongPicker = false
+            },
+        )
+    }
+}
+
+// ─── Fallback 배너 (GPS 가 시흥 밖일 때) ──────────────────────────────────────
+
+@Composable
+private fun FallbackCenterBanner(
+    center: EffectiveCenter,
+    onChangeClick: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val regionLabel = center.regionDong ?: "시흥시청"
+    val sourceLabel = when (center.source) {
+        EffectiveCenter.Source.USER_PROFILE -> "내 등록 동네"
+        EffectiveCenter.Source.DEFAULT -> "시흥 기본 위치"
+        EffectiveCenter.Source.GPS -> "현재 위치"
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFEAFBF1),
+        shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_location_on),
+                contentDescription = null,
+                tint = Color(0xFF00A63E),
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "현재 위치가 시흥 밖이라 ${regionLabel} 기준으로 보고 있어요",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlack,
+                    lineHeight = 16.sp,
+                )
+                Text(
+                    text = sourceLabel,
+                    fontFamily = PretendardFamily,
+                    fontSize = 10.sp,
+                    color = Brown700Mp,
+                    lineHeight = 14.sp,
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .clickable { onChangeClick() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "변경",
+                    fontFamily = PretendardFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF00A63E),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "닫기",
+                    tint = Brown400Mp,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+// ─── 동네 선택 다이얼로그 ──────────────────────────────────────────────────────
+
+@Composable
+private fun DongPickerDialog(
+    currentDong: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = "동네 변경",
+                fontFamily = PretendardFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+            LazyColumn(modifier = Modifier.height(360.dp)) {
+                items(SiheungRegions.dongCoordinates.keys.toList()) { dong ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(dong) }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            dong,
+                            fontFamily = PretendardFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 24.sp,
+                            color = TextBlack,
+                        )
+                        if (dong == currentDong) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Pink500Mp,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = Color(0xFFF3F4F6),
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.local.FavoritesCache
 import com.example.siheunggagae.data.local.MapFilterStore
+import com.example.siheunggagae.data.local.SiheungRegions
+import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.location.LocationProvider
+import com.example.siheunggagae.data.location.resolveEffectiveCenter
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
@@ -46,6 +49,8 @@ data class MapUiState(
     val viewportStores: List<StoreViewportItem> = emptyList(),
     val currentZoom: Int = 15,
     val truncated: Boolean = false,
+    /** GPS 가 시흥 밖이라 fallback 좌표를 쓰고 있는 상태. UI 배너 노출 트리거. */
+    val centerFallback: EffectiveCenter? = null,
 )
 
 class MapViewModel(
@@ -108,19 +113,24 @@ class MapViewModel(
             _uiState.update { it.copy(userRole = userRole) }
 
             val location = locationProvider.getLocationOrNull()
+
+            // focus 좌표가 명시되면 그대로 사용(매장 상세에서 진입). 아니면 GPS-시흥 fallback resolver.
+            val effective = if (focusLat != 0.0 && focusLng != 0.0) {
+                null
+            } else {
+                resolveEffectiveCenter(api, locationProvider)
+            }
+            val centerLat = effective?.lat ?: focusLat
+            val centerLng = effective?.lng ?: focusLng
+
             _uiState.update { it.copy(
                 location = location,
-                cameraTarget = if (focusLat != 0.0 && focusLng != 0.0) {
-                    focusLat to focusLng
-                } else {
-                    location?.let { loc -> loc.latitude to loc.longitude }
-                },
+                cameraTarget = centerLat to centerLng,
                 cameraSerial = it.cameraSerial + 1,
+                centerFallback = effective?.takeIf { it.isFallback },
             )}
 
-            if (location != null) {
-                loadStores(location.latitude, location.longitude)
-            }
+            loadStores(centerLat, centerLng)
 
             if (_uiState.value.isVolunteerMode) {
                 loadVolunteerMarkers()
@@ -128,6 +138,21 @@ class MapViewModel(
 
             _uiState.update { it.copy(isLoading = false) }
         }
+    }
+
+    /** 사용자가 직접 동네를 선택해서 그 좌표로 카메라 이동. fallback 배너는 그대로 유지. */
+    fun moveToDong(dong: String) {
+        val (lat, lng) = SiheungRegions.coordinatesForDong(dong) ?: return
+        _uiState.update { it.copy(
+            cameraTarget = lat to lng,
+            cameraSerial = it.cameraSerial + 1,
+        )}
+        viewModelScope.launch { loadStores(lat, lng, _uiState.value.selectedCategory) }
+    }
+
+    /** fallback 배너 닫기 — UI 에서만 숨김. 다음 진입 때 다시 평가. */
+    fun dismissFallbackBanner() {
+        _uiState.update { it.copy(centerFallback = null) }
     }
 
     fun selectCategory(category: StoreCategory) {

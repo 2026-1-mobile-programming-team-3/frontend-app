@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
+import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.MatchStatus
@@ -139,6 +140,7 @@ fun MatchingScreen(
     onVolunteerApplyClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     locationAvailable: Boolean = false,
+    centerFallback: EffectiveCenter? = null,
     currentUserId: Int? = null,
     currentUserNickname: String? = null,
 ) {
@@ -173,6 +175,9 @@ fun MatchingScreen(
                         onSearchClick = onSearchClick,
                         onMyRequestsClick = onMyRequestsClick,
                     )
+                    if (centerFallback != null) {
+                        MatchingFallbackBanner(center = centerFallback)
+                    }
                     val success = state as? MatchingUi.Success
                     StatusTabRow(
                         selected = success?.selectedStatus,
@@ -1257,6 +1262,37 @@ private fun MoreRow(label: String, danger: Boolean = false, enabled: Boolean = t
             color = if (danger) Color(0xFFF04268) else TextBlackM,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/** GPS 가 시흥 밖이라 사용자 등록 동네/시청 좌표 기준으로 매칭을 보여주는 중임을 안내. */
+@Composable
+private fun MatchingFallbackBanner(center: EffectiveCenter) {
+    val regionLabel = center.regionDong ?: "시흥시청"
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 18.dp).padding(bottom = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFEAFBF1))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_location_on),
+            contentDescription = null,
+            tint = Color(0xFF00A63E),
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "현재 위치가 시흥 밖이라 ${regionLabel} 기준으로 매칭을 표시 중이에요",
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextBlack,
+            lineHeight = 16.sp,
         )
     }
 }
