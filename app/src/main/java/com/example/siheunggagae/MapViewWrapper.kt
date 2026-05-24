@@ -288,7 +288,7 @@ class MapViewWrapper(private val mapView: MapView) {
         // 캔버스: 핀 스택 + 우하단 badge overflow 여유
         val padding = 4f
         val totalW = (stackW + badgeW * 0.6f + padding * 2).coerceAtLeast(stackW + padding * 2)
-        val totalH = (stackH + badgeH * 0.4f + padding * 2).coerceAtLeast(stackH + padding * 2)
+        val totalH = (stackH + badgeH * 0.7f + padding * 2).coerceAtLeast(stackH + padding * 2)
         val bitmap = Bitmap.createBitmap(totalW.toInt(), totalH.toInt(), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
@@ -501,7 +501,6 @@ class MapViewWrapper(private val mapView: MapView) {
 
         val chipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.color = android.graphics.Color.WHITE
-            setShadowLayer(2f, 0f, 1f, 0x33000000)
         }
         val chipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 24f
@@ -608,6 +607,7 @@ class MapViewWrapper(private val mapView: MapView) {
             "HOSPITAL"   -> "🏥"
             "GROOMING"   -> "✂"
             "RESTAURANT" -> "🍽"
+            "PET_HOTEL"  -> "🏨"
             else         -> "★"
         }
         val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
