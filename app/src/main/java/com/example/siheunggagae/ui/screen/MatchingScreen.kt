@@ -219,7 +219,7 @@ fun MatchingScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentPadding = PaddingValues(bottom = 96.dp),
                                 ) {
-                                    items(s.items, key = { it.matchId ?: 0 }) { item ->
+                                    items(s.items, key = { it.matchId ?: it.hashCode() }) { item ->
                                         val isMine = when {
                                             currentUserId != null && item.authorUserId != null ->
                                                 item.authorUserId == currentUserId
