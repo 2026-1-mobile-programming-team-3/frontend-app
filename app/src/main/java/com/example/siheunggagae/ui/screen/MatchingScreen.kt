@@ -131,6 +131,7 @@ fun MatchingScreen(
     var showSortSheet by remember { mutableStateOf(false) }
     var showDistanceSheet by remember { mutableStateOf(false) }
     var moreSheetFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }  // matchId, isMine
+    val sheetHaptic = LocalHapticFeedback.current
 
     // 무한 스크롤 trigger
     LaunchedEffect(listState) {
@@ -169,8 +170,14 @@ fun MatchingScreen(
                         sort = success?.sort ?: MatchSort.IMMINENT,
                         distance = success?.distance ?: DistanceFilter.KM5,
                         locationAvailable = locationAvailable,
-                        onSortClick = { showSortSheet = true },
-                        onDistanceClick = { showDistanceSheet = true },
+                        onSortClick = {
+                            sheetHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showSortSheet = true
+                        },
+                        onDistanceClick = {
+                            sheetHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showDistanceSheet = true
+                        },
                     )
                     CategoryChipsRow(
                         selected = success?.selectedCategory,

@@ -52,6 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
+import androidx.compose.animation.animateColorAsState
 
 // ─── 컬러 (design.md / CLAUDE.md 단일 진실에 맞춤) ──────────────────────────────
 private val TextBlackNs    = Color(0xFF1E120A)
@@ -302,13 +306,22 @@ private fun NewsCategoryFilter(selected: String, onSelect: (String) -> Unit) {
     ) {
         newsCategories.forEach { cat ->
             val isSelected = cat == selected
+            // 텍스트 색 morph + tap scale — Map/Matching 카테고리 칩과 같은 톤.
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) TextBlackNs else Brown700Ns,
+                animationSpec = appleSpec(),
+                label = "newsTabFg",
+            )
+            val interaction = rememberAppleInteractionSource()
             Text(
                 text = cat,
                 fontFamily = PretendardFamily,
                 fontSize = if (isSelected) 16.sp else 14.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) TextBlackNs else Brown700Ns,
-                modifier = Modifier.clickable { onSelect(cat) },
+                color = fg,
+                modifier = Modifier
+                    .appleTapScale(interaction)
+                    .clickable(interactionSource = interaction, indication = null) { onSelect(cat) },
             )
         }
     }

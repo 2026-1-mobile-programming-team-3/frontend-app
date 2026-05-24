@@ -70,8 +70,14 @@ import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.viewmodel.HomeViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
@@ -531,12 +537,24 @@ fun NearbyStoresSection(
         ) {
             StoreCategory.entries.forEach { cat ->
                 val isSel = cat == selectedCategory
+                val bg by animateColorAsState(
+                    targetValue = if (isSel) Color(0xFF1A1A1A) else Color.White,
+                    animationSpec = appleSpec(),
+                    label = "homeChipBg",
+                )
+                val fg by animateColorAsState(
+                    targetValue = if (isSel) Color.White else Brown700H,
+                    animationSpec = appleSpec(),
+                    label = "homeChipFg",
+                )
+                val interaction = rememberAppleInteractionSource()
                 Box(
                     modifier = Modifier
+                        .appleTapScale(interaction)
                         .clip(RoundedCornerShape(50.dp))
-                        .background(if (isSel) Color(0xFF1A1A1A) else Color.White)
+                        .background(bg)
                         .then(if (!isSel) Modifier.border(1.dp, BrownBorderH, RoundedCornerShape(50.dp)) else Modifier)
-                        .clickable { onCategorySelected(cat) }
+                        .clickable(interactionSource = interaction, indication = null) { onCategorySelected(cat) }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
@@ -545,7 +563,7 @@ fun NearbyStoresSection(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         lineHeight = 20.sp,
-                        color = if (isSel) Color.White else Brown700H,
+                        color = fg,
                     )
                 }
             }
@@ -608,7 +626,14 @@ private fun HomeStoreItem(
                 color = Brown700H,
             )
         }
-        IconButton(onClick = { onFavoriteClick(store) }, modifier = Modifier.size(36.dp)) {
+        val haptic = LocalHapticFeedback.current
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onFavoriteClick(store)
+            },
+            modifier = Modifier.size(36.dp),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",

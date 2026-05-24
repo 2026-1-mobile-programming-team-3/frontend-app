@@ -1337,7 +1337,14 @@ private fun MapPlaceItem(
                 }
             }
         }
-        IconButton(onClick = { onFavoriteToggle() }, modifier = Modifier.size(36.dp)) {
+        val haptic = LocalHapticFeedback.current
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onFavoriteToggle()
+            },
+            modifier = Modifier.size(36.dp),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
