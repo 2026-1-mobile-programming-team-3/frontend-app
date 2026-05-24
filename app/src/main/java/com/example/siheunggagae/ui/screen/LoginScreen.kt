@@ -1,4 +1,4 @@
-﻿package com.example.siheunggagae.ui.screen
+package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.ui.viewmodel.AuthUiState
 import com.example.siheunggagae.ui.viewmodel.AuthViewModel
@@ -24,10 +24,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,14 +35,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -55,8 +55,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 // ─── 컬러 ──────────────────────────────────────────────────────────────────────
 
@@ -173,68 +176,103 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+                .verticalScroll(rememberScrollState()),
         ) {
-            Spacer(Modifier.height(16.dp))
-
-            Text(
-                text = "반가워요!\n로그인을 진행해 주세요.",
-                fontFamily = PretendardFamily,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 42.sp,
-                color = TextBlackLogin,
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                LoginInputSection(label = "아이디") {
-                    LoginTextField(
-                        value = emailInput,
-                        onValueChange = { emailInput = it },
-                        placeholder = "아이디 또는 이메일 입력",
-                        keyboardType = KeyboardType.Email,
-                    )
-                }
-
-                LoginInputSection(label = "비밀번호") {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PasswordTextField(
-                            value = passwordInput,
-                            onValueChange = { passwordInput = it },
-                            visible = passwordVisible,
-                            onToggleVisibility = { passwordVisible = !passwordVisible },
+            // ─── 브랜드 영역 ─────────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFFFFEDD4), Color(0xFFFEFEFE)),
                         )
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterEnd,
-                        ) {
-                            Text(
-                                text = "비밀번호를 잊으셨나요?",
-                                fontFamily = PretendardFamily,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                lineHeight = 20.sp,
-                                color = PlaceholderLogin,
-                            )
-                        }
-                        if (errorMessage != null) {
-                            Text(
-                                text = errorMessage,
-                                fontFamily = PretendardFamily,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                lineHeight = 18.sp,
-                                color = Color(0xFFF04268),
-                            )
-                        }
-                    }
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data("file:///android_asset/logo.svg")
+                            .build(),
+                        contentDescription = "시흥가개",
+                        modifier = Modifier.size(64.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "반가워요, 시흥가개에서 함께해요 🐾",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF614B3A),
+                    )
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            // ─── 입력 폼 ──────────────────────────────────────────────────────
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+            ) {
+                Spacer(Modifier.height(24.dp))
+
+                Text(
+                    text = "로그인을 진행해 주세요",
+                    fontFamily = PretendardFamily,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 32.sp,
+                    color = TextBlackLogin,
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    LoginInputSection(label = "아이디") {
+                        LoginTextField(
+                            value = emailInput,
+                            onValueChange = { emailInput = it },
+                            placeholder = "아이디 또는 이메일 입력",
+                            keyboardType = KeyboardType.Email,
+                        )
+                    }
+
+                    LoginInputSection(label = "비밀번호") {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PasswordTextField(
+                                value = passwordInput,
+                                onValueChange = { passwordInput = it },
+                                visible = passwordVisible,
+                                onToggleVisibility = { passwordVisible = !passwordVisible },
+                            )
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.CenterEnd,
+                            ) {
+                                Text(
+                                    text = "비밀번호를 잊으셨나요?",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 20.sp,
+                                    color = PlaceholderLogin,
+                                )
+                            }
+                            if (errorMessage != null) {
+                                Text(
+                                    text = errorMessage,
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 18.sp,
+                                    color = Color(0xFFF04268),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }
