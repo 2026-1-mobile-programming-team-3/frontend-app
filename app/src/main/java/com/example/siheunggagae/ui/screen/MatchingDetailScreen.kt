@@ -95,6 +95,7 @@ fun MatchingDetailScreen(
     var showReviewDialog by remember { mutableStateOf(false) }
     var showCancelDialog by remember { mutableStateOf(false) }
     var appIdToCancel by remember { mutableStateOf(-1) }
+    var acceptingAppId by remember { mutableStateOf(-1) }
 
     LaunchedEffect(requestId) { viewModel.fetchDetail(requestId) }
     val requestData = (uiState as? MatchDetailUiState.Success)?.detail
@@ -448,14 +449,31 @@ fun MatchingDetailScreen(
                                                         Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
                                                     }
 
+                                                    val appId = appItem.applicationId ?: 0
+                                                    val isAccepting = acceptingAppId == appId
                                                     Box(
                                                         contentAlignment = Alignment.Center,
-                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Pink500D).clickable {
-                                                            val appId = appItem.applicationId ?: 0
-                                                            viewModel.acceptApplication(requestId, appId) {}
+                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(
+                                                            if (isAccepting) Pink500D.copy(alpha = 0.6f) else Pink500D
+                                                        ).clickable(enabled = !isAccepting) {
+                                                            acceptingAppId = appId
+                                                            viewModel.acceptApplication(requestId, appId) {
+                                                                acceptingAppId = -1
+                                                                scope.launch {
+                                                                    snackbarHostState.showSnackbar("수락했어요. 채팅을 시작해 보세요.")
+                                                                }
+                                                            }
                                                         }.padding(horizontal = 10.dp, vertical = 6.dp)
                                                     ) {
-                                                        Text("수락", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                        if (isAccepting) {
+                                                            CircularProgressIndicator(
+                                                                color = Color.White,
+                                                                strokeWidth = 2.dp,
+                                                                modifier = Modifier.size(14.dp),
+                                                            )
+                                                        } else {
+                                                            Text("수락", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                        }
                                                     }
 
                                                     Box(

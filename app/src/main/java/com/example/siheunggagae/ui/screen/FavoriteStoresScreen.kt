@@ -25,27 +25,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.NaturePeople
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,7 +56,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.CategoryVisual
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 // 컬러
 private val Brown900F    = Color(0xFF614B3A)
@@ -80,9 +84,13 @@ fun FavoriteStoresScreen(
         viewModel?.uiState ?: MutableStateFlow(FavoriteStoresUiState.Loading)
     }.collectAsState()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     Scaffold(
         containerColor = BackgroundF,
         topBar = { FavoriteStoresTopBar(onBack = onBack) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when (val state = uiState) {
             is FavoriteStoresUiState.Loading -> {
@@ -178,7 +186,21 @@ fun FavoriteStoresScreen(
                             FavoriteStoreCard(
                                 item = item,
                                 onCardClick = { item.storeId?.let { onPlaceDetailClick(it) } },
-                                onHeartClick = { item.storeId?.let { viewModel?.removeFavorite(it) } },
+                                onHeartClick = {
+                                    item.storeId?.let { storeId ->
+                                        viewModel?.removeFavorite(storeId)
+                                        scope.launch {
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "즐겨찾기에서 제거했어요",
+                                                actionLabel = "실행취소",
+                                                duration = SnackbarDuration.Short,
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                viewModel?.addFavorite(storeId)
+                                            }
+                                        }
+                                    }
+                                },
                             )
                         }
                         item { Spacer(Modifier.height(16.dp)) }
@@ -252,22 +274,19 @@ private fun FavoriteStoreCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            // 썸네일 (그라디언트 플레이스홀더 + 카테고리 아이콘)
+            // 썸네일 (카테고리별 그라디언트 + 아이콘)
+            val visual = CategoryVisual.forCategory(item.category)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(72.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(Color(0xFFD0FEE1), Color(0xFFE0F7FA))
-                        )
-                    ),
+                    .background(Brush.linearGradient(visual.gradient)),
             ) {
                 Icon(
-                    imageVector = item.category.categoryIcon(),
+                    painter = painterResource(visual.drawableRes),
                     contentDescription = null,
-                    tint = Brown700F,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp),
                 )
             }
@@ -332,12 +351,7 @@ private fun FavoriteStoreCard(
     }
 }
 
-private fun String?.categoryIcon(): ImageVector = when (this) {
-    StoreCategory.CAFE.label, StoreCategory.CAFE.apiValue       -> Icons.Default.LocalCafe
-    StoreCategory.RESTAURANT.label, StoreCategory.RESTAURANT.apiValue -> Icons.Default.Restaurant
-    StoreCategory.PARK.label, StoreCategory.PARK.apiValue       -> Icons.Default.NaturePeople
-    else                                                          -> Icons.Default.LocalCafe
-}
+
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 

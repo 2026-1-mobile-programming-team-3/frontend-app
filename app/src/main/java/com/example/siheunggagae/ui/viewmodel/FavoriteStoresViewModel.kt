@@ -57,6 +57,18 @@ class FavoriteStoresViewModel(private val repository: UserRepository) : ViewMode
         }
     }
 
+    fun addFavorite(storeId: Int) {
+        viewModelScope.launch {
+            try {
+                repository.addFavoriteStore(storeId)
+                // 성공 시 목록 갱신
+                fetchStores()
+            } catch (e: Exception) {
+                // 실패 시 조용히 무시 (Undo 실패)
+            }
+        }
+    }
+
     private fun revert(item: FavoriteStoreItem) {
         val current = _uiState.value as? FavoriteStoresUiState.Success ?: return
         val restored = (current.items + item).sortedBy { it.createdAt }
