@@ -6,6 +6,7 @@ import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.network.RetrofitClient
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -54,8 +55,11 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.newsFallbackDrawable
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 
 // ─── 컬러 (design.md / CLAUDE.md 단일 진실에 맞춤) ──────────────────────────────
 private val TextBlackNs    = Color(0xFF1E120A)
@@ -340,10 +344,31 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,
     ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = item.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        } else {
+            Image(
+                painter = painterResource(newsFallbackDrawable(item.newsId)),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        // 텍스트 가독성을 위한 어두운 그라디언트 오버레이
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Brush.linearGradient(listOf(Brown900Ns, Color(0xFFBF8A63)))),
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
+                        startY = 60f,
+                    ),
+                ),
         )
         Column(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -416,7 +441,23 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
                 .fillMaxWidth()
                 .height(100.dp)
                 .background(categoryImageBg(item.category)),
-        )
+        ) {
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Image(
+                    painter = painterResource(newsFallbackDrawable(item.newsId)),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

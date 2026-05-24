@@ -47,12 +47,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil3.compose.AsyncImage
 import com.example.siheunggagae.data.model.NewsDetailResponse
 import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.newsFallbackDrawable
 
 private val Brown900ND    = Color(0xFF614B3A)
 private val Brown700ND    = Color(0xFF8A6E58)
@@ -124,6 +131,8 @@ fun NewsDetailScreen(
             ) {
                 HeaderSection(detail = detail)
 
+                HeroImage(detail = detail)
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -143,26 +152,16 @@ fun NewsDetailScreen(
                         )
                     }
 
-                    if (!detail?.officialLink.isNullOrEmpty()) {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F2)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "· 공식 링크: ${detail?.officialLink}",
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
-                                    color = TextBlackND,
-                                )
+                    val link = detail?.officialLink
+                    if (!link.isNullOrEmpty()) {
+                        OfficialLinkCard(link = link, onClick = {
+                            runCatching {
+                                val normalized = if (link.startsWith("http")) link else "https://$link"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
                             }
-                        }
+                        })
                     }
 
                     if (relatedNews.isNotEmpty()) {
@@ -282,6 +281,94 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
                 )
             }
         }
+    }
+}
+
+// ─── 본문 상단 히어로 이미지 ───────────────────────────────────────────────────
+
+@Composable
+private fun HeroImage(detail: NewsDetailResponse?) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .height(200.dp)
+            .clip(RoundedCornerShape(16.dp)),
+    ) {
+        val imageUrl = detail?.imageUrl
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = detail.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Image(
+                painter = painterResource(newsFallbackDrawable(detail?.newsId)),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+// ─── 공식 링크 카드 (외부 브라우저로 이동) ─────────────────────────────────────
+
+@Composable
+private fun OfficialLinkCard(link: String, onClick: () -> Unit) {
+    val displayUrl = link.removePrefix("https://").removePrefix("http://").trimEnd('/')
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(OrangeSandND)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_paperclip),
+                contentDescription = null,
+                tint = Orange500ND,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "원문 바로가기",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp,
+                color = TextBlackND,
+            )
+            Text(
+                text = displayUrl,
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown700ND,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Brown700ND,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

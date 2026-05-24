@@ -33,7 +33,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -41,7 +40,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -487,44 +485,6 @@ fun PlaceDetailScreen(
 
                 item { Spacer(Modifier.height(8.dp)) }
 
-                // 정보 수정 요청 / 클레임 버튼
-                if (myUserId != null && (s.isOwner || s.ownerUserId == null || s.ownerUserId != myUserId)) {
-                    item {
-                        val enabled = s.isOwner || s.ownerUserId == null
-                        val label = when {
-                            s.isOwner -> "내 매장 정보 수정"
-                            s.ownerUserId == null -> "이 매장 클레임하기"
-                            else -> "본인 명의 매장만 수정 요청 가능"
-                        }
-                        OutlinedButton(
-                            onClick = { if (enabled) s.storeId?.let { onEditRequestClick(it) } },
-                            enabled = enabled,
-                            border = BorderStroke(1.dp, Brown900PL),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 18.dp, vertical = 8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_pencil),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = if (enabled) Brown900PL else Brown700PL,
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = label,
-                                fontFamily = PretendardFamily,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (enabled) Brown900PL else Brown700PL,
-                            )
-                        }
-                    }
-                }
-
-                item { Spacer(Modifier.height(8.dp)) }
-
                 // 리뷰 헤더
                 item {
                     Column(
@@ -656,11 +616,16 @@ fun PlaceDetailScreen(
         }
 
         // 투명 TopBar — 그라디언트 위에 떠있음
+        // 클레임/편집은 본인이 owner이거나 주인 없음(=클레임 가능)일 때만 표시
+        val canClaimOrEdit = s.isOwner || s.ownerUserId == null
         PlaceDetailTopBar(
             onBack = onBack,
             isFavorited = isFavorited,
             onFavoriteToggle = { toggleFavorite() },
             onShare = { shareStore() },
+            showClaim = canClaimOrEdit && myUserId != null,
+            claimContentDesc = if (s.isOwner) "매장 정보 수정" else "이 매장 클레임하기",
+            onClaim = { s.storeId?.let { onEditRequestClick(it) } },
         )
         } // Box
     } // Scaffold
@@ -690,6 +655,9 @@ private fun PlaceDetailTopBar(
     isFavorited: Boolean = false,
     onFavoriteToggle: () -> Unit = {},
     onShare: () -> Unit = {},
+    showClaim: Boolean = false,
+    claimContentDesc: String = "이 매장 클레임하기",
+    onClaim: () -> Unit = {},
 ) {
     Row(
         modifier = Modifier
@@ -716,6 +684,24 @@ private fun PlaceDetailTopBar(
         }
         Spacer(Modifier.weight(1f))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (showClaim) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(30.dp)
+                        .shadow(1.dp, RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White)
+                        .clickable { onClaim() },
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_pencil),
+                        contentDescription = claimContentDesc,
+                        tint = Brown900PL,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
