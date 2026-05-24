@@ -131,6 +131,7 @@ import com.example.siheunggagae.ui.viewmodel.MapPinPickerViewModel
 import com.example.siheunggagae.ui.viewmodel.MyStoreRequestsViewModel
 import com.example.siheunggagae.ui.viewmodel.StoreRequestDetailViewModel
 import com.example.siheunggagae.ui.viewmodel.StoreRequestFormViewModel
+import com.example.siheunggagae.data.model.NotificationCategory
 import com.example.siheunggagae.data.model.StoreRequestType
 import com.example.siheunggagae.data.repository.StoreRequestRepository
 import com.example.siheunggagae.ui.viewmodel.FavoriteStoresViewModel
@@ -642,7 +643,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 viewModel = notifViewModel,
                 onBack = { navController.popBackStack() },
                 onItemClick = { item ->
-                    handleNotificationDeeplink(item.link, navController)
+                    handleNotificationDeeplink(item.link, navController, item.category)
                 },
             )
         }
@@ -1037,10 +1038,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val myLifecycle = LocalLifecycleOwner.current.lifecycle
             val localImageUri by myApp.tokenManager.localProfileImageUri.collectAsState()
 
-            // 다른 화면에서 돌아올 때마다 데이터 새로고침
+            // 최초 진입: ViewModel init이 fetchData() 호출 (Loading → Success)
+            // 복귀 시: silentRefresh()로 기존 데이터 유지하며 백그라운드 갱신 (깜빡임 없음)
             LaunchedEffect(myLifecycle) {
+                var isFirstResume = true
                 myLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    myViewModel.fetchData()
+                    if (isFirstResume) {
+                        isFirstResume = false
+                    } else {
+                        myViewModel.silentRefresh()
+                    }
                 }
             }
 
@@ -1145,8 +1152,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
             val petListLifecycle = LocalLifecycleOwner.current.lifecycle
             LaunchedEffect(petListLifecycle) {
+                var isFirstResume = true
                 petListLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    petListViewModel.fetchPets()
+                    if (isFirstResume) {
+                        isFirstResume = false
+                    } else {
+                        petListViewModel.silentRefresh()
+                    }
                 }
             }
             PetListScreen(
@@ -1263,8 +1275,13 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
             val myStoreRequestsLifecycle = LocalLifecycleOwner.current.lifecycle
             LaunchedEffect(myStoreRequestsLifecycle) {
+                var isFirstResume = true
                 myStoreRequestsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    vm.refresh()
+                    if (isFirstResume) {
+                        isFirstResume = false
+                    } else {
+                        vm.silentRefresh()
+                    }
                 }
             }
             MyStoreRequestsScreen(
@@ -1422,30 +1439,71 @@ private fun NavHostController.navigateTab(route: String) {
 }
 
 /** 알림 link 필드의 deeplink를 파싱해 적절한 화면으로 이동한다.
- *  처리된 경우 true, 알 수 없는 link이면 false 반환. */
-private fun handleNotificationDeeplink(link: String?, navController: NavHostController): Boolean {
-    if (link.isNullOrBlank()) return false
-    // 매장 요청 상세: siheunggagae://store-request/<requestId>
-    if (link.startsWith("siheunggagae://store-request/")) {
-        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
-        navController.navigate(Screen.StoreRequestDetail.createRoute(id))
-        return true
+ *  link가 없으면 category 기반 폴백 화면으로 이동.
+ *  처리된 경우 true, 알 수 없으면 false 반환. */
+private fun handleNotificationDeeplink(
+    link: String?,
+    navController: NavHostController,
+    category: NotificationCategory? = null,
+): Boolean {
+    if (!link.isNullOrBlank()) {
+        // 매장 요청 상세: siheunggagae://store-request/<requestId>
+        if (link.startsWith("siheunggagae://store-request/")) {
+            val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+            navController.navigate(Screen.StoreRequestDetail.createRoute(id))
+            return true
+        }
+        // 내 매칭 상세: siheunggagae://matching/<requestId>
+        if (link.startsWith("siheunggagae://matching/")) {
+            val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+            navController.navigate(Screen.MatchingDetail.createRoute(id))
+            return true
+        }
+        // 공개 매칭 상세(봉사자): siheunggagae://matching-public/<requestId>
+        if (link.startsWith("siheunggagae://matching-public/")) {
+            val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+            navController.navigate(Screen.MatchingPublicDetail.createRoute(id))
+            return true
+        }
+        // 채팅: siheunggagae://chat/<matchId>/<applicationId>
+        if (link.startsWith("siheunggagae://chat/")) {
+            val parts = link.removePrefix("siheunggagae://chat/").split("/")
+            val matchId = parts.getOrNull(0)?.toIntOrNull() ?: return false
+            val appId = parts.getOrNull(1)?.toIntOrNull() ?: return false
+            navController.navigate(Screen.Chat.createRoute(matchId, appId))
+            return true
+        }
+        // 뉴스 상세: siheunggagae://news/<newsId>
+        if (link.startsWith("siheunggagae://news/")) {
+            val newsId = link.substringAfterLast("/")
+            if (newsId.isNotBlank()) {
+                navController.navigate(Screen.NewsDetail.createRoute(newsId))
+                return true
+            }
+        }
+        // 매장 상세: siheunggagae://place/<placeId>
+        if (link.startsWith("siheunggagae://place/")) {
+            val id = link.substringAfterLast("/").toIntOrNull() ?: return false
+            navController.navigate(Screen.PlaceDetail.createRoute(id))
+            return true
+        }
+        // 봉사 이력: siheunggagae://volunteer-history
+        if (link == "siheunggagae://volunteer-history") {
+            navController.navigate(Screen.VolunteerHistory.route)
+            return true
+        }
     }
-    // 매칭 상세: siheunggagae://matching/<requestId>
-    if (link.startsWith("siheunggagae://matching/")) {
-        val id = link.substringAfterLast("/").toIntOrNull() ?: return false
-        navController.navigate(Screen.MatchingDetail.createRoute(id))
-        return true
+
+    // link가 없을 때 카테고리 기반 폴백
+    return when (category) {
+        NotificationCategory.MATCH     -> { navController.navigate(Screen.Matching.route); true }
+        NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.VolunteerHistory.route); true }
+        NotificationCategory.REVIEW    -> { navController.navigate(Screen.My.route); true }
+        NotificationCategory.NEWS      -> { navController.navigate(Screen.News.route); true }
+        NotificationCategory.POLICY    -> { navController.navigate(Screen.Privacy.route); true }
+        NotificationCategory.SYSTEM,
+        null                           -> false
     }
-    // 채팅: siheunggagae://chat/<matchId>/<applicationId>
-    if (link.startsWith("siheunggagae://chat/")) {
-        val parts = link.removePrefix("siheunggagae://chat/").split("/")
-        val matchId = parts.getOrNull(0)?.toIntOrNull() ?: return false
-        val appId = parts.getOrNull(1)?.toIntOrNull() ?: return false
-        navController.navigate(Screen.Chat.createRoute(matchId, appId))
-        return true
-    }
-    return false
 }
 
 // ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────

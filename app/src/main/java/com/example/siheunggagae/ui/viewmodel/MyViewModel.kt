@@ -42,6 +42,18 @@ class MyViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val meResp = repository.getMe()
+                val statsResp = repository.getActivityStats()
+                if (meResp.isSuccessful && statsResp.isSuccessful) {
+                    _uiState.value = MyUiState.Success(meResp.body()!!, statsResp.body()!!)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     class Factory(private val repository: UserRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
