@@ -50,7 +50,7 @@ fun AutoSplashScreen(
             }
         }
 
-        delay(1_500L)                       // 최소 표시 시간
+        delay(800L)                         // 최소 표시 시간
         if (goHomeDeferred.await()) onHome() else onStartScreen()
     }
 
