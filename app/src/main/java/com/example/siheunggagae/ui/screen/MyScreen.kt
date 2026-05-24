@@ -66,9 +66,13 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.siheunggagae.ui.component.CountUpText
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import coil3.request.crossfade
+import androidx.annotation.DrawableRes
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import kotlinx.coroutines.flow.MutableStateFlow
 
 // Apple HIG ease (NavGraph 상수와 동일 톤). 화면 내 state morph 에 재사용.
@@ -345,91 +349,107 @@ private fun ProfileCard(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(PinkSurface)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Color(0xFFFEE7EC), Color(0xFFFFEDD4))
+                )
+            )
             .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        // 프로필 이미지: 갤러리 선택 이미지 or 이니셜 원형
-        Box(
-            contentAlignment = Alignment.Center,
+        // 발바닥 워터마크
+        Icon(
+            painter = painterResource(R.drawable.ic_paw),
+            contentDescription = null,
+            tint = Color.Black.copy(alpha = 0.06f),
             modifier = Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(Orange500My),
+                .size(120.dp)
+                .align(Alignment.BottomEnd),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (localImageUri != null) {
-                coil3.compose.AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(context)
-                        .data(android.net.Uri.parse(localImageUri))
-                        .crossfade(200)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                )
-            } else {
-                Text(
-                    text = nickname.take(1),
-                    fontFamily = PretendardFamily,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
-            }
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = nickname,
-                fontFamily = PretendardFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 28.sp,
-                color = TextBlack
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            // 프로필 이미지: 갤러리 선택 이미지 or 이니셜 원형
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(Orange500My),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_location_on),
-                    contentDescription = null,
-                    tint = Brown700My,
-                    modifier = Modifier.size(14.dp),
-                )
+                if (localImageUri != null) {
+                    coil3.compose.AsyncImage(
+                        model = coil3.request.ImageRequest.Builder(context)
+                            .data(android.net.Uri.parse(localImageUri))
+                            .crossfade(200)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    )
+                } else {
+                    Text(
+                        text = nickname.take(1),
+                        fontFamily = PretendardFamily,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = regionDong,
+                    text = nickname,
                     fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 20.sp,
-                    color = Brown700My
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 28.sp,
+                    color = TextBlack
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_location_on),
+                        contentDescription = null,
+                        tint = Brown700My,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "${regionDong}에서 활동 중",
+                        fontFamily = PretendardFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 20.sp,
+                        color = Brown700My
+                    )
+                }
+            }
+            // 편집 chip — gradient 위에서 잘 보이도록 흰 배경 + Brown900 border.
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .border(1.dp, Brown900My, RoundedCornerShape(50.dp))
+                    .clickable { onEditClick() }
+                    .padding(horizontal = 13.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "편집",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 16.sp,
+                    color = Brown900My,
                 )
             }
-        }
-        // 편집 chip — PinkSurface 위에서 잘 보이도록 흰 배경 + Brown900 border.
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50.dp))
-                .background(Color.White)
-                .border(1.dp, Brown900My, RoundedCornerShape(50.dp))
-                .clickable { onEditClick() }
-                .padding(horizontal = 13.dp, vertical = 6.dp),
-        ) {
-            Text(
-                text = "편집",
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 16.sp,
-                color = Brown900My,
-            )
         }
     }
 }
@@ -581,13 +601,21 @@ private fun ActivityStatsRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        StatCard("내 요청",  myMatchCount.toString(),    Pink500My,   Modifier.weight(1f), onClick = onMyMatchClick)
-        StatCard("봉사 참여", volunteerCount.toString(),  Green500My,  Modifier.weight(1f), onClick = onVolunteerClick)
-        StatCard("즐겨찾기", favoriteCount.toString(),   Orange500My, Modifier.weight(1f), onClick = onFavoriteClick)
+        StatCard("내 요청",  myMatchCount.toString(),    Pink500My,   R.drawable.ic_help,      Modifier.weight(1f), onClick = onMyMatchClick)
+        StatCard("봉사 참여", volunteerCount.toString(),  Green500My,  R.drawable.ic_handshake, Modifier.weight(1f), onClick = onVolunteerClick)
+        StatCard("즐겨찾기", favoriteCount.toString(),   Orange500My, R.drawable.ic_favorite,  Modifier.weight(1f), onClick = onFavoriteClick)
     }
 }
 @Composable
-private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier, onClick: () -> Unit = {}) {
+private fun StatCard(
+    label: String,
+    value: String,
+    valueColor: Color,
+    @DrawableRes iconRes: Int,
+    modifier: Modifier,
+    onClick: () -> Unit = {},
+) {
+    val intValue = value.toIntOrNull() ?: 0
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -598,9 +626,39 @@ private fun StatCard(label: String, value: String, valueColor: Color, modifier: 
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(vertical = 16.dp),
         ) {
-            Text(text = value, fontFamily = PretendardFamily, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp, color = valueColor)
-            Spacer(Modifier.height(4.dp))
-            Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700My)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(valueColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = valueColor,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            CountUpText(
+                value = intValue,
+                durationMs = 900,
+                style = androidx.compose.ui.text.TextStyle(
+                    fontFamily = PretendardFamily,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = valueColor,
+            )
+            Text(
+                text = label,
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown700My,
+            )
         }
     }
 }
@@ -667,16 +725,29 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                 )
             }
             Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progressPct / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = Orange500My,
-                trackColor = Color(0xFFE5E7EB),
-                strokeCap = StrokeCap.Round,
-            )
+            val progressFraction = progressPct / 100f
+            Box(modifier = Modifier.fillMaxWidth()) {
+                LinearProgressIndicator(
+                    progress = { progressFraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = Brown900My,
+                    trackColor = Color(0xFFE8D3C2),
+                    strokeCap = StrokeCap.Round,
+                )
+                Text(
+                    text = "${(progressFraction * 100).toInt()}%",
+                    fontFamily = PretendardFamily,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 8.dp),
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             val tierItems = remember(currentTier, count) {
@@ -730,12 +801,37 @@ private fun BadgeItem(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(bgColor),
+                .scale(if (achieved) 1.1f else 1.0f)
+                .clip(CircleShape)
+                .background(if (achieved) Color(0xFFFFF7E0) else Color(0xFFF4F4F4))
+                .then(
+                    if (achieved) Modifier.border(1.5.dp, Color(0xFFFDC700), CircleShape)
+                    else Modifier
+                ),
         ) {
             when {
-                iconVector != null -> Icon(imageVector = iconVector, contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
-                iconRes != null    -> Icon(painter = painterResource(iconRes), contentDescription = label, tint = Color.White, modifier = Modifier.size(24.dp))
+                iconVector != null -> Icon(
+                    imageVector = iconVector,
+                    contentDescription = label,
+                    tint = if (achieved) bgColor else Color.Gray,
+                    modifier = Modifier.size(24.dp),
+                )
+                iconRes != null -> Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = label,
+                    tint = if (achieved) bgColor else Color.Gray,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+            if (!achieved) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_lock),
+                    contentDescription = "잠금",
+                    tint = Color.Gray,
+                    modifier = Modifier
+                        .size(12.dp)
+                        .align(Alignment.TopEnd),
+                )
             }
         }
         Spacer(Modifier.height(6.dp))
