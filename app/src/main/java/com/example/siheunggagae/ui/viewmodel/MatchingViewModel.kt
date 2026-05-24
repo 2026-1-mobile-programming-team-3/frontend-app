@@ -7,6 +7,7 @@ import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.data.repository.MatchRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -84,6 +85,7 @@ class MatchingViewModel(
     private var page: Int = 1
     private var lastIdSet: Set<Int> = emptySet()
     private var newCount: Int = 0
+    private var fetchJob: Job? = null
 
     private var selectedStatus: String? = null
     private var selectedCategory: MatchCategory? = null
@@ -130,7 +132,8 @@ class MatchingViewModel(
     }
 
     private fun fetch(reset: Boolean, isRefresh: Boolean = false) {
-        viewModelScope.launch {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             if (reset && !isRefresh) _state.value = MatchingUi.Loading
             if (isRefresh) recompute(refreshing = true)
             val location = getCurrentLocation()

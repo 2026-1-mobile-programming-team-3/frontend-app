@@ -50,6 +50,7 @@ class ProfileEditViewModel(
                     ProfileEditUiState.Error("사용자 정보를 불러오지 못했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = ProfileEditUiState.Error(e.message ?: "네트워크 오류")
             }
         }
@@ -91,6 +92,7 @@ class ProfileEditViewModel(
                     else -> ProfileEditUiState.Error("저장에 실패했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = ProfileEditUiState.Error(e.message ?: "네트워크 오류")
             }
         }

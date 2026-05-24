@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.model.PetHotelResponse
 import com.example.siheunggagae.data.repository.PetHotelRepository
 import com.example.siheunggagae.data.repository.UserRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -74,6 +75,7 @@ class PetHotelCompareViewModel(
     private var size: PetSize = PetSize.ALL
     private var radius: Int = initialRadius.coerceIn(1000, RADIUS_MAX_M)
     private var raw: List<PetHotelResponse> = emptyList()
+    private var fetchJob: Job? = null
 
     companion object {
         const val RADIUS_DEFAULT_M = 5000
@@ -130,7 +132,8 @@ class PetHotelCompareViewModel(
     }
 
     private fun fetch() {
-        viewModelScope.launch {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             _state.value = PetHotelCompareUi.Loading
             val resp = repository.getNearby(initialLat, initialLng, radius)
             if (resp.isSuccessful) {
