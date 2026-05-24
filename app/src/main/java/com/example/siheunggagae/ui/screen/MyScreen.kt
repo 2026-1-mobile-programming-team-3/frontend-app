@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.component.CountUpText
+import androidx.compose.material3.MaterialTheme
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import coil3.request.crossfade
@@ -159,7 +160,7 @@ fun MyScreen(
 
     Scaffold(
         topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
-        containerColor = Background9,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         // targetState를 상태 종류(Loading/Error/Success)로 한정 — Success 내 데이터 변경 시
         // 애니메이션 없이 인플레이스 갱신됨 (silentRefresh 후 깜빡임 방지).
@@ -1112,7 +1113,7 @@ fun MyScreenSuccessPreview() {
         val dummyFlow = MutableStateFlow<MyUiState>(MyUiState.Success(previewUser, previewStats))
         Scaffold(
             topBar = {},
-            containerColor = Background9,
+            containerColor = MaterialTheme.colorScheme.background,
         ) { padding ->
             Column(
                 modifier = Modifier
