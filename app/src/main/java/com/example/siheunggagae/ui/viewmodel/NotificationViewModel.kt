@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.model.NotificationCategory
 import com.example.siheunggagae.data.model.NotificationItem
 import com.example.siheunggagae.data.repository.NotificationRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -45,6 +46,7 @@ class NotificationViewModel(
     private val buffer = mutableListOf<NotificationItem>()
     private var currentPage = 1
     private var total = 0
+    private var loadJob: Job? = null
 
     init { loadPage() }
 
@@ -88,7 +90,8 @@ class NotificationViewModel(
     }
 
     private fun loadPage() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             try {
                 val resp = repository.getNotifications(page = currentPage, size = 20)
                 if (resp.isSuccessful && resp.body() != null) {
@@ -111,6 +114,7 @@ class NotificationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _state.update {
                     it.copy(isLoading = false, isLoadingMore = false, error = e.message ?: "네트워크 오류")
                 }

@@ -74,6 +74,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                     _uiState.value = MatchDetailUiState.Error("데이터를 불러오지 못했습니다. (${response.code()})")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = MatchDetailUiState.Error("네트워크 오류 발생")
             }
         }
@@ -127,6 +128,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                     _uiState.value = MatchDetailUiState.Error("삭제에 실패했습니다. (${response.code()})")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = MatchDetailUiState.Error("네트워크 오류 발생")
             }
         }
@@ -152,6 +154,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 onResult(false, "네트워크 오류가 발생했습니다.")
             }
         }

@@ -71,6 +71,7 @@ class PetAddViewModel(
                     _uiState.value = PetAddUiState.Error("반려동물 정보를 불러오지 못했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = PetAddUiState.Error(e.message ?: "네트워크 오류")
             }
         }
@@ -137,6 +138,7 @@ class PetAddViewModel(
                     _uiState.value = PetAddUiState.Error("저장에 실패했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = PetAddUiState.Error(e.message ?: "네트워크 오류")
             }
         }

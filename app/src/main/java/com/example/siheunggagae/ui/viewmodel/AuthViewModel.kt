@@ -40,6 +40,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                     else        -> AuthUiState.Error("로그인에 실패했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = AuthUiState.Error(e.message ?: "네트워크 오류")
             }
         }
@@ -80,6 +81,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                     else -> _uiState.value = AuthUiState.Error("회원가입에 실패했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = AuthUiState.Error(e.message ?: "네트워크 오류")
             }
         }
