@@ -55,7 +55,13 @@ data class StoreDetailResponse(
     val isOwner: Boolean = false,
     @SerializedName(value = "owner_user_id", alternate = ["ownerUserId"])
     val ownerUserId: Int? = null,
-)
+    @SerializedName("category")
+    val category: String? = null,
+    @SerializedName("plans")
+    private val _plans: List<PetHotelPlan>? = null,
+) {
+    val plans: List<PetHotelPlan> get() = _plans ?: emptyList()
+}
 
 data class StoreReview(
     @SerializedName(value = "review_id", alternate = ["reviewId", "id"])

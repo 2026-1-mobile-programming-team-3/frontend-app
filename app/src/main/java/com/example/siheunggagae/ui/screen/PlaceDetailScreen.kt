@@ -613,20 +613,20 @@ fun PlaceDetailScreen(
 
                 item { Spacer(Modifier.height(60.dp)) }
             }
-        }
 
-        // 투명 TopBar — 그라디언트 위에 떠있음
-        // 클레임/편집은 본인이 owner이거나 주인 없음(=클레임 가능)일 때만 표시
-        val canClaimOrEdit = s.isOwner || s.ownerUserId == null
-        PlaceDetailTopBar(
-            onBack = onBack,
-            isFavorited = isFavorited,
-            onFavoriteToggle = { toggleFavorite() },
-            onShare = { shareStore() },
-            showClaim = canClaimOrEdit && myUserId != null,
-            claimContentDesc = if (s.isOwner) "매장 정보 수정" else "이 매장 클레임하기",
-            onClaim = { s.storeId?.let { onEditRequestClick(it) } },
-        )
+            // 투명 TopBar — 그라디언트 위에 떠있음
+            // 클레임/편집은 본인이 owner이거나 주인 없음(=클레임 가능)일 때만 표시
+            val canClaimOrEdit = s.isOwner || s.ownerUserId == null
+            PlaceDetailTopBar(
+                onBack = onBack,
+                isFavorited = isFavorited,
+                onFavoriteToggle = { toggleFavorite() },
+                onShare = { shareStore() },
+                showClaim = canClaimOrEdit && myUserId != null,
+                claimContentDesc = if (s.isOwner) "매장 정보 수정" else "이 매장 클레임하기",
+                onClaim = { s.storeId?.let { onEditRequestClick(it) } },
+            )
+        } // else
         } // Box
     } // Scaffold
 
