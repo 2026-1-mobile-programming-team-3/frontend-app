@@ -7,6 +7,8 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.annotation.ColorInt
+import com.example.siheunggagae.map.MarkerProjector
+import com.example.siheunggagae.map.MarkerSpec
 import com.kakao.vectormap.KakaoMap
 import com.kakao.vectormap.KakaoMapReadyCallback
 import com.kakao.vectormap.LatLng
@@ -36,18 +38,9 @@ class MapViewWrapper(private val mapView: MapView) {
         ) : BitmapKey
         data class Cluster(
             val topCategories: List<String>,
-            val countBucket: Int,
+            val count: Int,
         ) : BitmapKey
         data object MyLocation : BitmapKey
-        data object Volunteer : BitmapKey
-        data class VolunteerCluster(val countBucket: Int) : BitmapKey
-    }
-
-    private fun bucketCount(n: Int): Int = when {
-        n < 10 -> n
-        n < 50 -> 10
-        n < 100 -> 50
-        else -> 100
     }
 
     // 지도가 파괴됐을 때 composable에서 감지할 수 있도록 노출
@@ -151,7 +144,7 @@ class MapViewWrapper(private val mapView: MapView) {
      * `prefix` 그룹 단위로 "이전에 sync 한 ID 집합" 을 추적해, 다음 호출 시 desired 에 없는 것만 제거.
      * 다른 prefix 의 마커·내 위치는 건드리지 않음.
      */
-    fun syncMarkers(prefix: String, specs: List<com.example.siheunggagae.map.MarkerSpec>) {
+    fun syncMarkers(prefix: String, specs: List<MarkerSpec>) {
         val desired = specs.associateBy { it.id }
         val previouslyManaged = managedIdsByPrefix.getOrPut(prefix) { mutableSetOf() }
 
@@ -181,16 +174,16 @@ class MapViewWrapper(private val mapView: MapView) {
         previouslyManaged.addAll(desired.keys)
     }
 
-    private fun com.example.siheunggagae.map.MarkerSpec.onTapOrNull(): (() -> Unit)? = when (this) {
-        is com.example.siheunggagae.map.MarkerSpec.Single  -> onTap
-        is com.example.siheunggagae.map.MarkerSpec.Cluster -> onTap
+    private fun MarkerSpec.onTapOrNull(): (() -> Unit)? = when (this) {
+        is MarkerSpec.Single  -> onTap
+        is MarkerSpec.Cluster -> onTap
     }
 
-    private fun addSpecInternal(spec: com.example.siheunggagae.map.MarkerSpec) {
+    private fun addSpecInternal(spec: MarkerSpec) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
         when (spec) {
-            is com.example.siheunggagae.map.MarkerSpec.Single -> {
+            is MarkerSpec.Single -> {
                 val key = BitmapKey.Single(spec.category, spec.name, spec.color, spec.isSelected)
                 val bmp = bitmapCache.get(key)
                     ?: createSingleBitmap(spec.color, spec.category, spec.name, spec.isSelected)
@@ -204,8 +197,8 @@ class MapViewWrapper(private val mapView: MapView) {
                 markers[spec.id] = label
                 spec.onTap?.let { markerCallbacks[spec.id] = it }
             }
-            is com.example.siheunggagae.map.MarkerSpec.Cluster -> {
-                val key = BitmapKey.Cluster(spec.topCategories, bucketCount(spec.count))
+            is MarkerSpec.Cluster -> {
+                val key = BitmapKey.Cluster(spec.topCategories, spec.count)
                 val bmp = bitmapCache.get(key)
                     ?: createIconStackClusterBitmap(spec.topCategories, spec.count)
                         .also { bitmapCache.put(key, it) }
@@ -231,6 +224,8 @@ class MapViewWrapper(private val mapView: MapView) {
         markers.values.forEach { it.remove() }
         markers.clear()
         markerCallbacks.clear()
+        markerVisualKeys.clear()
+        managedIdsByPrefix.clear()
     }
 
     fun addClusterMarker(
@@ -242,7 +237,7 @@ class MapViewWrapper(private val mapView: MapView) {
     ) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
-        val key = BitmapKey.Cluster(topCategories = emptyList(), countBucket = bucketCount(count))
+        val key = BitmapKey.Cluster(topCategories = emptyList(), count = count)
         val bitmap = bitmapCache.get(key) ?: createClusterBitmap(count).also { bitmapCache.put(key, it) }
         val style = LabelStyles.from(LabelStyle.from(bitmap))
         val label = layer.addLabel(LabelOptions.from(LatLng.from(lat, lng)).setStyles(style))
@@ -380,6 +375,11 @@ class MapViewWrapper(private val mapView: MapView) {
         toRemove.forEach { id ->
             markers.remove(id)?.remove()
             markerCallbacks.remove(id)
+            markerVisualKeys.remove(id)
+        }
+        // syncMarkers tracking 도 함께 정리 (prefix 일부 일치)
+        managedIdsByPrefix.values.forEach { set ->
+            set.removeAll(toRemove.toSet())
         }
     }
 
@@ -429,9 +429,9 @@ class MapViewWrapper(private val mapView: MapView) {
     }
 
     /** computeMarkerSpecs 에 넘길 projector. 호출 시점의 KakaoMap 좌표 변환을 캡처. */
-    fun screenProjector(): com.example.siheunggagae.map.MarkerProjector? {
+    fun screenProjector(): MarkerProjector? {
         val map = kakaoMap ?: return null
-        return object : com.example.siheunggagae.map.MarkerProjector {
+        return object : MarkerProjector {
             override fun toScreen(lat: Double, lng: Double): Pair<Int, Int>? = runCatching {
                 val pt = map.toScreenPoint(com.kakao.vectormap.LatLng.from(lat, lng))
                     ?: return@runCatching null
