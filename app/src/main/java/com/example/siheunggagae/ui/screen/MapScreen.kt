@@ -290,7 +290,7 @@ fun MapScreen(
         val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
         // 봉사요청을 StoreViewportItem 형태로 어댑팅 — 카테고리 "VOLUNTEER" 단일
         val asItems = uiState.volunteerMarkers.map { v ->
-            com.example.siheunggagae.data.model.StoreViewportItem(
+            StoreViewportItem(
                 storeId = v.requestId,
                 name = v.title ?: "",
                 latitude = v.latitude,
