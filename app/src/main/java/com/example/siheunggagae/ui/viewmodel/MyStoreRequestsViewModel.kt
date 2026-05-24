@@ -56,6 +56,24 @@ class MyStoreRequestsViewModel(
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val resp = repository.list(status = currentFilter, page = 1, size = 20)
+                if (resp.isSuccessful) {
+                    val body = resp.body()!!
+                    _state.value = MyStoreRequestsUiState.Success(
+                        items = body.items,
+                        total = body.total,
+                        page = 1,
+                        hasMore = body.items.size >= 20,
+                        filter = currentFilter,
+                    )
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     fun loadMore() {
         val s = _state.value as? MyStoreRequestsUiState.Success ?: return
         if (!s.hasMore) return

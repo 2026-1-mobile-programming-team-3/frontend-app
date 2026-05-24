@@ -40,6 +40,17 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    fun silentRefresh() {
+        viewModelScope.launch {
+            try {
+                val resp = repository.getMe()
+                if (resp.isSuccessful && resp.body() != null) {
+                    _uiState.value = PetListUiState.Success(resp.body()!!.pets)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     fun deletePet(petId: Int) {
         viewModelScope.launch {
             try {

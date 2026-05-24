@@ -339,16 +339,18 @@ fun MatchingDetailScreen(
                     val request = detailState.detail
                     val blockedUsers = prefs.getStringSet("blocked_users", emptySet()) ?: emptySet()
 
-                    val originalList = if (request.status?.trim()?.uppercase() == "DONE") {
-                        viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
-                    } else {
-                        viewModel.applicantList.filter {
-                            val s = it.status?.trim()?.uppercase()
-                            s != "CANCELED" && s != "REJECTED"
+                    val displayList = remember(request.status, viewModel.applicantList, blockedUsers) {
+                        val status = request.status?.trim()?.uppercase()
+                        val base = if (status == "DONE") {
+                            viewModel.applicantList.filter { it.status?.trim()?.uppercase() == "ACCEPTED" }
+                        } else {
+                            viewModel.applicantList.filter {
+                                val s = it.status?.trim()?.uppercase()
+                                s != "CANCELED" && s != "REJECTED"
+                            }
                         }
+                        base.filter { it.applicant?.nickname !in blockedUsers }
                     }
-
-                    val displayList = originalList.filter { it.applicant?.nickname !in blockedUsers }
 
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
