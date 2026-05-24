@@ -274,7 +274,7 @@ private fun NotiTabRow(selected: NotiTab, onSelect: (NotiTab) -> Unit) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(if (isSel) Color(0xFF1A1A1A) else Color.White)
+                    .background(if (isSel) Brown900N else Color.White)
                     .then(
                         if (!isSel) Modifier.border(1.dp, BrownBorderN, RoundedCornerShape(50.dp))
                         else Modifier
@@ -318,12 +318,12 @@ private fun NotificationItemRow(item: NotificationItem, onClick: () -> Unit) {
                     .fillMaxWidth()
                     .background(Color.White)
                     .clickable { onClick() }
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
                 NotificationItemContent(item = item)
             }
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 color = Color(0xFFF3F4F6),
             )
         }

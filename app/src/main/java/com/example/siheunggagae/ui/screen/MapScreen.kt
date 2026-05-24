@@ -689,7 +689,7 @@ private fun MapSearchCard(onClick: () -> Unit = {}) {
         Icon(
             painter = painterResource(R.drawable.ic_search),
             contentDescription = null,
-            tint = Brown400Mp,
+            tint = Brown700Mp,
             modifier = Modifier.size(20.dp),
         )
         Text(
@@ -698,7 +698,7 @@ private fun MapSearchCard(onClick: () -> Unit = {}) {
             fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 20.sp,
-            color = Brown400Mp,
+            color = Brown700Mp,
         )
     }
 }

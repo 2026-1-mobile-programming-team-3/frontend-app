@@ -620,7 +620,7 @@ private fun SettingsSwitchItem(
             checked = checked, onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White, checkedTrackColor = Brown900St, checkedBorderColor = Brown900St,
-                uncheckedThumbColor = Color.White, uncheckedTrackColor = Gray300St, uncheckedBorderColor = Gray300St,
+                uncheckedThumbColor = Color.White, uncheckedTrackColor = Color(0xFFD0C4BA), uncheckedBorderColor = Color(0xFFD0C4BA),
             ),
         )
     }
