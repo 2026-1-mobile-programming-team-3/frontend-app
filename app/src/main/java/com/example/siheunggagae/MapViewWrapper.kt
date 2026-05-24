@@ -23,6 +23,32 @@ class MapViewWrapper(private val mapView: MapView) {
     private var kakaoMap: KakaoMap? = null
     private val markers = mutableMapOf<String, Label>()
     private val markerCallbacks = mutableMapOf<String, () -> Unit>()
+    private val markerVisualKeys = mutableMapOf<String, Any>()
+    private val managedIdsByPrefix = mutableMapOf<String, MutableSet<String>>()
+    private val bitmapCache = androidx.collection.LruCache<BitmapKey, Bitmap>(200)
+
+    sealed interface BitmapKey {
+        data class Single(
+            val category: String,
+            val name: String,
+            val color: Int,
+            val selected: Boolean,
+        ) : BitmapKey
+        data class Cluster(
+            val topCategories: List<String>,
+            val countBucket: Int,
+        ) : BitmapKey
+        data object MyLocation : BitmapKey
+        data object Volunteer : BitmapKey
+        data class VolunteerCluster(val countBucket: Int) : BitmapKey
+    }
+
+    private fun bucketCount(n: Int): Int = when {
+        n < 10 -> n
+        n < 50 -> 10
+        n < 100 -> 50
+        else -> 100
+    }
 
     // 지도가 파괴됐을 때 composable에서 감지할 수 있도록 노출
     var onMapDestroyed: (() -> Unit)? = null
@@ -97,7 +123,11 @@ class MapViewWrapper(private val mapView: MapView) {
         val layer = map.labelManager?.layer ?: return
 
         val style = if (markerColor != null) {
-            LabelStyles.from(LabelStyle.from(createPinBitmap(markerColor, category, name)))
+            val key = BitmapKey.Single(category ?: "", name ?: "", markerColor, selected = false)
+            val bmp = bitmapCache.get(key) ?: createPinBitmap(markerColor, category, name).also {
+                bitmapCache.put(key, it)
+            }
+            LabelStyles.from(LabelStyle.from(bmp))
         } else {
             LabelStyles.from(LabelStyle.from())
         }
@@ -131,7 +161,8 @@ class MapViewWrapper(private val mapView: MapView) {
     ) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
-        val bitmap = createClusterBitmap(count)
+        val key = BitmapKey.Cluster(topCategories = emptyList(), countBucket = bucketCount(count))
+        val bitmap = bitmapCache.get(key) ?: createClusterBitmap(count).also { bitmapCache.put(key, it) }
         val style = LabelStyles.from(LabelStyle.from(bitmap))
         val label = layer.addLabel(LabelOptions.from(LatLng.from(lat, lng)).setStyles(style))
         label.tag = id
@@ -176,8 +207,15 @@ class MapViewWrapper(private val mapView: MapView) {
     fun updateMyLocation(lat: Double, lng: Double) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
-        markers.remove(MY_LOCATION_ID)?.remove()
-        val style = LabelStyles.from(LabelStyle.from(createMyLocationBitmap()))
+        val existing = markers[MY_LOCATION_ID]
+        if (existing != null) {
+            runCatching { existing.moveTo(LatLng.from(lat, lng)) }
+            return
+        }
+        val bmp = bitmapCache.get(BitmapKey.MyLocation) ?: createMyLocationBitmap().also {
+            bitmapCache.put(BitmapKey.MyLocation, it)
+        }
+        val style = LabelStyles.from(LabelStyle.from(bmp))
         val label = layer.addLabel(LabelOptions.from(LatLng.from(lat, lng)).setStyles(style))
         label.tag = MY_LOCATION_ID
         label.setClickable(false)
@@ -203,6 +241,60 @@ class MapViewWrapper(private val mapView: MapView) {
             color = 0xFF2196F3.toInt()
         })
         return bm
+    }
+
+    /** computeMarkerSpecs 에 넘길 projector. 호출 시점의 KakaoMap 좌표 변환을 캡처. */
+    fun screenProjector(): com.example.siheunggagae.map.MarkerProjector? {
+        val map = kakaoMap ?: return null
+        return object : com.example.siheunggagae.map.MarkerProjector {
+            override fun toScreen(lat: Double, lng: Double): Pair<Int, Int>? = runCatching {
+                val pt = map.toScreenPoint(com.kakao.vectormap.LatLng.from(lat, lng))
+                    ?: return null
+                pt.x to pt.y
+            }.getOrNull()
+        }
+    }
+
+    /** 카메라 애니메이션. duration ms. */
+    fun animateCamera(lat: Double, lng: Double, zoomLevel: Int, durationMs: Int = 400) {
+        runCatching {
+            kakaoMap?.moveCamera(
+                CameraUpdateFactory.newCenterPosition(LatLng.from(lat, lng), zoomLevel),
+                com.kakao.vectormap.camera.CameraAnimation.from(durationMs, true, true),
+            )
+        }
+    }
+
+    /** 여러 좌표를 모두 포함하도록 카메라를 fitBounds. 단일 좌표면 fallback 으로 zoom+2. */
+    fun fitMapPoints(
+        points: List<Pair<Double, Double>>,
+        paddingPx: Int = 80,
+        durationMs: Int = 400,
+    ) {
+        val map = kakaoMap ?: return
+        if (points.isEmpty()) return
+        if (points.size == 1) {
+            val (lat, lng) = points.first()
+            val z = (getCurrentZoom() + 2).coerceAtMost(19)
+            animateCamera(lat, lng, z, durationMs)
+            return
+        }
+        runCatching {
+            val latLngs = points.map { (lat, lng) -> LatLng.from(lat, lng) }
+            val sw = LatLng.from(
+                latLngs.minOf { it.latitude },
+                latLngs.minOf { it.longitude },
+            )
+            val ne = LatLng.from(
+                latLngs.maxOf { it.latitude },
+                latLngs.maxOf { it.longitude },
+            )
+            val bounds = com.kakao.vectormap.LatLngBounds(sw, ne)
+            map.moveCamera(
+                CameraUpdateFactory.fitMapPoints(bounds, paddingPx),
+                com.kakao.vectormap.camera.CameraAnimation.from(durationMs, true, true),
+            )
+        }
     }
 
     companion object {
