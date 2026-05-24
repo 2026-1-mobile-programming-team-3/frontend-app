@@ -263,10 +263,14 @@ class MapViewModel(
                 api.getStoresByViewport(swLat, swLng, neLat, neLng, category)
             }.getOrNull()
             val body = response?.body()
-            _uiState.update { it.copy(
-                viewportStores = body?.stores ?: emptyList(),
-                truncated = body?.truncated ?: false,
-            )}
+            val newStores = body?.stores ?: emptyList()
+            val newTruncated = body?.truncated ?: false
+            _uiState.update { current ->
+                val sameStores = current.viewportStores.size == newStores.size &&
+                    current.viewportStores.zip(newStores).all { (a, b) -> a.storeId == b.storeId }
+                if (sameStores && current.truncated == newTruncated) current
+                else current.copy(viewportStores = newStores, truncated = newTruncated)
+            }
         }
     }
 
