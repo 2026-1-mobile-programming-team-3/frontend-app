@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -433,193 +435,37 @@ fun PlaceDetailScreen(
                     }
                 }
 
-                // 상세 정보
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
-                    ) {
-                        if (!s.operatingHours.isNullOrEmpty()) {
-                            PlaceInfoRowPL(
-                                iconRes = R.drawable.ic_schedule,
-                                label = "영업 시간",
-                                content = s.operatingHours,
-                            ) {
-                                val isOpen = isOpenNow(s.operatingHours)
-                                if (isOpen != null) {
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50.dp))
-                                            .background(if (isOpen) GreenBgPL else Color(0xFFFFE4E6))
-                                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                                    ) {
-                                        Text(
-                                            text = if (isOpen) "영업 중" else "영업 마감",
-                                            fontFamily = PretendardFamily,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = if (isOpen) Green500PL else Pink500PL,
-                                        )
-                                    }
-                                }
-                            }
-                            HorizontalDivider(color = DividerPL, thickness = 1.dp)
-                        }
-                        if (!s.address.isNullOrEmpty()) {
-                            PlaceInfoRowPL(
-                                iconRes = R.drawable.ic_location_on,
-                                label = "주소",
-                                content = s.address,
-                            ) {
-                                CopyButtonPL { copyToClipboard(s.address) }
-                            }
-                            HorizontalDivider(color = DividerPL, thickness = 1.dp)
-                        }
-                        if (!s.phone.isNullOrEmpty()) {
-                            PlaceInfoRowPL(
-                                iconRes = R.drawable.ic_call,
-                                label = "전화",
-                                content = s.phone,
-                            ) {
-                                CopyButtonPL { copyToClipboard(s.phone) }
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(1.dp, BrownBorderPL, RoundedCornerShape(12.dp))
-                                    .clickable { dialPhone(s.phone) }
-                                    .padding(vertical = 10.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_call),
-                                    contentDescription = null,
-                                    tint = Brown700PL,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "전화하기",
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Brown700PL,
-                                )
-                            }
-                        }
-                    }
-                }
-
                 item { Spacer(Modifier.height(8.dp)) }
 
-                // 위치 카드
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "위치",
-                            fontFamily = PretendardFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            lineHeight = 16.sp,
-                            color = Brown700PL,
-                        )
-                        val mapLat = s.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
-                        val mapLng = s.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
-                        val hasLocation = mapLat != null && mapLng != null
-                        if (hasLocation) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(140.dp)
-                                    .clip(RoundedCornerShape(24.dp)),
-                            ) {
-                                AndroidView(
-                                    factory = { mapView },
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                                // 모든 터치 소비 → 지도 조작 막고 탭만 화면 전환
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clickable {
-                                            onNavigateToMap(mapLat!!, mapLng!!, placeId)
-                                        },
-                                )
-                                if (!s.address.isNullOrEmpty()) {
-                                    Row(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .padding(12.dp)
-                                            .clip(RoundedCornerShape(50.dp))
-                                            .background(Color.White)
-                                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500PL, modifier = Modifier.size(12.dp))
-                                        Text(
-                                            text = s.address.take(10),
-                                            fontFamily = PretendardFamily,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            lineHeight = 16.sp,
-                                            color = TextBlackPL,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(140.dp)
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text("위치 정보 없음", fontFamily = PretendardFamily, fontSize = 13.sp, color = Brown700PL)
-                            }
-                        }
+                // 요금 플랜 카드 (PET_HOTEL만)
+                if (s.category == "PET_HOTEL" && s.plans.isNotEmpty()) {
+                    item {
+                        PlanCardPL(plans = s.plans)
                     }
+                    item { Spacer(Modifier.height(8.dp)) }
                 }
 
+                // 위치 & 연락처 카드
+                item {
+                    LocationCardPL(
+                        store = s,
+                        initialLat = initialLat,
+                        initialLng = initialLng,
+                        mapView = mapView,
+                        onNavigateToMap = onNavigateToMap,
+                        onEditRequestClick = onEditRequestClick,
+                        onCopyAddress = { copyToClipboard(s.address ?: "") },
+                        onCopyPhone = { copyToClipboard(s.phone ?: "") },
+                        onDialPhone = { s.phone?.let { dialPhone(it) } },
+                    )
+                }
                 item { Spacer(Modifier.height(8.dp)) }
 
-                // 리뷰 헤더
+                // 후기 카드 헤더
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "리뷰",
-                                fontFamily = PretendardFamily,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                lineHeight = 16.sp,
-                                color = Brown700PL,
-                            )
+                    SectionCardPL(
+                        title = "💬 후기",
+                        actionContent = {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(50.dp))
@@ -628,16 +474,19 @@ fun PlaceDetailScreen(
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
                             ) {
                                 Text(
-                                    text = "리뷰 쓰기",
+                                    text = "후기 쓰기",
                                     fontFamily = PretendardFamily,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 20.sp,
                                     color = Color.White,
                                 )
                             }
-                        }
+                        },
+                    ) {
                         if (s.ratingAvg != null) {
                             Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
@@ -650,9 +499,14 @@ fun PlaceDetailScreen(
                                     color = TextBlackPL,
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    val filled = s.ratingAvg?.let { Math.round(it).toInt() } ?: 0
+                                    val filled = Math.round(s.ratingAvg).toInt()
                                     repeat(5) { i ->
-                                        Icon(imageVector = Icons.Filled.Star, null, tint = if (i < filled) StarYellowPL else Gray100PL, modifier = Modifier.size(18.dp))
+                                        Icon(
+                                            imageVector = Icons.Filled.Star,
+                                            contentDescription = null,
+                                            tint = if (i < filled) StarYellowPL else Gray100PL,
+                                            modifier = Modifier.size(18.dp),
+                                        )
                                     }
                                 }
                                 Text(
@@ -971,6 +825,231 @@ private fun PlanCardPL(plans: List<PetHotelPlan>) {
                 lineHeight = 16.sp,
                 color = Brown400PL,
             )
+        }
+    }
+}
+
+// ─── LocationCardPL ───────────────────────────────────────────────────────────
+
+@Composable
+private fun LocationCardPL(
+    store: StoreDetailResponse,
+    initialLat: Double,
+    initialLng: Double,
+    mapView: MapView,
+    onNavigateToMap: (Double, Double, Int) -> Unit,
+    onEditRequestClick: (Int) -> Unit,
+    onCopyAddress: () -> Unit,
+    onCopyPhone: () -> Unit,
+    onDialPhone: () -> Unit,
+) {
+    val mapLat = store.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
+    val mapLng = store.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
+
+    SectionCardPL(title = "📍 위치 & 연락처") {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // 지도
+            if (mapLat != null && mapLng != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                ) {
+                    AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { onNavigateToMap(mapLat, mapLng, store.storeId ?: 0) },
+                    )
+                    if (!store.address.isNullOrEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color.White)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_location_on),
+                                contentDescription = null,
+                                tint = Orange500PL,
+                                modifier = Modifier.size(10.dp),
+                            )
+                            Text(
+                                text = store.address.take(12),
+                                fontFamily = PretendardFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 16.sp,
+                                color = TextBlackPL,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "위치 정보 없음",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        color = Brown700PL,
+                    )
+                }
+            }
+            // 정보 행
+            if (!store.operatingHours.isNullOrEmpty()) {
+                PlaceInfoRowPL(
+                    iconRes = R.drawable.ic_schedule,
+                    label = "영업 시간",
+                    content = store.operatingHours,
+                ) {
+                    val isOpen = isOpenNow(store.operatingHours)
+                    if (isOpen != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(if (isOpen) GreenBgPL else Color(0xFFFFE4E6))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = if (isOpen) "영업 중" else "영업 마감",
+                                fontFamily = PretendardFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 16.sp,
+                                color = if (isOpen) Green500PL else Pink500PL,
+                            )
+                        }
+                    }
+                }
+            }
+            if (!store.address.isNullOrEmpty()) {
+                PlaceInfoRowPL(
+                    iconRes = R.drawable.ic_location_on,
+                    label = "주소",
+                    content = store.address,
+                ) { CopyButtonPL { onCopyAddress() } }
+            }
+            if (!store.phone.isNullOrEmpty()) {
+                PlaceInfoRowPL(
+                    iconRes = R.drawable.ic_call,
+                    label = "전화",
+                    content = store.phone,
+                ) { CopyButtonPL { onCopyPhone() } }
+            }
+            // 액션 버튼 행
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!store.phone.isNullOrEmpty()) {
+                    OutlinedButton(
+                        onClick = { onDialPhone() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, BrownBorderPL),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_call),
+                            contentDescription = null,
+                            tint = Brown700PL,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "전화",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = Brown700PL,
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = {
+                        if (mapLat != null && mapLng != null) {
+                            onNavigateToMap(mapLat, mapLng, store.storeId ?: 0)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, BrownBorderPL),
+                ) {
+                    Text(
+                        "🧭 지도에서 보기",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = Brown700PL,
+                    )
+                }
+                if (!store.address.isNullOrEmpty()) {
+                    OutlinedButton(
+                        onClick = { onCopyAddress() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, BrownBorderPL),
+                    ) {
+                        Text(
+                            "📋 복사",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = Brown700PL,
+                        )
+                    }
+                }
+            }
+            // 수정 요청 / 클레임 버튼
+            val storeId = store.storeId ?: 0
+            if (store.isOwner) {
+                OutlinedButton(
+                    onClick = { onEditRequestClick(storeId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, BrownBorderPL),
+                ) {
+                    Text(
+                        "내 매장 정보 수정",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        color = Brown700PL,
+                    )
+                }
+            } else if (store.ownerUserId == null) {
+                OutlinedButton(
+                    onClick = { onEditRequestClick(storeId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, BrownBorderPL),
+                ) {
+                    Text(
+                        "이 매장 클레임하기",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        color = Brown700PL,
+                    )
+                }
+            }
         }
     }
 }
