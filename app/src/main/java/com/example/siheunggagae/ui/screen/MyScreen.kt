@@ -45,13 +45,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +68,7 @@ import androidx.compose.material.icons.filled.LocalFlorist
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import coil3.request.crossfade
 import kotlinx.coroutines.flow.MutableStateFlow
 
 // Apple HIG ease (NavGraph 상수와 동일 톤). 화면 내 state morph 에 재사용.
@@ -158,13 +157,20 @@ fun MyScreen(
         topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
         containerColor = Background9,
     ) { padding ->
+        // targetState를 상태 종류(Loading/Error/Success)로 한정 — Success 내 데이터 변경 시
+        // 애니메이션 없이 인플레이스 갱신됨 (silentRefresh 후 깜빡임 방지).
+        val stateKind = when (uiState) {
+            is MyUiState.Loading -> 0
+            is MyUiState.Error   -> 1
+            is MyUiState.Success -> 2
+        }
         Crossfade(
-            targetState = uiState,
+            targetState = stateKind,
             animationSpec = tween(durationMillis = 280, easing = MyAppleEaseOut),
             label = "myState",
-        ) { state ->
-        when (state) {
-            is MyUiState.Loading -> {
+        ) { kind ->
+        when (kind) {
+            0 -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
@@ -172,7 +178,8 @@ fun MyScreen(
                     CircularProgressIndicator(color = Orange500My)
                 }
             }
-            is MyUiState.Error -> {
+            1 -> {
+                val errorMsg = (uiState as? MyUiState.Error)?.message ?: ""
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
@@ -182,7 +189,7 @@ fun MyScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
-                            text = state.message,
+                            text = errorMsg,
                             fontFamily = PretendardFamily,
                             fontSize = 14.sp,
                             color = Brown700My,
@@ -201,9 +208,10 @@ fun MyScreen(
                     }
                 }
             }
-            is MyUiState.Success -> {
-                val user = state.user
-                val stats = state.stats
+            else -> {
+                val success = uiState as? MyUiState.Success
+                val user = success?.user
+                val stats = success?.stats
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -366,18 +374,6 @@ private fun ProfileCard(
     onEditClick: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    var imageBitmap by remember(localImageUri) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-    LaunchedEffect(localImageUri) {
-        imageBitmap = if (localImageUri != null) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching {
-                    val uri = android.net.Uri.parse(localImageUri)
-                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
-                    android.graphics.ImageDecoder.decodeBitmap(source).asImageBitmap()
-                }.getOrNull()
-            }
-        } else null
-    }
 
     Row(
         modifier = Modifier
@@ -397,9 +393,12 @@ private fun ProfileCard(
                 .clip(CircleShape)
                 .background(Orange500My),
         ) {
-            if (imageBitmap != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = imageBitmap!!,
+            if (localImageUri != null) {
+                coil3.compose.AsyncImage(
+                    model = coil3.request.ImageRequest.Builder(context)
+                        .data(android.net.Uri.parse(localImageUri))
+                        .crossfade(200)
+                        .build(),
                     contentDescription = null,
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     modifier = Modifier.fillMaxSize().clip(CircleShape),
@@ -710,12 +709,9 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
             )
             Spacer(Modifier.height(20.dp))
 
-            val currentTierIdx = tierOrder.indexOf(currentTier).takeIf { it >= 0 } ?: -1
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                tierOrder.forEachIndexed { idx, tier ->
+            val tierItems = remember(currentTier, count) {
+                val currentTierIdx = tierOrder.indexOf(currentTier).takeIf { it >= 0 } ?: -1
+                tierOrder.mapIndexed { idx, tier ->
                     val achieved = idx <= currentTierIdx
                     val remaining = tier.requiredCount - count
                     val subLabel = when {
@@ -723,6 +719,14 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                         remaining > 0 -> "${remaining}건 필요"
                         else          -> "달성"
                     }
+                    Triple(tier, achieved, subLabel)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                tierItems.forEach { (tier, achieved, subLabel) ->
                     BadgeItem(
                         iconRes    = tierIconRes[tier],
                         iconVector = tierIconVector[tier],

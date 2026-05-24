@@ -970,6 +970,7 @@ private fun PhotosSection(
                         model = localUri ?: url,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        placeholder = painterResource(R.drawable.ic_image),
                         error = painterResource(R.drawable.ic_image),
                         modifier = Modifier.fillMaxSize(),
                     )

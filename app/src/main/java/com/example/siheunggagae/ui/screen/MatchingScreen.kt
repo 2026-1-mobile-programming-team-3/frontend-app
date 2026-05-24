@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.PaddingValues
 import com.example.siheunggagae.ui.viewmodel.DistanceFilter
@@ -219,7 +220,7 @@ fun MatchingScreen(
                                     modifier = Modifier.fillMaxSize(),
                                     contentPadding = PaddingValues(bottom = 96.dp),
                                 ) {
-                                    items(s.items, key = { it.matchId ?: it.hashCode() }) { item ->
+                                    itemsIndexed(s.items, key = { idx, item -> item.matchId ?: idx }) { _, item ->
                                         val isMine = when {
                                             currentUserId != null && item.authorUserId != null ->
                                                 item.authorUserId == currentUserId
