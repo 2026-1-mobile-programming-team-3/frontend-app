@@ -146,6 +146,87 @@ class MapViewWrapper(private val mapView: MapView) {
         markerCallbacks.remove(id)
     }
 
+    /**
+     * Spec 리스트와 현재 마커 상태를 diff 하여 변경만 적용.
+     * `prefix` 그룹 단위로 "이전에 sync 한 ID 집합" 을 추적해, 다음 호출 시 desired 에 없는 것만 제거.
+     * 다른 prefix 의 마커·내 위치는 건드리지 않음.
+     */
+    fun syncMarkers(prefix: String, specs: List<com.example.siheunggagae.map.MarkerSpec>) {
+        val desired = specs.associateBy { it.id }
+        val previouslyManaged = managedIdsByPrefix.getOrPut(prefix) { mutableSetOf() }
+
+        // 1. 제거: 이전엔 관리했지만 이번 desired 에 없는 것
+        (previouslyManaged - desired.keys).forEach { id ->
+            markers.remove(id)?.remove()
+            markerCallbacks.remove(id)
+            markerVisualKeys.remove(id)
+        }
+
+        // 2. 추가·업데이트
+        desired.forEach { (id, spec) ->
+            val cachedKey = markerVisualKeys[id]
+            if (cachedKey == spec.visualKey) {
+                // 비주얼 동일 — onTap 만 갱신 (람다 identity 변화 흡수)
+                val newTap = spec.onTapOrNull()
+                if (newTap != null) markerCallbacks[id] = newTap else markerCallbacks.remove(id)
+                return@forEach
+            }
+            markers.remove(id)?.remove()
+            addSpecInternal(spec)
+            markerVisualKeys[id] = spec.visualKey
+        }
+
+        // 3. managed set 갱신
+        previouslyManaged.clear()
+        previouslyManaged.addAll(desired.keys)
+    }
+
+    private fun com.example.siheunggagae.map.MarkerSpec.onTapOrNull(): (() -> Unit)? = when (this) {
+        is com.example.siheunggagae.map.MarkerSpec.Single  -> onTap
+        is com.example.siheunggagae.map.MarkerSpec.Cluster -> onTap
+    }
+
+    private fun addSpecInternal(spec: com.example.siheunggagae.map.MarkerSpec) {
+        val map = kakaoMap ?: return
+        val layer = map.labelManager?.layer ?: return
+        when (spec) {
+            is com.example.siheunggagae.map.MarkerSpec.Single -> {
+                val key = BitmapKey.Single(spec.category, spec.name, spec.color, spec.isSelected)
+                val bmp = bitmapCache.get(key)
+                    ?: createSingleBitmap(spec.color, spec.category, spec.name, spec.isSelected)
+                        .also { bitmapCache.put(key, it) }
+                val style = LabelStyles.from(LabelStyle.from(bmp))
+                val label = layer.addLabel(
+                    LabelOptions.from(LatLng.from(spec.lat, spec.lng)).setStyles(style)
+                )
+                label.tag = spec.id
+                label.setClickable(spec.onTap != null)
+                markers[spec.id] = label
+                spec.onTap?.let { markerCallbacks[spec.id] = it }
+            }
+            is com.example.siheunggagae.map.MarkerSpec.Cluster -> {
+                val key = BitmapKey.Cluster(spec.topCategories, bucketCount(spec.count))
+                val bmp = bitmapCache.get(key)
+                    ?: createIconStackClusterBitmap(spec.topCategories, spec.count)
+                        .also { bitmapCache.put(key, it) }
+                val style = LabelStyles.from(LabelStyle.from(bmp))
+                val label = layer.addLabel(
+                    LabelOptions.from(LatLng.from(spec.lat, spec.lng)).setStyles(style)
+                )
+                label.tag = spec.id
+                label.setClickable(spec.onTap != null)
+                markers[spec.id] = label
+                spec.onTap?.let { markerCallbacks[spec.id] = it }
+            }
+        }
+    }
+
+    /** Single 마커 — selection 상태에 따라 halo + name chip 분기. 기존 createPinBitmap 의 래퍼. */
+    private fun createSingleBitmap(
+        color: Int, category: String?, name: String?, selected: Boolean,
+    ): Bitmap = if (selected) createSelectedPinBitmap(color, category, name)
+                else createPinBitmap(color, category, name)
+
     fun clearMarkers() {
         markers.values.forEach { it.remove() }
         markers.clear()
@@ -169,6 +250,108 @@ class MapViewWrapper(private val mapView: MapView) {
         label.setClickable(onTap != null)
         markers[id] = label
         if (onTap != null) markerCallbacks[id] = onTap
+    }
+
+    /**
+     * 아이콘 스택 클러스터:
+     * - 상위 3 카테고리 핀 (직경 26dp) 좌→우로 겹쳐 쌓기
+     * - 우하단 다크 +N 뱃지 (count > topCategories.size 일 때만)
+     * - 핀 개수가 1~3 이면 그만큼만, 0 이면 fallback to 기존 단색 원
+     */
+    private fun createIconStackClusterBitmap(topCategories: List<String>, count: Int): Bitmap {
+        if (topCategories.isEmpty()) return createClusterBitmap(count)
+
+        val pinR = 13f                 // 직경 26
+        val pinBorder = 2f
+        val pinOffsetX = 14f           // 좌우 겹침
+        val pinOffsetY = 4f
+        val pins = topCategories.take(3)
+
+        val stackW = (pinR + pinBorder) * 2 + pinOffsetX * (pins.size - 1)
+        val stackH = (pinR + pinBorder) * 2 + pinOffsetY * (pins.size - 1)
+
+        val badgeText = if (count > pins.size) "+${count - pins.size}" else ""
+        val badgePadH = 5f
+        val badgePadV = 2f
+        val badgePaintText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 22f
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            this.color = android.graphics.Color.WHITE
+        }
+        val badgeTextW = if (badgeText.isNotEmpty()) badgePaintText.measureText(badgeText) else 0f
+        val badgeW = if (badgeText.isNotEmpty()) badgeTextW + badgePadH * 2 else 0f
+        val badgeH = if (badgeText.isNotEmpty())
+            (badgePaintText.descent() - badgePaintText.ascent()) + badgePadV * 2
+        else 0f
+
+        // 캔버스: 핀 스택 + 우하단 badge overflow 여유
+        val padding = 4f
+        val totalW = (stackW + badgeW * 0.6f + padding * 2).coerceAtLeast(stackW + padding * 2)
+        val totalH = (stackH + badgeH * 0.4f + padding * 2).coerceAtLeast(stackH + padding * 2)
+        val bitmap = Bitmap.createBitmap(totalW.toInt(), totalH.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        pins.forEachIndexed { idx, cat ->
+            val color = when (cat.uppercase()) {
+                "CAFE"       -> 0xFF8A6E58.toInt()
+                "PARK"       -> 0xFF4CAF50.toInt()
+                "HOSPITAL"   -> 0xFFF04268.toInt()
+                "GROOMING"   -> 0xFF9C27B0.toInt()
+                "RESTAURANT" -> 0xFFF7A35B.toInt()
+                "PET_HOTEL"  -> 0xFF614B3A.toInt()
+                else         -> 0xFF614B3A.toInt()
+            }
+            val cx = padding + pinR + pinBorder + idx * pinOffsetX
+            val cy = padding + pinR + pinBorder + idx * pinOffsetY
+            // 흰 테두리
+            canvas.drawCircle(cx, cy, pinR + pinBorder, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                this.color = android.graphics.Color.WHITE
+            })
+            // 카테고리 컬러
+            canvas.drawCircle(cx, cy, pinR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                this.color = color
+            })
+            // 이모지
+            val icon = when (cat.uppercase()) {
+                "CAFE"       -> "☕"
+                "PARK"       -> "🌳"
+                "HOSPITAL"   -> "🏥"
+                "GROOMING"   -> "✂"
+                "RESTAURANT" -> "🍽"
+                "PET_HOTEL"  -> "🏨"
+                else         -> "★"
+            }
+            val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = pinR * 1.1f
+                textAlign = Paint.Align.CENTER
+                this.color = android.graphics.Color.WHITE
+            }
+            canvas.drawText(icon, cx, cy + pinR * 0.32f, iconPaint)
+        }
+
+        // 우하단 +N 다크 뱃지
+        if (badgeText.isNotEmpty()) {
+            val lastCx = padding + pinR + pinBorder + (pins.size - 1) * pinOffsetX
+            val lastCy = padding + pinR + pinBorder + (pins.size - 1) * pinOffsetY
+            val badgeLeft = lastCx + pinR - badgeW * 0.4f
+            val badgeTop = lastCy + pinR - badgeH * 0.3f
+            val badgeRect = RectF(badgeLeft, badgeTop, badgeLeft + badgeW, badgeTop + badgeH)
+            // 흰 테두리(외곽)
+            canvas.drawRoundRect(
+                RectF(badgeLeft - 1.5f, badgeTop - 1.5f, badgeRect.right + 1.5f, badgeRect.bottom + 1.5f),
+                badgeH / 2f, badgeH / 2f,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = android.graphics.Color.WHITE },
+            )
+            // 다크 본체
+            canvas.drawRoundRect(badgeRect, badgeH / 2f, badgeH / 2f,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = 0xFF1A1A1A.toInt() })
+            // 텍스트
+            val tx = (badgeLeft + badgeRect.right) / 2f
+            val ty = badgeTop + badgePadV - badgePaintText.ascent()
+            canvas.drawText(badgeText, tx, ty, badgePaintText)
+        }
+        return bitmap
     }
 
     private fun createClusterBitmap(count: Int, sizePx: Int = 56): Bitmap {
@@ -301,6 +484,87 @@ class MapViewWrapper(private val mapView: MapView) {
 
     companion object {
         const val MY_LOCATION_ID = "__my_location__"
+    }
+
+    /**
+     * 선택된 핀: 본체 원 1.3배 + 핑크 헤일로 + 이름 흰 칩.
+     */
+    private fun createSelectedPinBitmap(@ColorInt color: Int, category: String?, name: String?): Bitmap {
+        val r = 22f * 1.3f             // 본체 반지름 ↑
+        val haloR = r + 6f             // 헤일로 외경
+        val cx = haloR + 3f
+        val cy = haloR + 3f
+
+        val line1 = name?.take(5) ?: ""
+        val line2 = if ((name?.length ?: 0) > 5) name!!.drop(5).take(6) else ""
+        val lines = listOfNotNull(line1.ifEmpty { null }, line2.ifEmpty { null })
+
+        val chipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = android.graphics.Color.WHITE
+            setShadowLayer(2f, 0f, 1f, 0x33000000)
+        }
+        val chipTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+            this.color = 0xFF1E120A.toInt()
+        }
+        val lineH = chipTextPaint.descent() - chipTextPaint.ascent()
+        val chipPadH = 10f
+        val chipPadV = 4f
+        val chipTextW = lines.maxOfOrNull { chipTextPaint.measureText(it) } ?: 0f
+        val chipW = chipTextW + chipPadH * 2
+        val chipH = lines.size * lineH + chipPadV * 2
+
+        val totalW = maxOf((cx + haloR + 3f) * 2, chipW + 6f)
+        val gap = 6f
+        val totalH = cy + haloR + 3f + gap + chipH
+
+        val bitmap = Bitmap.createBitmap(totalW.toInt(), totalH.toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val pinCx = totalW / 2f
+
+        // 헤일로 (반투명 핑크)
+        canvas.drawCircle(pinCx, cy, haloR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = 0x40F04268
+        })
+        // 흰 테두리 원
+        canvas.drawCircle(pinCx, cy, r + 4f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = android.graphics.Color.WHITE
+        })
+        // 카테고리 컬러 원
+        canvas.drawCircle(pinCx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color })
+
+        // 카테고리 이모지
+        val icon = when (category?.uppercase()) {
+            "CAFE"       -> "☕"
+            "PARK"       -> "🌳"
+            "HOSPITAL"   -> "🏥"
+            "GROOMING"   -> "✂"
+            "RESTAURANT" -> "🍽"
+            "PET_HOTEL"  -> "🏨"
+            else         -> "★"
+        }
+        val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = r * 0.95f
+            textAlign = Paint.Align.CENTER
+            this.color = android.graphics.Color.WHITE
+        }
+        canvas.drawText(icon, pinCx, cy + r * 0.32f, iconPaint)
+
+        // 이름 칩 (흰 라운드 + shadow + 검은 텍스트)
+        if (lines.isNotEmpty()) {
+            val chipTop = cy + haloR + 3f + gap
+            val chipLeft = pinCx - chipW / 2f
+            val chipRect = RectF(chipLeft, chipTop, chipLeft + chipW, chipTop + chipH)
+            canvas.drawRoundRect(chipRect, 12f, 12f, chipPaint)
+            var y = chipTop + chipPadV - chipTextPaint.ascent()
+            lines.forEach { line ->
+                canvas.drawText(line, pinCx, y, chipTextPaint)
+                y += lineH
+            }
+        }
+        return bitmap
     }
 
     private fun createPinBitmap(@ColorInt color: Int, category: String? = null, name: String? = null): Bitmap {
