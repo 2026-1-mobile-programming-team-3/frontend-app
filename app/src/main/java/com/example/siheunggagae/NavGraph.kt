@@ -655,10 +655,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     repository = repository,
                     isCurrentUserVolunteer = { currentUserStore.isVolunteer() },
                     getCurrentLocation = {
-                        if (locationPermission.hasPermission) {
-                            val loc = kotlinx.coroutines.runBlocking { locationProvider.getLocationOrNull() }
-                            loc?.let { it.latitude to it.longitude }
-                        } else null
+                        if (locationPermission.hasPermission)
+                            locationProvider.getLocationOrNull()?.let { it.latitude to it.longitude }
+                        else null
                     },
                 )
             )
@@ -666,7 +665,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             MatchingScreen(
                 viewModel = viewModel,
                 onMyRequestsClick = { navController.navigate(Screen.MyRequests.route) },
-                onRequestFlowClick = { navController.navigate(Screen.RequestFlow.route) },
+                onRequestFlowClick = { navController.navigate(Screen.RequestFlow.createRoute(0)) },
                 onCardClick = { matchId, isMine ->
                     if (isMine) {
                         navController.navigate(Screen.MatchingDetail.createRoute(matchId))

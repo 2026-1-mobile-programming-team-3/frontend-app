@@ -74,7 +74,7 @@ sealed class MatchingUi {
 class MatchingViewModel(
     private val repository: MatchRepository,
     private val isCurrentUserVolunteer: () -> Boolean,
-    private val getCurrentLocation: () -> Pair<Double, Double>?,
+    private val getCurrentLocation: suspend () -> Pair<Double, Double>?,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<MatchingUi>(MatchingUi.Loading)
@@ -106,7 +106,6 @@ class MatchingViewModel(
 
     fun setSort(s: MatchSort) {
         if (sort == s) return
-        if (s == MatchSort.NEAREST && getCurrentLocation() == null) return
         sort = s
         fetch(reset = true)
     }
@@ -207,7 +206,7 @@ class MatchingViewModel(
     class Factory(
         private val repository: MatchRepository,
         private val isCurrentUserVolunteer: () -> Boolean,
-        private val getCurrentLocation: () -> Pair<Double, Double>?,
+        private val getCurrentLocation: suspend () -> Pair<Double, Double>?,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
