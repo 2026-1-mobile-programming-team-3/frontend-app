@@ -1,11 +1,8 @@
 ﻿package com.example.siheunggagae.ui.screen
 
-import android.content.Context
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,8 +14,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -41,18 +36,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -81,7 +67,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -95,16 +80,13 @@ import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
-import com.example.siheunggagae.data.model.MatchStatus
 import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
-import com.example.siheunggagae.ui.util.bgColor
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
-import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.Imminence
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -128,13 +110,6 @@ private val FABBrown      = Color(0xFF9A7B5E)
 private val TextBlackM   = TextBlack
 private val PlaceholderM = Color(0xFFC1AEA0)
 
-enum class MatchingTab(val label: String, val status: MatchStatus?) {
-    ALL("전체", null),
-    WAITING("모집중", MatchStatus.WAITING),
-    PROGRESS("진행중", MatchStatus.PROGRESS),
-    DONE("완료", MatchStatus.DONE),
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchingScreen(
@@ -156,6 +131,7 @@ fun MatchingScreen(
     var showSortSheet by remember { mutableStateOf(false) }
     var showDistanceSheet by remember { mutableStateOf(false) }
     var moreSheetFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }  // matchId, isMine
+    val sheetHaptic = LocalHapticFeedback.current
 
     // 무한 스크롤 trigger
     LaunchedEffect(listState) {
@@ -193,8 +169,15 @@ fun MatchingScreen(
                     SortDistanceRow(
                         sort = success?.sort ?: MatchSort.IMMINENT,
                         distance = success?.distance ?: DistanceFilter.KM5,
-                        onSortClick = { showSortSheet = true },
-                        onDistanceClick = { showDistanceSheet = true },
+                        locationAvailable = locationAvailable,
+                        onSortClick = {
+                            sheetHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showSortSheet = true
+                        },
+                        onDistanceClick = {
+                            sheetHaptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showDistanceSheet = true
+                        },
                     )
                     CategoryChipsRow(
                         selected = success?.selectedCategory,
@@ -202,6 +185,23 @@ fun MatchingScreen(
                     )
                     if (success?.showVolunteerWarning == true) {
                         VolunteerWarningBanner(onApplyClick = onVolunteerApplyClick)
+                    }
+                    // 새 N건 알림 — Column 흐름에 자연스럽게 배치 (이전엔 top=200dp 하드코딩 overlay).
+                    val newCountInFlow = (state as? MatchingUi.Success)?.newCount ?: 0
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = newCountInFlow > 0,
+                        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            NewCountPill(
+                                count = newCountInFlow,
+                                onClick = { viewModel.dismissNewCount() },
+                            )
+                        }
                     }
 
                     when (val s = state) {
@@ -230,7 +230,9 @@ fun MatchingScreen(
                                         }
                                         val imm = computeImminence(item.desiredDate, item.desiredTime)
                                         val distanceLabel = buildMatchDistanceLabel(item)
+                                        // animateItem(): 새 카드 추가·재정렬 시 부드러운 슬라이드/페이드 (Compose 1.7+).
                                         MatchCardR(
+                                            modifier = Modifier.animateItem(),
                                             item = item,
                                             isMine = isMine,
                                             imminence = imm,
@@ -250,19 +252,7 @@ fun MatchingScreen(
                 }
             }
 
-            // 새 N건 floating pill
-            val newCount = (state as? MatchingUi.Success)?.newCount ?: 0
-            if (newCount > 0) {
-                NewCountPill(
-                    count = newCount,
-                    onClick = { viewModel.dismissNewCount() },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 200.dp),
-                )
-            }
-
-            // FAB — iOS 스타일 haptic tap.
+            // FAB — iOS 스타일 원형 + haptic tap.
             val haptic = LocalHapticFeedback.current
             FloatingActionButton(
                 onClick = {
@@ -271,7 +261,7 @@ fun MatchingScreen(
                 },
                 containerColor = Color(0xFF9A7B5E),
                 contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
+                shape = CircleShape,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 100.dp),
@@ -398,266 +388,6 @@ private fun shortAddressForMatch(address: String): String {
     return parts.drop(1).take(2).joinToString(" ").ifBlank { address }
 }
 
-@Composable
-private fun BlockedUsersManagementDialog(
-    prefs: android.content.SharedPreferences,
-    onDismiss: () -> Unit,
-    onUnblockSuccess: () -> Unit
-) {
-    var blockedList by remember {
-        mutableStateOf(prefs.getStringSet("blocked_users", emptySet())?.toList() ?: emptyList())
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("차단된 유저 관리", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlack) },
-        text = {
-            if (blockedList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                    Text("차단한 사용자가 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700M)
-                }
-            } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
-                    items(blockedList) { nickname ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(nickname, fontFamily = PretendardFamily, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextBlack)
-                            TextButton(
-                                onClick = {
-                                    val currentSet = prefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
-                                    currentSet.remove(nickname)
-                                    prefs.edit().putStringSet("blocked_users", currentSet).apply()
-
-                                    blockedList = currentSet.toList()
-                                    onUnblockSuccess()
-                                },
-                                colors = ButtonDefaults.textButtonColors(contentColor = Pink500M)
-                            ) {
-                                Text("차단 해제", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
-                        }
-                        HorizontalDivider(color = Color(0xFFF3F4F6))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("닫기", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = Brown900M)
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(16.dp)
-    )
-}
-
-@Composable
-private fun MatchingTopBar(onMyRequests: () -> Unit, onManageBlocks: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "매칭", fontFamily = PretendardFamily, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlack)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(40.dp).shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onManageBlocks() }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Block,
-                    contentDescription = "차단 유저 관리",
-                    tint = Pink500M,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(40.dp).shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { onMyRequests() }
-            ) {
-                Icon(painter = painterResource(R.drawable.ic_assignment), contentDescription = "내 봉사 요청 목록", tint = Brown700M, modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryCards(
-    onMyRequests: () -> Unit,
-    requestCount: Int,
-    onVolunteerHistoryClick: () -> Unit = {}
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        SummaryCard(
-            modifier = Modifier.weight(1f).clickable { onMyRequests() },
-            bgColor = PinkSurfaceM,
-            iconRes = R.drawable.ic_assignment,
-            iconColor = Pink500M,
-            label = "내 요청",
-            value = "${requestCount}건 검토 중"
-        )
-        SummaryCard(
-            modifier = Modifier.weight(1f).clickable { onVolunteerHistoryClick() },
-            bgColor = Color(0xFFF0FDF4),
-            iconRes = R.drawable.ic_favorite,
-            iconColor = Green500M,
-            label = "봉사 활동",
-            value = "1건 진행 중"
-        )
-    }
-}
-
-@Composable
-private fun SummaryCard(modifier: Modifier, bgColor: Color, iconRes: Int, iconColor: Color, label: String, value: String) {
-    Column(modifier = modifier.clip(RoundedCornerShape(14.dp)).background(bgColor).padding(horizontal = 16.dp, vertical = 14.dp)) {
-        Icon(painter = painterResource(iconRes), contentDescription = null, tint = iconColor, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.height(8.dp))
-        Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, lineHeight = 16.sp, color = Brown700M)
-        Spacer(Modifier.height(2.dp))
-        Text(text = value, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlack)
-    }
-}
-
-@Composable
-private fun MatchingTabRow(selected: MatchingTab, onSelect: (MatchingTab) -> Unit) {
-    val tabs = MatchingTab.entries
-    Row(
-        modifier = Modifier.fillMaxWidth().background(Color.White).horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        tabs.forEachIndexed { idx, tab ->
-            val isSel = tab == selected
-            Row(
-                modifier = Modifier.clickable { onSelect(tab) },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(text = tab.label, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal, lineHeight = 20.sp, color = if (isSel) TextBlack else Brown400M)
-            }
-            if (idx < tabs.lastIndex) {
-                Text(text = "  ·  ", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown400M)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RequestListHeader(onMapViewClick: () -> Unit = {}) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "이동 지원 요청", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlack)
-        Row(
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.clickable { onMapViewClick() }
-        ) {
-            Icon(painterResource(R.drawable.ic_map), contentDescription = null, tint = Color(0xFFF7A35B), modifier = Modifier.size(16.dp))
-            Text(text = "지도 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF7A35B))
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun MatchingRequestCard(
-    request: MatchListItem,
-    isMine: Boolean,
-    onCardClick: () -> Unit = {},
-    onCardLongClick: () -> Unit = {}
-) {
-    val matchStatus = MatchStatus.entries.find { it.name == request.status } ?: MatchStatus.WAITING
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .combinedClickable(onClick = { onCardClick() }, onLongClick = { onCardLongClick() })
-            .then(if (isMine) Modifier.border(1.5.dp, BrownBorderM, RoundedCornerShape(16.dp)) else Modifier),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isMine) Color(0xFFFFFDFB) else Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isMine) 1.dp else 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    StatusChipM(status = matchStatus)
-                    if (isMine) {
-                        Box(modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(PinkSurfaceM).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                            Text(text = "내 요청", fontFamily = PretendardFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Pink500M)
-                        }
-                    }
-                }
-                if (request.createdAt != null) {
-                    Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700M)
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp, color = TextBlack, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val timePart = request.desiredTime?.take(5) ?: ""
-            val subInfo = listOfNotNull(
-                request.address?.split(" ")?.getOrNull(2) ?: request.address,
-                if(timePart.isNotEmpty()) "${request.desiredDate?.take(10)} $timePart" else request.desiredDate?.take(10)
-            ).joinToString(" · ")
-            if (subInfo.isNotEmpty()) {
-                Spacer(Modifier.height(5.dp))
-                Text(text = subInfo, fontFamily = PretendardFamily, fontSize = 13.sp, lineHeight = 18.sp, color = Brown700M)
-            }
-            if (request.applicationsCount != null && request.applicationsCount > 0) {
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(text = "신청 ${request.applicationsCount}건", fontFamily = PretendardFamily, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = if (isMine) FontWeight.Bold else FontWeight.Medium, color = if (isMine) Pink500M else Brown700M)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusChipM(status: MatchStatus) {
-    Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(status.bgColor).padding(horizontal = 10.dp, vertical = 4.dp)) {
-        Text(text = status.label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Medium, lineHeight = 16.sp, color = status.textColor)
-    }
-}
-
-@Composable
-private fun CardActionsSheetContent(request: MatchListItem?, onDismiss: () -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp)) {
-        if (request != null) {
-            Text(text = request.title ?: "제목 없음", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = Brown700M, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp))
-        }
-        HorizontalDivider(color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.BookmarkBorder, iconBg = Color(0xFFFFF3E0), iconTint = Orange500M, label = "북마크 추가", labelColor = TextBlack, onClick = onDismiss)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.Share, iconBg = Color(0xFFEFF6FF), iconTint = Color(0xFF388AF5), label = "공유하기", labelColor = TextBlack, onClick = onDismiss)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.Flag, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "신고하기", labelColor = Pink500M, onClick = onDismiss)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.VisibilityOff, iconBg = Color(0xFFF3F4F6), iconTint = Color(0xFF6B7280), label = "게시글 숨기기", labelColor = TextBlack, onClick = onDismiss)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.Block, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "작성자 차단", labelColor = Pink500M, onClick = onDismiss)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFE8E8E8))
-        CardActionRow(icon = Icons.Default.Block, iconBg = Color(0xFFFEE7EC), iconTint = Pink500M, label = "게시글 숨기기 + 작성자 차단", labelColor = Pink500M, onClick = onDismiss)
-    }
-}
-
-@Composable
-private fun CardActionRow(icon: ImageVector, iconBg: Color, iconTint: Color, label: String, labelColor: Color, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { onClick() }.padding(horizontal = 24.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(iconBg)) {
-            Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
-        }
-        Text(text = label, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = labelColor)
-    }
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // R4 — Card composable + supporting chips
 // ──────────────────────────────────────────────────────────────────────────────
@@ -671,6 +401,7 @@ internal fun MatchCardR(
     distanceLabel: String,
     onClick: () -> Unit,
     onMoreClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val status = item.status ?: "RECRUITING"
     val cardAlpha = if (status == "DONE") 0.55f else 1f
@@ -678,7 +409,7 @@ internal fun MatchCardR(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
         shadowElevation = 1.dp,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
             .alpha(cardAlpha)
@@ -980,6 +711,7 @@ private fun PillTab(label: String, on: Boolean, count: Int?, onClick: () -> Unit
 internal fun SortDistanceRow(
     sort: MatchSort,
     distance: DistanceFilter,
+    locationAvailable: Boolean,
     onSortClick: () -> Unit,
     onDistanceClick: () -> Unit,
 ) {
@@ -987,8 +719,14 @@ internal fun SortDistanceRow(
         modifier = Modifier.padding(horizontal = 18.dp).padding(bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SortDistancePill(label = sort.label(), onClick = onSortClick, active = true)
-        SortDistancePill(label = distance.label(), onClick = onDistanceClick, active = distance != DistanceFilter.ALL)
+        SortDistancePill(label = sort.label(), onClick = onSortClick, active = true, enabled = true)
+        // 위치 미확보 시 거리 필터 비활성 — 회색 + 클릭 무시.
+        SortDistancePill(
+            label = if (locationAvailable) distance.label() else "위치 확인 중",
+            onClick = onDistanceClick,
+            active = locationAvailable && distance != DistanceFilter.ALL,
+            enabled = locationAvailable,
+        )
     }
 }
 
@@ -1006,9 +744,10 @@ internal fun DistanceFilter.label(): String = when (this) {
 }
 
 @Composable
-private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean) {
+private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean, enabled: Boolean = true) {
     Row(
         modifier = Modifier
+            .alpha(if (enabled) 1f else 0.4f)
             .clip(RoundedCornerShape(50.dp))
             .background(Color.White)
             .border(
@@ -1016,7 +755,7 @@ private fun SortDistancePill(label: String, onClick: () -> Unit, active: Boolean
                 if (active) Brown900M else Color(0xFFE8D3C2),
                 RoundedCornerShape(50.dp),
             )
-            .clickable { onClick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -352,6 +352,7 @@ fun MapScreen(
                     MapBottomSheetContent(
                         stores = uiState.stores,
                         totalCount = uiState.totalCount,
+                        truncated = uiState.truncated,
                         onStoreClick = { store -> viewModel.selectStore(store) },
                         onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
                     )
@@ -900,6 +901,7 @@ private fun MapDragHandle(
 private fun MapBottomSheetContent(
     stores: List<StoreResponse>,
     totalCount: Int,
+    truncated: Boolean,
     onStoreClick: (StoreResponse) -> Unit,
     onFavoriteToggle: (StoreResponse) -> Unit,
 ) {
@@ -913,14 +915,33 @@ private fun MapBottomSheetContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "주변 매장 ${displayCount}개",
-                    fontFamily = PretendardFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "주변 매장 ${displayCount}개",
+                        fontFamily = PretendardFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        color = TextBlack,
+                    )
+                    // 표시 한도 초과 시 영구 배지 — 스낵바 4 초 안내 대체.
+                    if (truncated) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color(0xFFFEF3C7))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = "더 확대해 주세요",
+                                fontFamily = PretendardFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFCA8A04),
+                            )
+                        }
+                    }
+                }
                 // 정렬: API 가 거리순으로 반환하므로 정적 라벨. (추후 정렬 옵션 추가 시 클릭 가능 칩으로 전환)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -1316,7 +1337,14 @@ private fun MapPlaceItem(
                 }
             }
         }
-        IconButton(onClick = { onFavoriteToggle() }, modifier = Modifier.size(36.dp)) {
+        val haptic = LocalHapticFeedback.current
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onFavoriteToggle()
+            },
+            modifier = Modifier.size(36.dp),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",

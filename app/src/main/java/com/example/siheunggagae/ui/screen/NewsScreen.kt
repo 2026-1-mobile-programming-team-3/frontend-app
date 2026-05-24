@@ -52,18 +52,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
+import androidx.compose.animation.animateColorAsState
 
-// ─── 컬러 ──────────────────────────────────────────────────────────────────────
-private val TextBlackNs    = Color(0xFF1F130B)
-private val Brown700Ns     = Color(0xFF8B6F59)
+// ─── 컬러 (design.md / CLAUDE.md 단일 진실에 맞춤) ──────────────────────────────
+private val TextBlackNs    = Color(0xFF1E120A)
+private val Brown700Ns     = Color(0xFF8A6E58)
 private val Brown900Ns     = Color(0xFF614B3A)
-private val Orange500Ns    = Color(0xFFF7A45C)
-private val Pink500Ns      = Color(0xFFF14369)
-private val Green500Ns     = Color(0xFF00A73F)
-private val MintNs         = Color(0xFFD1FFE2)
-private val PinkSurfaceNs  = Color(0xFFFEE8ED)
+private val Orange500Ns    = Color(0xFFF7A35B)
+private val Pink500Ns      = Color(0xFFF04268)
+private val Green500Ns     = Color(0xFF00A63E)
+private val MintNs         = Color(0xFFD0FEE1)
+private val PinkSurfaceNs  = Color(0xFFFEE7EC)
 private val BackgroundNs   = Color(0xFFFEFEFE)
-private val PlaceholderNs  = Color(0xFFC1AFA0)
+private val PlaceholderNs  = Color(0xFFC1AEA0)
 
 private val newsCategories = listOf("전체", "정책", "행사", "봉사", "지원")
 
@@ -113,31 +117,31 @@ fun NewsScreen(
     val filteredList = if (selectedCategory == "전체") newsList
                        else newsList.filter { categoryToKorean(it.category) == selectedCategory }
 
-    Scaffold(
-        containerColor = BackgroundNs,
-        topBar = { NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick) },
-    ) { innerPadding ->
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = Orange500Ns)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                item {
-                    Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
-                        NewsSearchBar()
-                        NewsCategoryFilter(
-                            selected = selectedCategory,
-                            onSelect = { selectedCategory = it },
-                        )
-                    }
+    Scaffold(containerColor = BackgroundNs) { innerPadding ->
+        // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Orange500Ns)
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 96.dp),
+                ) {
+                    item {
+                        Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
+                            NewsSearchBar()
+                            NewsCategoryFilter(
+                                selected = selectedCategory,
+                                onSelect = { selectedCategory = it },
+                            )
+                        }
+                    }
 
                 if (filteredList.isEmpty()) {
                     item {
@@ -196,6 +200,7 @@ fun NewsScreen(
                 }
             }
         }
+        }  // end Column (TopBar wrapper)
     }
 }
 
@@ -301,13 +306,22 @@ private fun NewsCategoryFilter(selected: String, onSelect: (String) -> Unit) {
     ) {
         newsCategories.forEach { cat ->
             val isSelected = cat == selected
+            // 텍스트 색 morph + tap scale — Map/Matching 카테고리 칩과 같은 톤.
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) TextBlackNs else Brown700Ns,
+                animationSpec = appleSpec(),
+                label = "newsTabFg",
+            )
+            val interaction = rememberAppleInteractionSource()
             Text(
                 text = cat,
                 fontFamily = PretendardFamily,
                 fontSize = if (isSelected) 16.sp else 14.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) TextBlackNs else Brown700Ns,
-                modifier = Modifier.clickable { onSelect(cat) },
+                color = fg,
+                modifier = Modifier
+                    .appleTapScale(interaction)
+                    .clickable(interactionSource = interaction, indication = null) { onSelect(cat) },
             )
         }
     }
