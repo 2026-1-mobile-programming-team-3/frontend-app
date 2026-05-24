@@ -272,7 +272,6 @@ fun PlaceDetailScreen(
                                             Brush.verticalGradient(
                                                 0f to Color.Transparent,
                                                 1f to Color(0x80000000),
-                                                startY = 0f,
                                             )
                                         ),
                                 )
@@ -365,6 +364,7 @@ fun PlaceDetailScreen(
                                                 fontFamily = PretendardFamily,
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.SemiBold,
+                                                lineHeight = 16.sp,
                                                 color = Color.White,
                                             )
                                         }
