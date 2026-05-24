@@ -95,6 +95,7 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.toStoreResponse
 import com.example.siheunggagae.map.MarkerSpec
 import com.example.siheunggagae.map.computeMarkerSpecs
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -979,27 +980,11 @@ private fun MapBottomSheetContent(
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
             if (stores.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "이 영역에는 표시할 매장이 없어요",
-                            fontFamily = PretendardFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Brown700Mp,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "지도를 더 넓혀 보거나 다른 동네로 이동해 주세요",
-                            fontFamily = PretendardFamily,
-                            fontSize = 12.sp,
-                            color = Brown400Mp,
-                        )
-                    }
-                }
+                EmptyStateView(
+                    title = "이 영역에 매장이 없어요",
+                    subtitle = "지도를 옮기거나 확대해 보세요",
+                    iconRes = R.drawable.ic_map,
+                )
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(stores, key = { it.resolvedId }) { store ->

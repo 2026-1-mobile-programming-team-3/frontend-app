@@ -54,6 +54,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.PriorityHigh
+import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -397,24 +399,13 @@ private fun NotificationItemContent(item: NotificationItem) {
 
 @Composable
 private fun EmptyNotification() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.PriorityHigh,
-                contentDescription = null,
-                tint = Color(0xFFD1D5DB),
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "알림이 없습니다",
-                fontFamily = PretendardFamily,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-                color = Brown700N,
-            )
-        }
-    }
+    EmptyStateView(
+        title = "아직 알림이 없어요",
+        subtitle = "새로운 활동이 있으면 여기에 표시됩니다",
+        iconRes = R.drawable.ic_notifications,
+        iconTint = Color(0xFF8A6E58),
+        iconBackground = Color(0xFFE8D3C2),
+    )
 }
 
 @Composable

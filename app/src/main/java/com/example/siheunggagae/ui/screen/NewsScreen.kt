@@ -5,6 +5,7 @@ import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.network.RetrofitClient
+import com.example.siheunggagae.ui.component.EmptyStateView
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -45,8 +46,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -110,6 +114,7 @@ fun NewsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var newsList by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var selectedCategory by remember { mutableStateOf("전체") }
+    var showSearch by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         newsList = runCatching {
@@ -123,90 +128,103 @@ fun NewsScreen(
         else newsList.filter { categoryToKorean(it.category) == selectedCategory }
     }
 
-    Scaffold(containerColor = BackgroundNs) { innerPadding ->
-        // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Orange500Ns)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 96.dp),
-                ) {
-                    item {
-                        Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
-                            NewsSearchBar()
-                            NewsCategoryFilter(
-                                selected = selectedCategory,
-                                onSelect = { selectedCategory = it },
-                            )
-                        }
-                    }
-
-                if (filteredList.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "소식이 없습니다",
-                                fontFamily = PretendardFamily,
-                                fontSize = 16.sp,
-                                color = Brown700Ns,
-                            )
-                        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(containerColor = BackgroundNs) { innerPadding ->
+            // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
+            Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = Orange500Ns)
                     }
                 } else {
-                    val featuredItem = filteredList[0]
-                    val gridItems = filteredList.drop(1).take(4)
-                    val listItems = filteredList.drop(5)
-
-                    item {
-                        Spacer(Modifier.height(16.dp))
-                        FeaturedNewsCard(
-                            item = featuredItem,
-                            onClick = { onNewsDetailClick(featuredItem.newsId ?: "") },
-                        )
-                        Spacer(Modifier.height(12.dp))
-                    }
-
-                    if (gridItems.size >= 2) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 96.dp),
+                    ) {
                         item {
-                            NewsGridRow(
-                                left = gridItems[0],
-                                right = gridItems[1],
-                                onItemClick = onNewsDetailClick,
+                            Column(modifier = Modifier.fillMaxWidth().background(Color.White)) {
+                                NewsSearchBar(onClick = { showSearch = true })
+                                NewsCategoryFilter(
+                                    selected = selectedCategory,
+                                    onSelect = { selectedCategory = it },
+                                )
+                            }
+                        }
+
+                    if (filteredList.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(top = 80.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = "소식이 없습니다",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 16.sp,
+                                    color = Brown700Ns,
+                                )
+                            }
+                        }
+                    } else {
+                        val featuredItem = filteredList[0]
+                        val gridItems = filteredList.drop(1).take(4)
+                        val listItems = filteredList.drop(5)
+
+                        item {
+                            Spacer(Modifier.height(16.dp))
+                            FeaturedNewsCard(
+                                item = featuredItem,
+                                onClick = { onNewsDetailClick(featuredItem.newsId ?: "") },
                             )
                             Spacer(Modifier.height(12.dp))
                         }
-                    }
 
-                    if (gridItems.size >= 4) {
-                        item {
-                            NewsGridRow(
-                                left = gridItems[2],
-                                right = gridItems[3],
-                                onItemClick = onNewsDetailClick,
-                            )
-                            Spacer(Modifier.height(12.dp))
+                        if (gridItems.size >= 2) {
+                            item {
+                                NewsGridRow(
+                                    left = gridItems[0],
+                                    right = gridItems[1],
+                                    onItemClick = onNewsDetailClick,
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
                         }
-                    }
 
-                    items(listItems, key = { it.newsId ?: it.hashCode().toString() }) { item ->
-                        NewsListRow(item = item, onClick = { onNewsDetailClick(item.newsId ?: "") })
-                        Spacer(Modifier.height(8.dp))
+                        if (gridItems.size >= 4) {
+                            item {
+                                NewsGridRow(
+                                    left = gridItems[2],
+                                    right = gridItems[3],
+                                    onItemClick = onNewsDetailClick,
+                                )
+                                Spacer(Modifier.height(12.dp))
+                            }
+                        }
+
+                        items(listItems, key = { it.newsId ?: it.hashCode().toString() }) { item ->
+                            NewsListRow(item = item, onClick = { onNewsDetailClick(item.newsId ?: "") })
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
                 }
             }
+            }  // end Column (TopBar wrapper)
         }
-        }  // end Column (TopBar wrapper)
+
+        if (showSearch) {
+            NewsSearchOverlay(
+                allNews = newsList,
+                onDismiss = { showSearch = false },
+                onResultClick = { newsId ->
+                    showSearch = false
+                    onNewsDetailClick(newsId)
+                },
+            )
+        }
     }
 }
 
@@ -276,7 +294,7 @@ private fun NewsTopBarIcon(onClick: () -> Unit = {}, content: @Composable () -> 
 // ─── 검색바 ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsSearchBar() {
+private fun NewsSearchBar(onClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -284,6 +302,7 @@ private fun NewsSearchBar() {
             .shadow(elevation = 1.dp, shape = RoundedCornerShape(50.dp))
             .clip(RoundedCornerShape(50.dp))
             .background(Color.White)
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -308,27 +327,39 @@ private fun NewsCategoryFilter(selected: String, onSelect: (String) -> Unit) {
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         newsCategories.forEach { cat ->
             val isSelected = cat == selected
-            // 텍스트 색 morph + tap scale — Map/Matching 카테고리 칩과 같은 톤.
-            val fg by animateColorAsState(
-                targetValue = if (isSelected) TextBlackNs else Brown700Ns,
+            val bg by animateColorAsState(
+                targetValue = if (isSelected) Color(0xFF1A1A1A) else Color.White,
                 animationSpec = appleSpec(),
-                label = "newsTabFg",
+                label = "newsChipBg",
+            )
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Brown700Ns,
+                animationSpec = appleSpec(),
+                label = "newsChipFg",
             )
             val interaction = rememberAppleInteractionSource()
-            Text(
-                text = cat,
-                fontFamily = PretendardFamily,
-                fontSize = if (isSelected) 16.sp else 14.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = fg,
+            Box(
                 modifier = Modifier
                     .appleTapScale(interaction)
-                    .clickable(interactionSource = interaction, indication = null) { onSelect(cat) },
-            )
+                    .shadow(2.dp, RoundedCornerShape(50.dp))
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(bg)
+                    .clickable(interactionSource = interaction, indication = null) { onSelect(cat) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = cat,
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 20.sp,
+                    color = fg,
+                )
+            }
         }
     }
 }
@@ -532,6 +563,126 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
             fontWeight = FontWeight.Normal,
             color = Brown700Ns,
         )
+    }
+}
+
+// ─── 검색 오버레이 ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun NewsSearchOverlay(
+    allNews: List<NewsItem>,
+    onDismiss: () -> Unit,
+    onResultClick: (newsId: String) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val results = remember(query, allNews) {
+        if (query.isBlank()) emptyList()
+        else allNews.filter { (it.title ?: "").contains(query, ignoreCase = true) }
+            .take(30)
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+            // 검색 입력 영역
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFF3F4F6))
+                        .clickable { onDismiss() },
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "닫기",
+                        tint = Brown700Ns,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .shadow(2.dp, RoundedCornerShape(50.dp))
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "뉴스 · 정책 · 행사 검색",
+                            fontFamily = PretendardFamily,
+                            fontSize = 15.sp,
+                            color = Brown700Ns,
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontFamily = PretendardFamily,
+                            fontSize = 15.sp,
+                            color = Color(0xFF1E120A),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+
+            when {
+                query.isBlank() -> EmptyStateView(
+                    title = "어떤 뉴스를 찾으세요?",
+                    subtitle = "키워드를 입력해 보세요",
+                    iconRes = R.drawable.ic_search,
+                )
+                results.isEmpty() -> EmptyStateView(
+                    title = "검색 결과가 없어요",
+                    subtitle = "다른 키워드로 시도해 보세요",
+                    iconRes = R.drawable.ic_search,
+                )
+                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(results, key = { it.newsId ?: it.hashCode().toString() }) { news ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { news.newsId?.let { onResultClick(it) } }
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = news.title ?: "",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 20.sp,
+                                    color = Color(0xFF1E120A),
+                                )
+                                Text(
+                                    text = categoryToKorean(news.category),
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 12.sp,
+                                    color = Brown700Ns,
+                                )
+                            }
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = Color(0xFFF3F4F6),
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
