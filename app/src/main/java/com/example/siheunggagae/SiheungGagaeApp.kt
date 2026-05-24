@@ -1,6 +1,9 @@
 package com.example.siheunggagae
 
 import android.app.Application
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.request.crossfade
 import com.example.siheunggagae.data.local.LocalNotificationStore
 import com.example.siheunggagae.data.local.TokenManager
 import com.kakao.vectormap.KakaoMapSdk
@@ -14,7 +17,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
-class SiheungGagaeApp : Application() {
+class SiheungGagaeApp : Application(), SingletonImageLoader.Factory {
+
+    override fun newImageLoader(context: coil3.PlatformContext): ImageLoader =
+        ImageLoader.Builder(context).crossfade(200).build()
 
     lateinit var tokenManager: TokenManager
         private set
