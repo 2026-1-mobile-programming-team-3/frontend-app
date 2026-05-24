@@ -1418,8 +1418,20 @@ private fun isOpenNow(operatingHours: String?): Boolean? {
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true)
 @Composable
-fun PlaceDetailScreenPreview() {
-    SiheungGagaeTheme { PlaceDetailScreen(placeId = 0) }
+private fun PlaceDetailScreenPreview() {
+    SiheungGagaeTheme {
+        Column(modifier = Modifier.background(Color(0xFFF7F4F1))) {
+            PlanCardPL(
+                plans = listOf(
+                    PetHotelPlan("소형견 1박 (5kg 이하)", 30000, 0),
+                    PetHotelPlan("중형견 1박 (5–15kg)", 40000, 1),
+                    PetHotelPlan("대형견 1박 (15kg+)", 55000, 2),
+                    PetHotelPlan("소형견 데이케어", 20000, 3),
+                    PetHotelPlan("중형견 데이케어", 25000, 4),
+                ),
+            )
+        }
+    }
 }
