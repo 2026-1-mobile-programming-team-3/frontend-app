@@ -86,6 +86,9 @@ import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import com.example.siheunggagae.ui.util.CategoryVisual
 import com.kakao.vectormap.MapView
 import kotlinx.coroutines.launch
@@ -109,7 +112,7 @@ private val MapSkyPL     = Color(0xFFE0F7FA)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun PlaceDetailScreen(
     placeId: Int = 0,
@@ -118,6 +121,8 @@ fun PlaceDetailScreen(
     onBack: () -> Unit = {},
     onNavigateToMap: (lat: Double, lng: Double, storeId: Int) -> Unit = { _, _, _ -> },
     onEditRequestClick: (storeId: Int) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -259,6 +264,17 @@ fun PlaceDetailScreen(
                 // ── 히어로 헤더 ────────────────────────────────────────────────────
                 item {
                     val visual = CategoryVisual.forCategory(s.category)
+                    // sharedElement modifier — Home 의 카테고리 아이콘 박스와 동일한 key 로 연결
+                    val heroIconModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            Modifier.sharedElement(
+                                rememberSharedContentState(key = "store_hero_$placeId"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -291,12 +307,12 @@ fun PlaceDetailScreen(
                                         .align(Alignment.BottomEnd)
                                         .padding(end = 8.dp, bottom = 8.dp),
                                 )
-                                // 전경 카테고리 아이콘 (선명)
+                                // 전경 카테고리 아이콘 (선명) — Home 아이콘 박스와 shared element 연결
                                 Icon(
                                     painter = painterResource(visual.drawableRes),
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier
+                                    modifier = heroIconModifier
                                         .size(72.dp)
                                         .align(Alignment.Center),
                                 )

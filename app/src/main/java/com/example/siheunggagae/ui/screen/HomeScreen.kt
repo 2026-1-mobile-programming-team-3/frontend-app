@@ -81,9 +81,14 @@ import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.viewmodel.HomeViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.siheunggagae.ui.util.CategoryVisual
 
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +125,7 @@ private val siheungDongs = listOf(
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeScreen(
     unreadCount: Int = 0,
@@ -127,6 +133,8 @@ fun HomeScreen(
     onNavigate: (String) -> Unit = {},
     onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onNewsDetailClick: (String) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val context = LocalContext.current
     val viewModel: HomeViewModel = viewModel(
@@ -229,6 +237,8 @@ fun HomeScreen(
                 onMapClick = { onNavigate(Screen.Map.route) },
                 onPlaceDetailClick = onPlaceDetailClick,
                 onFavoriteClick = { store -> viewModel.toggleFavorite(store) },
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
             Spacer(Modifier.height(8.dp))
             PetNewsSection(
@@ -500,6 +510,7 @@ fun WalkIndexSection(
 
 // ─── 주변 매장 섹션 ───────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun NearbyStoresSection(
     regionDong: String = "정왕동",
@@ -511,6 +522,8 @@ fun NearbyStoresSection(
     onMapClick: () -> Unit = {},
     onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onFavoriteClick: (StoreResponse) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     Column(
         modifier = Modifier
@@ -652,6 +665,8 @@ fun NearbyStoresSection(
                 store = store,
                 onPlaceDetailClick = onPlaceDetailClick,
                 onFavoriteClick = onFavoriteClick,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
             if (idx < minOf(stores.size, 3) - 1) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
@@ -660,16 +675,33 @@ fun NearbyStoresSection(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun HomeStoreItem(
     number: Int,
     store: StoreResponse,
     onPlaceDetailClick: (Int, Double, Double) -> Unit,
     onFavoriteClick: (StoreResponse) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val distanceText = store.distanceM?.let {
         if (it < 1000) "${"%.0f".format(it)}m" else "${"%.1f".format(it / 1000)}km"
     } ?: ""
+
+    val visual = CategoryVisual.forCategory(store.category)
+
+    // sharedElement modifier — 스코프가 있을 때만 적용, 없으면 빈 Modifier (안전한 fallback)
+    val heroModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                rememberSharedContentState(key = "store_hero_${store.resolvedId}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    } else {
+        Modifier
+    }
 
     Row(
         modifier = Modifier
@@ -678,14 +710,31 @@ private fun HomeStoreItem(
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // 카테고리 아이콘 박스 (shared element — PlaceDetail hero 72dp 아이콘과 동일 key)
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(32.dp).clip(CircleShape)
+            modifier = heroModifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Brush.linearGradient(visual.gradient)),
+        ) {
+            Icon(
+                painter = painterResource(visual.drawableRes),
+                contentDescription = null,
+                tint = visual.color,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        // 순위 뱃지
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(20.dp).clip(CircleShape)
                 .background(if (number == 1) Pink500H else Brown900H),
         ) {
-            Text("$number", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = if (number == 1) FontWeight.Medium else FontWeight.Normal, color = Color.White)
+            Text("$number", fontFamily = PretendardFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(store.name, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackH)
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.animateBounds
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
@@ -462,6 +463,7 @@ private fun normalizeTabRoute(route: String?): String =
 
 // ─── NavHost ───────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppNavGraph(navController: NavHostController = rememberNavController()) {
     val app = LocalContext.current.applicationContext as SiheungGagaeApp
@@ -480,6 +482,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
     val showBottomBar = isTopLevelTabRoute(currentRoute)
     val tabRoute = normalizeTabRoute(currentRoute)
 
+    SharedTransitionLayout {
     Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
@@ -629,6 +632,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 onNavigate = { route -> navController.navigateTab(route) },
                 onPlaceDetailClick = { placeId, lat, lng -> navController.navigate(Screen.PlaceDetail.createRoute(placeId, lat, lng)) },
                 onNewsDetailClick = { newsId -> navController.navigate(Screen.NewsDetail.createRoute(newsId)) },
+                sharedTransitionScope = this@SharedTransitionLayout,
+                animatedVisibilityScope = this@composable,
             )
         }
 
@@ -945,6 +950,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                         ),
                     )
                 },
+                sharedTransitionScope = this@SharedTransitionLayout,
+                animatedVisibilityScope = this@composable,
             )
         }
 
@@ -1424,6 +1431,7 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
         }
     }
+    } // SharedTransitionLayout
 }
 
 private fun NavHostController.navigateTab(route: String) {
