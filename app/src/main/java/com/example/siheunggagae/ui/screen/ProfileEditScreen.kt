@@ -114,7 +114,8 @@ fun ProfileEditScreen(
         }
         when (uiState) {
             is ProfileEditUiState.SaveSuccess -> {
-                Toast.makeText(context, "프로필이 저장됐어요", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "프로필이 저장되었어요 ✓", Toast.LENGTH_SHORT).show()
+                kotlinx.coroutines.delay(800L)
                 onBack()
             }
             is ProfileEditUiState.Error -> {
