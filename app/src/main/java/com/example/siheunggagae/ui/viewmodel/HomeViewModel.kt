@@ -5,6 +5,7 @@ import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.local.SiheungRegions
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.NewsItem
@@ -51,27 +52,6 @@ class HomeViewModel(
 
     companion object {
         private const val KEY_MANUAL_DONG = "manual_dong"
-
-        val dongCoordinates: Map<String, Pair<Double, Double>> = mapOf(
-            "대야동"  to (37.3880 to 126.8030),
-            "신천동"  to (37.3730 to 126.7975),
-            "신현동"  to (37.3810 to 126.8110),
-            "은행동"  to (37.3740 to 126.8130),
-            "매화동"  to (37.3615 to 126.8025),
-            "도창동"  to (37.3555 to 126.7800),
-            "목감동"  to (37.3485 to 126.7890),
-            "조남동"  to (37.3335 to 126.7935),
-            "포동"    to (37.3665 to 126.7615),
-            "군자동"  to (37.3790 to 126.7615),
-            "정왕동"  to (37.3400 to 126.7435),
-            "능곡동"  to (37.4005 to 126.7940),
-            "월곶동"  to (37.4130 to 126.7835),
-            "배곧동"  to (37.3600 to 126.7215),
-            "장현동"  to (37.3940 to 126.8200),
-            "장곡동"  to (37.3765 to 126.8200),
-            "연성동"  to (37.3655 to 126.8200),
-            "과림동"  to (37.3430 to 126.7645),
-        )
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -101,7 +81,7 @@ class HomeViewModel(
             val manualDong = prefs.getString(KEY_MANUAL_DONG, null)
 
             // 수동 선택 동이 있으면 그 동의 중심 좌표, 없으면 GPS 좌표 사용
-            val mapCenter = dongCoordinates[manualDong]
+            val mapCenter = SiheungRegions.coordinatesForDong(manualDong)
 
             // dashboard 없이 GPS/수동만 성공한 경우에도 동 반영
             if (dashboard == null) {

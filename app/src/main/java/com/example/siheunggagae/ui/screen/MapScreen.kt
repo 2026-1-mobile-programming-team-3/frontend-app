@@ -26,6 +26,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.window.Dialog
+import com.example.siheunggagae.data.local.SiheungRegions
+import com.example.siheunggagae.data.location.EffectiveCenter
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -92,10 +96,21 @@ import com.example.siheunggagae.data.model.toStoreResponse
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
 import com.example.siheunggagae.ui.viewmodel.MapViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
+
+// ─── 상수 ────────────────────────────────────────────────────────────────────
+
+private val MapSheetPeekHeight = 220.dp
 
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
@@ -155,6 +170,7 @@ fun MapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showDongPicker by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -287,23 +303,20 @@ fun MapScreen(
         }
     }
 
+    // skipHiddenState=true 로 시트가 완전히 숨겨지지 않게 — 사용자가 한 번 접으면 다시 펼 방법이 없는 버그 방지.
     val sheetState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = false,
+            skipHiddenState = true,
         )
     )
 
-    // 매장 선택 시 카메라 이동 + 목록 시트 숨기기 / 해제 시 다시 표시
+    // 매장 선택 시 카메라 이동 + 시트는 peek 으로 — StoreDetailSheet 모달이 위에 뜨므로 시트를 hide 할 필요 없음.
     LaunchedEffect(uiState.selectedStore) {
         val store = uiState.selectedStore
-        if (store != null) {
-            if (mapReady) mapWrapper.moveCamera(store.latitude, store.longitude)
-            sheetState.bottomSheetState.hide()
-        } else {
-            if (sheetState.bottomSheetState.currentValue == SheetValue.Hidden) {
-                sheetState.bottomSheetState.partialExpand()
-            }
+        if (store != null && mapReady) {
+            mapWrapper.moveCamera(store.latitude, store.longitude)
+            sheetState.bottomSheetState.partialExpand()
         }
     }
 
@@ -314,12 +327,19 @@ fun MapScreen(
         BottomSheetScaffold(
             modifier = Modifier.padding(navPadding),
             scaffoldState = sheetState,
-            sheetPeekHeight = 280.dp,
+            sheetPeekHeight = MapSheetPeekHeight,
             sheetContainerColor = Color.White,
             sheetTonalElevation = 0.dp,
             sheetShadowElevation = 8.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            sheetDragHandle = { MapDragHandle() },
+            sheetDragHandle = {
+                MapDragHandle(
+                    isExpanded = sheetState.bottomSheetState.currentValue == SheetValue.Expanded,
+                    onCollapseClick = {
+                        scope.launch { sheetState.bottomSheetState.partialExpand() }
+                    },
+                )
+            },
             sheetContent = {
                 if (uiState.isVolunteerMode) {
                     VolunteerBottomSheetContent(
@@ -350,6 +370,21 @@ fun MapScreen(
                         .fillMaxWidth()
                         .padding(top = 16.dp, start = 16.dp, end = 16.dp),
                 ) {
+                    // GPS 가 시흥 밖일 때 fallback 안내 배너 — design.md §5 색 의미론: 위치=Mint
+                    AnimatedVisibility(
+                        visible = uiState.centerFallback != null,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    ) {
+                        uiState.centerFallback?.let { cf ->
+                            FallbackCenterBanner(
+                                center = cf,
+                                onChangeClick = { showDongPicker = true },
+                                onDismiss = { viewModel.dismissFallbackBanner() },
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                    }
                     MapSearchCard(onClick = { showSearch = true })
                     Spacer(Modifier.height(8.dp))
                     MapCategoryChipRow(
@@ -388,20 +423,25 @@ fun MapScreen(
                     }
                 }
 
-                // 우측 플로팅 버튼
+                // 우측 플로팅 버튼 — peek 시트 위에 위치하도록 BottomEnd 기준. iOS 스타일 tap haptic.
+                val haptic = LocalHapticFeedback.current
                 Column(
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp, bottom = 80.dp),
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = MapSheetPeekHeight + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MapIconFab(R.drawable.ic_my_location, "내 위치") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어") { showFilterSheet = true }
+                    MapIconFab(R.drawable.ic_layers, "레이어") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showFilterSheet = true
+                    }
                     MapIconFab(R.drawable.ic_refresh, "새로고침") {
-                        val loc = uiState.location
-                        if (loc != null) viewModel.refresh(loc.latitude, loc.longitude)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.refresh()
                     }
                 }
 
@@ -458,6 +498,158 @@ fun MapScreen(
                 onNavigate(Screen.PlaceDetail.createRoute(storeId))
             },
         )
+    }
+
+    if (showDongPicker) {
+        DongPickerDialog(
+            currentDong = uiState.centerFallback?.regionDong,
+            onDismiss = { showDongPicker = false },
+            onSelect = { dong ->
+                viewModel.moveToDong(dong)
+                showDongPicker = false
+            },
+        )
+    }
+}
+
+// ─── Fallback 배너 (GPS 가 시흥 밖일 때) ──────────────────────────────────────
+
+@Composable
+private fun FallbackCenterBanner(
+    center: EffectiveCenter,
+    onChangeClick: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val regionLabel = center.regionDong ?: "시흥시청"
+    val sourceLabel = when (center.source) {
+        EffectiveCenter.Source.USER_PROFILE -> "내 등록 동네"
+        EffectiveCenter.Source.DEFAULT -> "시흥 기본 위치"
+        EffectiveCenter.Source.GPS -> "현재 위치"
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFEAFBF1),
+        shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_location_on),
+                contentDescription = null,
+                tint = Color(0xFF00A63E),
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "현재 위치가 시흥 밖이라 ${regionLabel} 기준으로 보고 있어요",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlack,
+                    lineHeight = 16.sp,
+                )
+                Text(
+                    text = sourceLabel,
+                    fontFamily = PretendardFamily,
+                    fontSize = 10.sp,
+                    color = Brown700Mp,
+                    lineHeight = 14.sp,
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .clickable { onChangeClick() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "변경",
+                    fontFamily = PretendardFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF00A63E),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "닫기",
+                    tint = Brown400Mp,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+// ─── 동네 선택 다이얼로그 ──────────────────────────────────────────────────────
+
+@Composable
+private fun DongPickerDialog(
+    currentDong: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = "동네 변경",
+                fontFamily = PretendardFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+            LazyColumn(modifier = Modifier.height(360.dp)) {
+                items(SiheungRegions.dongCoordinates.keys.toList()) { dong ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(dong) }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            dong,
+                            fontFamily = PretendardFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 24.sp,
+                            color = TextBlack,
+                        )
+                        if (dong == currentDong) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Pink500Mp,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = Color(0xFFF3F4F6),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -576,12 +768,28 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
     ) {
         StoreCategory.entries.forEach { category ->
             val isSelected = category == selected
+            // bg/fg 색을 AppleEaseOut 으로 보간 — 선택 시 hard cut 대신 부드러운 morph.
+            val bg by animateColorAsState(
+                targetValue = if (isSelected) Color(0xFF1A1A1A) else Color.White,
+                animationSpec = appleSpec(),
+                label = "mapChipBg",
+            )
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Brown700Mp,
+                animationSpec = appleSpec(),
+                label = "mapChipFg",
+            )
+            val interaction = rememberAppleInteractionSource()
             Box(
                 modifier = Modifier
+                    .appleTapScale(interaction)
                     .shadow(2.dp, RoundedCornerShape(50.dp))
                     .clip(RoundedCornerShape(50.dp))
-                    .background(if (isSelected) Color(0xFF1A1A1A) else Color.White)
-                    .clickable { onSelect(category) }
+                    .background(bg)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                    ) { onSelect(category) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -590,7 +798,7 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 20.sp,
-                    color = if (isSelected) Color.White else Brown700Mp,
+                    color = fg,
                 )
             }
         }
@@ -601,14 +809,16 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
 
 @Composable
 private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> Unit = {}) {
+    val interaction = rememberAppleInteractionSource()
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
+            .appleTapScale(interaction)
             .size(40.dp)
             .shadow(4.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { onClick() },
+            .clickable(interactionSource = interaction, indication = null) { onClick() },
     ) {
         Icon(
             painter = painterResource(iconRes),
@@ -645,7 +855,10 @@ private fun VolunteerToggleChip(isOn: Boolean, onClick: () -> Unit, modifier: Mo
 // ─── 드래그 핸들 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapDragHandle() {
+private fun MapDragHandle(
+    isExpanded: Boolean = false,
+    onCollapseClick: (() -> Unit)? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -659,6 +872,25 @@ private fun MapDragHandle() {
                 .clip(RoundedCornerShape(3.dp))
                 .background(Color(0xFFE8E8E8)),
         )
+        if (isExpanded && onCollapseClick != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF3F4F6))
+                    .clickable { onCollapseClick() },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_chevron_down),
+                    contentDescription = "접기",
+                    tint = Brown700Mp,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 
@@ -689,10 +921,8 @@ private fun MapBottomSheetContent(
                     lineHeight = 24.sp,
                     color = TextBlack,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { },
-                ) {
+                // 정렬: API 가 거리순으로 반환하므로 정적 라벨. (추후 정렬 옵션 추가 시 클릭 가능 칩으로 전환)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(R.drawable.ic_swap_vert),
                         contentDescription = null,
@@ -700,7 +930,7 @@ private fun MapBottomSheetContent(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "거리순",
+                        text = "가까운 순",
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -710,19 +940,43 @@ private fun MapBottomSheetContent(
                 }
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(stores, key = { it.resolvedId }) { store ->
-                    MapPlaceItem(
-                        place = store,
-                        onClick = { onStoreClick(store) },
-                        onFavoriteToggle = { onFavoriteToggle(store) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        color = Color(0xFFF3F4F6),
-                    )
+            if (stores.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "이 영역에는 표시할 매장이 없어요",
+                            fontFamily = PretendardFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Brown700Mp,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "지도를 더 넓혀 보거나 다른 동네로 이동해 주세요",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            color = Brown400Mp,
+                        )
+                    }
                 }
-                item { Spacer(Modifier.height(16.dp)) }
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(stores, key = { it.resolvedId }) { store ->
+                        MapPlaceItem(
+                            place = store,
+                            onClick = { onStoreClick(store) },
+                            onFavoriteToggle = { onFavoriteToggle(store) },
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = Color(0xFFF3F4F6),
+                        )
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
+                }
             }
         }
     }

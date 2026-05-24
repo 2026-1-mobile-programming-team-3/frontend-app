@@ -649,18 +649,30 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val currentUserNickname = currentUserStore.nickname()
 
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
+
+            // EffectiveCenter: GPS 가 시흥 안이면 GPS, 밖이면 사용자 등록 동네, 그것도 없으면 시청.
+            // 비동기로 채워서 runBlocking ANR 회피.
+            val effectiveCenter = remember {
+                mutableStateOf<com.example.siheunggagae.data.location.EffectiveCenter?>(null)
+            }
+            LaunchedEffect(locationPermission.hasPermission) {
+                effectiveCenter.value = com.example.siheunggagae.data.location
+                    .resolveEffectiveCenter(api, locationProvider)
+            }
+
             val repository = remember { com.example.siheunggagae.data.repository.MatchRepository(api) }
             val viewModel: com.example.siheunggagae.ui.viewmodel.MatchingViewModel = viewModel(
                 factory = com.example.siheunggagae.ui.viewmodel.MatchingViewModel.Factory(
                     repository = repository,
                     isCurrentUserVolunteer = { currentUserStore.isVolunteer() },
-                    getCurrentLocation = {
-                        if (locationPermission.hasPermission)
-                            locationProvider.getLocationOrNull()?.let { it.latitude to it.longitude }
-                        else null
-                    },
+                    getCurrentLocation = { effectiveCenter.value?.latLng },
                 )
             )
+
+            // effectiveCenter 가 늦게 도착해 첫 fetch 가 location null 이었으면 한 번 refresh
+            LaunchedEffect(effectiveCenter.value) {
+                if (effectiveCenter.value != null) viewModel.refresh()
+            }
 
             MatchingScreen(
                 viewModel = viewModel,
@@ -675,7 +687,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                 },
                 onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
                 onSearchClick = { /* no-op */ },
-                locationAvailable = locationPermission.hasPermission,
+                locationAvailable = effectiveCenter.value != null,
+                centerFallback = effectiveCenter.value?.takeIf { it.isFallback },
                 currentUserId = currentUserId,
                 currentUserNickname = currentUserNickname,
             )

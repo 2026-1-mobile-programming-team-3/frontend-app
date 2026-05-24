@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
+import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.MatchStatus
@@ -99,9 +100,15 @@ import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.bgColor
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.Imminence
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
 import kotlinx.coroutines.launch
 
@@ -139,6 +146,7 @@ fun MatchingScreen(
     onVolunteerApplyClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     locationAvailable: Boolean = false,
+    centerFallback: EffectiveCenter? = null,
     currentUserId: Int? = null,
     currentUserNickname: String? = null,
 ) {
@@ -173,6 +181,9 @@ fun MatchingScreen(
                         onSearchClick = onSearchClick,
                         onMyRequestsClick = onMyRequestsClick,
                     )
+                    if (centerFallback != null) {
+                        MatchingFallbackBanner(center = centerFallback)
+                    }
                     val success = state as? MatchingUi.Success
                     StatusTabRow(
                         selected = success?.selectedStatus,
@@ -251,9 +262,13 @@ fun MatchingScreen(
                 )
             }
 
-            // FAB
+            // FAB — iOS 스타일 haptic tap.
+            val haptic = LocalHapticFeedback.current
             FloatingActionButton(
-                onClick = onRequestFlowClick,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onRequestFlowClick()
+                },
                 containerColor = Color(0xFF9A7B5E),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
@@ -935,14 +950,25 @@ internal fun StatusTabRow(
 
 @Composable
 private fun PillTab(label: String, on: Boolean, count: Int?, onClick: () -> Unit) {
-    val bg = if (on) Color(0xFF1A1A1A) else Color.White
-    val fg = if (on) Color.White else Brown700M
+    // bg/fg morph 로 선택 전환이 부드럽게.
+    val bg by animateColorAsState(
+        targetValue = if (on) Color(0xFF1A1A1A) else Color.White,
+        animationSpec = appleSpec(),
+        label = "pillBg",
+    )
+    val fg by animateColorAsState(
+        targetValue = if (on) Color.White else Brown700M,
+        animationSpec = appleSpec(),
+        label = "pillFg",
+    )
+    val interaction = rememberAppleInteractionSource()
     Box(
         modifier = Modifier
+            .appleTapScale(interaction)
             .clip(RoundedCornerShape(50.dp))
             .background(bg)
             .then(if (!on) Modifier.border(1.dp, Color(0xFFE8D3C2), RoundedCornerShape(50.dp)) else Modifier)
-            .clickable { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 16.dp, vertical = 7.dp),
     ) {
         val text = if (count != null && count > 0) "$label $count" else label
@@ -1123,18 +1149,28 @@ private fun CategoryChip(
     onClick: () -> Unit,
 ) {
     val isVolunteer = cat?.requiresVolunteerRole() == true
-    val bg = when {
-        on -> Color(0xFF1A1A1A)
-        isVolunteer -> Color(0xFFDCFCE7)
-        else -> Color.White
-    }
-    val fg = when {
-        on -> Color.White
-        isVolunteer -> Color(0xFF16A34A)
-        else -> Brown700M
-    }
+    val bg by animateColorAsState(
+        targetValue = when {
+            on -> Color(0xFF1A1A1A)
+            isVolunteer -> Color(0xFFDCFCE7)
+            else -> Color.White
+        },
+        animationSpec = appleSpec(),
+        label = "catChipBg",
+    )
+    val fg by animateColorAsState(
+        targetValue = when {
+            on -> Color.White
+            isVolunteer -> Color(0xFF16A34A)
+            else -> Brown700M
+        },
+        animationSpec = appleSpec(),
+        label = "catChipFg",
+    )
+    val interaction = rememberAppleInteractionSource()
     Row(
         modifier = Modifier
+            .appleTapScale(interaction)
             .clip(RoundedCornerShape(50.dp))
             .background(bg)
             .then(
@@ -1144,7 +1180,7 @@ private fun CategoryChip(
                     RoundedCornerShape(50.dp),
                 ) else Modifier
             )
-            .clickable { onClick() }
+            .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1257,6 +1293,37 @@ private fun MoreRow(label: String, danger: Boolean = false, enabled: Boolean = t
             color = if (danger) Color(0xFFF04268) else TextBlackM,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/** GPS 가 시흥 밖이라 사용자 등록 동네/시청 좌표 기준으로 매칭을 보여주는 중임을 안내. */
+@Composable
+private fun MatchingFallbackBanner(center: EffectiveCenter) {
+    val regionLabel = center.regionDong ?: "시흥시청"
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 18.dp).padding(bottom = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFEAFBF1))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_location_on),
+            contentDescription = null,
+            tint = Color(0xFF00A63E),
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "현재 위치가 시흥 밖이라 ${regionLabel} 기준으로 매칭을 표시 중이에요",
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextBlack,
+            lineHeight = 16.sp,
         )
     }
 }
