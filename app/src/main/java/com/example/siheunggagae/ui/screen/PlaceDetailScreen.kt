@@ -86,6 +86,7 @@ import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.CategoryVisual
 import com.kakao.vectormap.MapView
 import kotlinx.coroutines.launch
 
@@ -257,17 +258,18 @@ fun PlaceDetailScreen(
             ) {
                 // ── 히어로 헤더 ────────────────────────────────────────────────────
                 item {
+                    val visual = CategoryVisual.forCategory(s.category)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                Brush.linearGradient(listOf(MapMintPL, Color(0xFFB2DFBF), Color(0xFFD8F2DC)))
+                                Brush.linearGradient(visual.gradient)
                             ),
                     ) {
                         // 상태바 높이 + 콘텐츠 높이
                         Column {
                             Spacer(Modifier.statusBarsPadding())
-                            Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                            Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
                                 // 다크 오버레이 (하단 → 상단)
                                 Box(
                                     modifier = Modifier
@@ -278,6 +280,25 @@ fun PlaceDetailScreen(
                                                 1f to Color(0x80000000),
                                             )
                                         ),
+                                )
+                                // 워터마크 (반투명 큰 아이콘)
+                                Icon(
+                                    painter = painterResource(visual.drawableRes),
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.12f),
+                                    modifier = Modifier
+                                        .size(180.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 8.dp, bottom = 8.dp),
+                                )
+                                // 전경 카테고리 아이콘 (선명)
+                                Icon(
+                                    painter = painterResource(visual.drawableRes),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .align(Alignment.Center),
                                 )
                                 // 플로팅 버튼 (상단)
                                 Row(
@@ -348,14 +369,21 @@ fun PlaceDetailScreen(
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     // 카테고리 배지
-                                    val catLabel = when (s.category) {
-                                        "PET_HOTEL"  -> "🏨 반려동물 호텔"
-                                        "CAFE"       -> "☕ 카페"
-                                        "RESTAURANT" -> "🍽 식당"
-                                        "PARK"       -> "🌳 공원"
+                                    val catLabelText = when (s.category) {
+                                        "PET_HOTEL"  -> "반려동물 호텔"
+                                        "CAFE"       -> "카페"
+                                        "RESTAURANT" -> "식당"
+                                        "PARK"       -> "공원"
                                         else         -> null
                                     }
-                                    if (catLabel != null) {
+                                    val catIconRes = when (s.category) {
+                                        "PET_HOTEL"  -> R.drawable.ic_hotel
+                                        "CAFE"       -> R.drawable.ic_coffee
+                                        "RESTAURANT" -> R.drawable.ic_utensils
+                                        "PARK"       -> R.drawable.ic_forest
+                                        else         -> null
+                                    }
+                                    if (catLabelText != null) {
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(50.dp))
@@ -363,14 +391,24 @@ fun PlaceDetailScreen(
                                                 .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(50.dp))
                                                 .padding(horizontal = 10.dp, vertical = 3.dp),
                                         ) {
-                                            Text(
-                                                text = catLabel,
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                lineHeight = 16.sp,
-                                                color = Color.White,
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                if (catIconRes != null) {
+                                                    Icon(
+                                                        painter = painterResource(catIconRes),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(11.dp),
+                                                        tint = Color.White,
+                                                    )
+                                                }
+                                                Text(
+                                                    text = catLabelText,
+                                                    fontFamily = PretendardFamily,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    lineHeight = 16.sp,
+                                                    color = Color.White,
+                                                )
+                                            }
                                         }
                                     }
                                     // 매장명
@@ -430,6 +468,15 @@ fun PlaceDetailScreen(
                                         }
                                     }
                                 }
+                                // 하단 흰 카드 연결
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .height(32.dp)
+                                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                                        .background(Color.White),
+                                )
                             }
                         }
                     }
@@ -465,7 +512,8 @@ fun PlaceDetailScreen(
                 // 후기 카드 헤더
                 item {
                     SectionCardPL(
-                        title = "💬 후기",
+                        title = "후기",
+                        leadingIcon = R.drawable.ic_chat_bubble,
                         actionContent = {
                             Box(
                                 modifier = Modifier
@@ -700,6 +748,7 @@ private fun PlaceDetailTopBar(
 private fun SectionCardPL(
     title: String,
     modifier: Modifier = Modifier,
+    leadingIcon: Int? = null,
     actionContent: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -718,14 +767,24 @@ private fun SectionCardPL(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 20.sp,
-                color = TextBlackPL,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (leadingIcon != null) {
+                    Icon(
+                        painter = painterResource(leadingIcon),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = TextBlackPL,
+                    )
+                }
+                Text(
+                    text = title,
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 20.sp,
+                    color = TextBlackPL,
+                )
+            }
             actionContent?.invoke()
         }
         HorizontalDivider(color = DividerPL, thickness = 1.dp)
@@ -743,7 +802,8 @@ private fun PlanCardPL(plans: List<PetHotelPlan>) {
     val remaining = sorted.size - 3
 
     SectionCardPL(
-        title = "💰 요금 플랜",
+        title = "요금 플랜",
+        leadingIcon = R.drawable.ic_banknote,
         actionContent = {
             Text(
                 text = "${plans.size}개",
@@ -836,7 +896,7 @@ private fun LocationCardPL(
     val mapLat = store.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
     val mapLng = store.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
 
-    SectionCardPL(title = "📍 위치 & 연락처") {
+    SectionCardPL(title = "위치 & 연락처", leadingIcon = R.drawable.ic_map_pin) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -846,8 +906,8 @@ private fun LocationCardPL(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                 ) {
                     AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
                     Box(
@@ -884,13 +944,32 @@ private fun LocationCardPL(
                             )
                         }
                     }
+                    // 우하단 CTA pill
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .shadow(2.dp, RoundedCornerShape(50.dp))
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Color.White.copy(alpha = 0.92f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "지도에서 보기 →",
+                            fontFamily = PretendardFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Brown900PL,
+                        )
+                    }
                 }
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -964,7 +1043,7 @@ private fun LocationCardPL(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "📞 전화",
+                            "전화",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
@@ -982,8 +1061,15 @@ private fun LocationCardPL(
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, BrownBorderPL),
                 ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_map),
+                        contentDescription = null,
+                        tint = Brown700PL,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
                     Text(
-                        "🧭 지도에서 보기",
+                        "지도에서 보기",
                         fontFamily = PretendardFamily,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
@@ -997,8 +1083,15 @@ private fun LocationCardPL(
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BrownBorderPL),
                     ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_copy),
+                            contentDescription = null,
+                            tint = Brown700PL,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            "📋 주소 복사",
+                            "주소 복사",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,

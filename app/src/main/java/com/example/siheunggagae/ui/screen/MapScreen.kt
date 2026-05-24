@@ -98,6 +98,7 @@ import com.example.siheunggagae.map.computeMarkerSpecs
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.CategoryVisual
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
@@ -1142,18 +1143,30 @@ private fun StoreDetailSheet(
         dragHandle = { MapDragHandle() },
     ) {
         // 그라디언트 배너
+        val visual = CategoryVisual.forCategory(store.category)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(90.dp)
-                .background(Brush.linearGradient(listOf(Color(0xFFD0FEE1), Color(0xFFE0F7FA)))),
+                .height(120.dp)
+                .background(Brush.linearGradient(visual.gradient)),
             contentAlignment = Alignment.Center,
         ) {
+            // 워터마크 (반투명 큰 아이콘)
             Icon(
-                painter = painterResource(R.drawable.ic_location_on),
+                painter = painterResource(visual.drawableRes),
                 contentDescription = null,
-                tint = Pink500Mp,
-                modifier = Modifier.size(36.dp),
+                tint = Color.White.copy(alpha = 0.18f),
+                modifier = Modifier
+                    .size(140.dp)
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 8.dp),
+            )
+            // 전경 카테고리 아이콘 (선명)
+            Icon(
+                painter = painterResource(visual.drawableRes),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(56.dp),
             )
         }
 
