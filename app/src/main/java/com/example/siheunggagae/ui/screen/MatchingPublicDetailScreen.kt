@@ -220,10 +220,10 @@ fun MatchingPublicDetailScreen(
                                 snackbarHostState.showSnackbar(msg)
                             }
                         }
-                    }) { Text("신청하기") }
+                    }) { Text("신청하기", fontFamily = PretendardFamily) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showApplyDialog = false }) { Text("취소") }
+                    TextButton(onClick = { showApplyDialog = false }) { Text("취소", fontFamily = PretendardFamily) }
                 }
             )
         }

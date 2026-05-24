@@ -24,7 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -121,63 +121,63 @@ fun MatchingDetailScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("요청 글 삭제", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
-            text = { Text("정말로 이 이동 지원 요청을 삭제하시겠습니까?", fontFamily = PretendardFamily, color = TextBlackD) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteDialog = false
-                    viewModel.deleteMatch(requestId)
-                }) { Text("삭제", color = Pink500D, fontWeight = FontWeight.Bold) }
+            title = "요청 글 삭제",
+            text = "정말로 이 이동 지원 요청을 삭제하시겠습니까?",
+            confirmText = "삭제",
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.deleteMatch(requestId)
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("취소", color = TextBlackD) }
-            }
+            dismissText = "취소",
+            onDismiss = { showDeleteDialog = false },
+            confirmColor = Pink500D,
+            dismissColor = TextBlackD,
         )
     }
 
     if (showCancelDialog) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { showCancelDialog = false },
-            title = { Text("매칭 취소", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
-            text = { Text("정말로 이 봉사자와의 매칭을 취소하시겠습니까?\n취소 시 목록에서 제외되며 다시 새로운 지원을 받을 수 있습니다.", fontFamily = PretendardFamily, color = TextBlackD) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showCancelDialog = false
-                    if (appIdToCancel != -1) {
-                        viewModel.cancelAcceptedMatching(requestId, appIdToCancel) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("매칭이 취소되었습니다.")
-                            }
+            title = "매칭 취소",
+            text = "정말로 이 봉사자와의 매칭을 취소하시겠습니까?\n취소 시 목록에서 제외되며 다시 새로운 지원을 받을 수 있습니다.",
+            confirmText = "매칭 취소",
+            onConfirm = {
+                showCancelDialog = false
+                if (appIdToCancel != -1) {
+                    viewModel.cancelAcceptedMatching(requestId, appIdToCancel) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("매칭이 취소되었습니다.")
                         }
                     }
-                }) { Text("매칭 취소", color = Pink500D, fontWeight = FontWeight.Bold) }
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) { Text("유지하기", color = TextBlackD) }
-            }
+            dismissText = "유지하기",
+            onDismiss = { showCancelDialog = false },
+            confirmColor = Pink500D,
+            dismissColor = TextBlackD,
         )
     }
 
     if (showReviewDialog) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { showReviewDialog = false },
-            title = { Text("봉사 완료 확인", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackD) },
-            text = { Text("봉사가 무사히 완료되었습니다!\n함께 이동한 지원자에게 따뜻한 후기를 남기시겠어요?", fontFamily = PretendardFamily, color = TextBlackD) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showReviewDialog = false
-                    viewModel.resetState()
-                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
-                }) { Text("후기 작성하기", color = Pink500D, fontWeight = FontWeight.Bold) }
+            title = "봉사 완료 확인",
+            text = "봉사가 무사히 완료되었습니다!\n함께 이동한 지원자에게 따뜻한 후기를 남기시겠어요?",
+            confirmText = "후기 작성하기",
+            onConfirm = {
+                showReviewDialog = false
+                viewModel.resetState()
+                onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = false, canEdit = true))
             },
-            dismissButton = {
-                TextButton(onClick = {
-                    showReviewDialog = false
-                    onBack()
-                }) { Text("나중에 하기", color = TextBlackD) }
-            }
+            dismissText = "나중에 하기",
+            onDismiss = {
+                showReviewDialog = false
+                onBack()
+            },
+            confirmColor = Pink500D,
+            dismissColor = TextBlackD,
         )
     }
 

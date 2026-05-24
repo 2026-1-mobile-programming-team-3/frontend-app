@@ -44,6 +44,7 @@ import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.model.ChatMessageItem
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -264,38 +265,36 @@ fun ChatScreen(
             val state = uiState as? ChatUiState.Success
             val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
 
-            AlertDialog(
+            SiheungAlertDialog(
                 onDismissRequest = { showBlockConfirmDialog = false },
-                title = { Text("사용자 차단", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold, color = TextBlackC) },
-                text = { Text("정말로 이 유저를 차단하시겠습니까?\n차단 이후에는 해당 유저의 글과 메시지가 타임라인에서 영구히 숨김 처리되며, 매칭이 취소됩니다.", fontFamily = PretendardFamily, color = TextBlackC) },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.blockUser(opponentId) { success ->
-                                showBlockConfirmDialog = false
-                                if (success) {
-                                    val siheungPrefs = context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE)
-                                    val blockedSet = siheungPrefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
+                title = "사용자 차단",
+                text = "정말로 이 유저를 차단하시겠습니까?\n차단 이후에는 해당 유저의 글과 메시지가 타임라인에서 영구히 숨김 처리되며, 매칭이 취소됩니다.",
+                confirmText = "차단하기",
+                onConfirm = {
+                    viewModel.blockUser(opponentId) { success ->
+                        showBlockConfirmDialog = false
+                        if (success) {
+                            val siheungPrefs = context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE)
+                            val blockedSet = siheungPrefs.getStringSet("blocked_users", emptySet())?.toMutableSet() ?: mutableSetOf()
 
-                                    state?.opponentNickname?.let { blockedSet.add(it) }
-                                    siheungPrefs.edit().putStringSet("blocked_users", blockedSet).apply()
+                            state?.opponentNickname?.let { blockedSet.add(it) }
+                            siheungPrefs.edit().putStringSet("blocked_users", blockedSet).apply()
 
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("성공적으로 차단되었습니다.")
-                                    }
-                                    onBack()
-                                } else {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("차단 처리에 실패했습니다.")
-                                    }
-                                }
+                            scope.launch {
+                                snackbarHostState.showSnackbar("성공적으로 차단되었습니다.")
+                            }
+                            onBack()
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("차단 처리에 실패했습니다.")
                             }
                         }
-                    ) { Text("차단하기", color = Pink500C, fontWeight = FontWeight.Bold) }
+                    }
                 },
-                dismissButton = {
-                    TextButton(onClick = { showBlockConfirmDialog = false }) { Text("취소", color = TextBlackC) }
-                }
+                dismissText = "취소",
+                onDismiss = { showBlockConfirmDialog = false },
+                confirmColor = Pink500C,
+                dismissColor = TextBlackC,
             )
         }
 
@@ -335,13 +334,13 @@ fun ChatScreen(
                                 }
                             }
                         }
-                    ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }
+                    ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold, fontFamily = PretendardFamily) }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showUserReportDialog = false
                         userReportReason = ""
-                    }) { Text("취소", color = TextBlackC) }
+                    }) { Text("취소", color = TextBlackC, fontFamily = PretendardFamily) }
                 }
             )
         }
@@ -379,13 +378,13 @@ fun ChatScreen(
                                 }
                             }
                         }
-                    ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold) }
+                    ) { Text("신고 접수", color = Pink500C, fontWeight = FontWeight.Bold, fontFamily = PretendardFamily) }
                 },
                 dismissButton = {
                     TextButton(onClick = {
                         showReportDialog = false
                         reportReason = ""
-                    }) { Text("취소", color = TextBlackC) }
+                    }) { Text("취소", color = TextBlackC, fontFamily = PretendardFamily) }
                 }
             )
         }

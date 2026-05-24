@@ -35,7 +35,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
@@ -277,49 +277,19 @@ fun MyScreen(
     }
 
     if (showLogoutDialog) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = {
-                Text(
-                    text = "로그아웃",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlack,
-                )
+            title = "로그아웃",
+            text = "정말 로그아웃하시겠어요?",
+            confirmText = "로그아웃",
+            onConfirm = {
+                showLogoutDialog = false
+                onLogout()
             },
-            text = {
-                Text(
-                    text = "정말 로그아웃하시겠어요?",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = Brown700My,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLogoutDialog = false
-                    onLogout()
-                }) {
-                    Text(
-                        text = "로그아웃",
-                        fontFamily = PretendardFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = Pink500My,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text(
-                        text = "취소",
-                        fontFamily = PretendardFamily,
-                        color = Brown700My,
-                    )
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+            dismissText = "취소",
+            onDismiss = { showLogoutDialog = false },
+            confirmColor = Pink500My,
+            dismissColor = Brown700My,
         )
     }
 }

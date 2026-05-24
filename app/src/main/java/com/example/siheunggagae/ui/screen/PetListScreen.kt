@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -224,49 +224,19 @@ fun PetListScreen(
 
     // 삭제 확인 다이얼로그
     deleteTarget?.let { pet ->
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = {
-                Text(
-                    text = "반려동물 삭제",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlackPL,
-                )
+            title = "반려동물 삭제",
+            text = "${pet.name}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                viewModel?.deletePet(pet.id)
+                deleteTarget = null
             },
-            text = {
-                Text(
-                    text = "${pet.name}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = Brown700PL,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel?.deletePet(pet.id)
-                    deleteTarget = null
-                }) {
-                    Text(
-                        text = "삭제",
-                        fontFamily = PretendardFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = Pink500PL,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) {
-                    Text(
-                        text = "취소",
-                        fontFamily = PretendardFamily,
-                        color = Brown700PL,
-                    )
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+            dismissText = "취소",
+            onDismiss = { deleteTarget = null },
+            confirmColor = Pink500PL,
+            dismissColor = Brown700PL,
         )
     }
 }
