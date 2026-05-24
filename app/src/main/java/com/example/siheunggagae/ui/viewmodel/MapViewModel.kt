@@ -194,13 +194,22 @@ class MapViewModel(
         }
     }
 
-    fun refresh(lat: Double, lng: Double) {
+    /**
+     * 현재 카메라가 보고 있는 영역을 다시 로드.
+     * lastBbox 중심 > cameraTarget > 초기 GPS 순으로 fallback.
+     */
+    fun refresh() {
+        val bbox = lastBbox
+        val (lat, lng) = when {
+            bbox != null -> ((bbox[0] + bbox[2]) / 2.0) to ((bbox[1] + bbox[3]) / 2.0)
+            else -> _uiState.value.cameraTarget
+                ?: _uiState.value.location?.let { it.latitude to it.longitude }
+                ?: return
+        }
         viewModelScope.launch {
             loadStores(lat, lng, _uiState.value.selectedCategory)
         }
-        val bbox = lastBbox
-        val zoom = _uiState.value.currentZoom
-        if (bbox != null && zoom >= 11) {
+        if (bbox != null && _uiState.value.currentZoom >= 11) {
             enqueueViewportLoad(bbox[0], bbox[1], bbox[2], bbox[3])
         }
     }

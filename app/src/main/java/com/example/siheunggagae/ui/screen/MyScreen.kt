@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -599,17 +600,20 @@ private fun ActivityStatsRow(
 }
 @Composable
 private fun StatCard(label: String, value: String, valueColor: Color, modifier: Modifier, onClick: () -> Unit = {}) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .clickable { onClick() }
-            .padding(vertical = 16.dp),
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        modifier = modifier.clickable { onClick() },
     ) {
-        Text(text = value, fontFamily = PretendardFamily, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp, color = valueColor)
-        Spacer(Modifier.height(4.dp))
-        Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700My)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(vertical = 16.dp),
+        ) {
+            Text(text = value, fontFamily = PretendardFamily, fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp, color = valueColor)
+            Spacer(Modifier.height(4.dp))
+            Text(text = label, fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Normal, lineHeight = 16.sp, color = Brown700My)
+        }
     }
 }
 // ─── 봉사 뱃지 Card ────────────────────────────────────────────────────────────
@@ -952,14 +956,15 @@ private fun MySectionLabel(label: String, fontSize: Int = 12) {
 
 @Composable
 private fun SectionCard(content: @Composable () -> Unit) {
-    Column(
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White),
+            .padding(horizontal = 16.dp),
     ) {
-        content()
+        Column { content() }
     }
 }
 

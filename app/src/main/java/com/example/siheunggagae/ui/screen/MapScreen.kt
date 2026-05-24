@@ -97,6 +97,10 @@ import com.example.siheunggagae.ui.viewmodel.MapViewModel
 import com.kakao.vectormap.MapView
 import kotlinx.coroutines.launch
 
+// ─── 상수 ────────────────────────────────────────────────────────────────────
+
+private val MapSheetPeekHeight = 220.dp
+
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
 private val Brown900Mp   = Color(0xFF614B3A)
@@ -287,23 +291,20 @@ fun MapScreen(
         }
     }
 
+    // skipHiddenState=true 로 시트가 완전히 숨겨지지 않게 — 사용자가 한 번 접으면 다시 펼 방법이 없는 버그 방지.
     val sheetState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = false,
+            skipHiddenState = true,
         )
     )
 
-    // 매장 선택 시 카메라 이동 + 목록 시트 숨기기 / 해제 시 다시 표시
+    // 매장 선택 시 카메라 이동 + 시트는 peek 으로 — StoreDetailSheet 모달이 위에 뜨므로 시트를 hide 할 필요 없음.
     LaunchedEffect(uiState.selectedStore) {
         val store = uiState.selectedStore
-        if (store != null) {
-            if (mapReady) mapWrapper.moveCamera(store.latitude, store.longitude)
-            sheetState.bottomSheetState.hide()
-        } else {
-            if (sheetState.bottomSheetState.currentValue == SheetValue.Hidden) {
-                sheetState.bottomSheetState.partialExpand()
-            }
+        if (store != null && mapReady) {
+            mapWrapper.moveCamera(store.latitude, store.longitude)
+            sheetState.bottomSheetState.partialExpand()
         }
     }
 
@@ -314,12 +315,19 @@ fun MapScreen(
         BottomSheetScaffold(
             modifier = Modifier.padding(navPadding),
             scaffoldState = sheetState,
-            sheetPeekHeight = 280.dp,
+            sheetPeekHeight = MapSheetPeekHeight,
             sheetContainerColor = Color.White,
             sheetTonalElevation = 0.dp,
             sheetShadowElevation = 8.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            sheetDragHandle = { MapDragHandle() },
+            sheetDragHandle = {
+                MapDragHandle(
+                    isExpanded = sheetState.bottomSheetState.currentValue == SheetValue.Expanded,
+                    onCollapseClick = {
+                        scope.launch { sheetState.bottomSheetState.partialExpand() }
+                    },
+                )
+            },
             sheetContent = {
                 if (uiState.isVolunteerMode) {
                     VolunteerBottomSheetContent(
@@ -388,11 +396,11 @@ fun MapScreen(
                     }
                 }
 
-                // 우측 플로팅 버튼
+                // 우측 플로팅 버튼 — peek 시트 위에 위치하도록 BottomEnd 기준.
                 Column(
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp, bottom = 80.dp),
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = MapSheetPeekHeight + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MapIconFab(R.drawable.ic_my_location, "내 위치") {
@@ -400,8 +408,7 @@ fun MapScreen(
                     }
                     MapIconFab(R.drawable.ic_layers, "레이어") { showFilterSheet = true }
                     MapIconFab(R.drawable.ic_refresh, "새로고침") {
-                        val loc = uiState.location
-                        if (loc != null) viewModel.refresh(loc.latitude, loc.longitude)
+                        viewModel.refresh()
                     }
                 }
 
@@ -645,7 +652,10 @@ private fun VolunteerToggleChip(isOn: Boolean, onClick: () -> Unit, modifier: Mo
 // ─── 드래그 핸들 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapDragHandle() {
+private fun MapDragHandle(
+    isExpanded: Boolean = false,
+    onCollapseClick: (() -> Unit)? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -659,6 +669,25 @@ private fun MapDragHandle() {
                 .clip(RoundedCornerShape(3.dp))
                 .background(Color(0xFFE8E8E8)),
         )
+        if (isExpanded && onCollapseClick != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF3F4F6))
+                    .clickable { onCollapseClick() },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_chevron_down),
+                    contentDescription = "접기",
+                    tint = Brown700Mp,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 
@@ -689,10 +718,8 @@ private fun MapBottomSheetContent(
                     lineHeight = 24.sp,
                     color = TextBlack,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { },
-                ) {
+                // 정렬: API 가 거리순으로 반환하므로 정적 라벨. (추후 정렬 옵션 추가 시 클릭 가능 칩으로 전환)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(R.drawable.ic_swap_vert),
                         contentDescription = null,
@@ -700,7 +727,7 @@ private fun MapBottomSheetContent(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "거리순",
+                        text = "가까운 순",
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -710,19 +737,43 @@ private fun MapBottomSheetContent(
                 }
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(stores, key = { it.resolvedId }) { store ->
-                    MapPlaceItem(
-                        place = store,
-                        onClick = { onStoreClick(store) },
-                        onFavoriteToggle = { onFavoriteToggle(store) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        color = Color(0xFFF3F4F6),
-                    )
+            if (stores.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "이 영역에는 표시할 매장이 없어요",
+                            fontFamily = PretendardFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Brown700Mp,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "지도를 더 넓혀 보거나 다른 동네로 이동해 주세요",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            color = Brown400Mp,
+                        )
+                    }
                 }
-                item { Spacer(Modifier.height(16.dp)) }
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(stores, key = { it.resolvedId }) { store ->
+                        MapPlaceItem(
+                            place = store,
+                            onClick = { onStoreClick(store) },
+                            onFavoriteToggle = { onFavoriteToggle(store) },
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = Color(0xFFF3F4F6),
+                        )
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
+                }
             }
         }
     }
