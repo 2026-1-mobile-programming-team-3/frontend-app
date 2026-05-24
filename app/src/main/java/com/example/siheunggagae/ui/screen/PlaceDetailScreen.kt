@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -76,6 +77,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.siheunggagae.data.local.FavoritesCache
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
+import com.example.siheunggagae.data.model.PetHotelPlan
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreReview
 import com.example.siheunggagae.data.model.StoreReviewCreateRequest
@@ -845,6 +847,130 @@ private fun PlaceDetailTopBar(
                     modifier = Modifier.size(16.dp),
                 )
             }
+        }
+    }
+}
+
+// ─── SectionCardPL ────────────────────────────────────────────────────────────
+
+@Composable
+private fun SectionCardPL(
+    title: String,
+    modifier: Modifier = Modifier,
+    actionContent: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .shadow(2.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp,
+                color = TextBlackPL,
+            )
+            actionContent?.invoke()
+        }
+        HorizontalDivider(color = DividerPL, thickness = 1.dp)
+        content()
+    }
+}
+
+// ─── PlanCardPL ───────────────────────────────────────────────────────────────
+
+@Composable
+private fun PlanCardPL(plans: List<PetHotelPlan>) {
+    var expanded by remember { mutableStateOf(false) }
+    val sorted = remember(plans) { plans.sortedBy { it.displayOrder ?: 0 } }
+    val visible = if (expanded) sorted else sorted.take(3)
+    val remaining = sorted.size - 3
+
+    SectionCardPL(
+        title = "💰 요금 플랜",
+        actionContent = {
+            Text(
+                text = "${plans.size}개",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown700PL,
+            )
+        },
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            visible.forEach { plan ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Gray100PL)
+                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = plan.planName,
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 20.sp,
+                        color = TextBlackPL,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = "%,d원".format(plan.priceKrw),
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 20.sp,
+                        color = Brown900PL,
+                    )
+                }
+            }
+            if (!expanded && remaining > 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = true }
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "+ ${remaining}개 더 보기",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 20.sp,
+                        color = Brown900PL,
+                    )
+                }
+            }
+            Text(
+                text = "* 가격은 업체 등록 기준이며 실제와 다를 수 있습니다.",
+                fontFamily = PretendardFamily,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown400PL,
+            )
         }
     }
 }
