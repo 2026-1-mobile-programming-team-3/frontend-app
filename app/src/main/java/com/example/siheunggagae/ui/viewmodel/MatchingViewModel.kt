@@ -199,9 +199,9 @@ class MatchingViewModel(
         val byStatus = items.groupBy { it.status }
         return mapOf(
             null to items.size,
-            "RECRUITING" to (byStatus["RECRUITING"]?.size ?: 0),
-            "REVIEWING" to (byStatus["REVIEWING"]?.size ?: 0),
-            "IN_PROGRESS" to (byStatus["IN_PROGRESS"]?.size ?: 0),
+            "WAITING" to (byStatus["WAITING"]?.size ?: 0),
+            "MATCHING" to (byStatus["MATCHING"]?.size ?: 0),
+            "PROGRESS" to (byStatus["PROGRESS"]?.size ?: 0),
             "DONE" to (byStatus["DONE"]?.size ?: 0),
         )
     }

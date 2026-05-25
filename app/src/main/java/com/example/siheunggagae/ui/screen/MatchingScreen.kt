@@ -406,7 +406,7 @@ internal fun MatchCardR(
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val status = item.status ?: "RECRUITING"
+    val status = item.status ?: "WAITING"
     val cardAlpha = if (status == "DONE") 0.55f else 1f
     val interaction = rememberAppleInteractionSource()
     val haptic = LocalHapticFeedback.current
@@ -548,9 +548,9 @@ private fun CardThumbnail(category: MatchCategory?) {
 @Composable
 private fun StatusChip(status: String) {
     val (bg, fg, label) = when (status) {
-        "RECRUITING" -> Triple(Color(0xFFFEE7EC), Color(0xFFE84B6A), "모집중")
-        "REVIEWING" -> Triple(Color(0xFFFEF3C7), Color(0xFFCA8A04), "검토중")
-        "IN_PROGRESS" -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "진행중")
+        "WAITING" -> Triple(Color(0xFFFEE7EC), Color(0xFFE84B6A), "모집중")
+        "MATCHING" -> Triple(Color(0xFFFEF3C7), Color(0xFFCA8A04), "검토중")
+        "PROGRESS" -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "진행중")
         "DONE" -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), "완료")
         else -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), matchStatusToKorean(status))
     }
@@ -681,9 +681,9 @@ internal fun StatusTabRow(
         modifier = Modifier.padding(bottom = 12.dp),
     ) {
         item { PillTab("전체", selected == null, count = null) { onSelect(null) } }
-        item { PillTab("모집중", selected == "RECRUITING", count = counts["RECRUITING"]) { onSelect("RECRUITING") } }
-        item { PillTab("검토중", selected == "REVIEWING", count = counts["REVIEWING"]) { onSelect("REVIEWING") } }
-        item { PillTab("진행중", selected == "IN_PROGRESS", count = counts["IN_PROGRESS"]) { onSelect("IN_PROGRESS") } }
+        item { PillTab("모집중", selected == "WAITING", count = counts["WAITING"]) { onSelect("WAITING") } }
+        item { PillTab("검토중", selected == "MATCHING", count = counts["MATCHING"]) { onSelect("MATCHING") } }
+        item { PillTab("진행중", selected == "PROGRESS", count = counts["PROGRESS"]) { onSelect("PROGRESS") } }
         item { PillTab("완료", selected == "DONE", count = null) { onSelect("DONE") } }
     }
 }

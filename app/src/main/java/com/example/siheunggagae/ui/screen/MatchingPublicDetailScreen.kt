@@ -122,16 +122,14 @@ fun MatchingPublicDetailScreen(
                     myApplicationStatus = viewModel?.myApplicationStatus ?: "",
                     onApply = { showApplyDialog = true },
                     onChat = {
-                        if (currentStatus == "DONE") {
+                        if (viewModel?.isApplied == true) {
+                            val applicationId = viewModel.myApplicationId ?: 0
+                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                        } else if (currentStatus == "DONE") {
                             onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                         } else {
-                            if (viewModel?.isApplied == true) {
-                                val applicationId = viewModel.myApplicationId ?: 0
-                                onNavigate(Screen.Chat.createRoute(requestId, applicationId))
-                            } else {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
-                                }
+                            scope.launch {
+                                snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
                             }
                         }
                     },
@@ -179,16 +177,14 @@ fun MatchingPublicDetailScreen(
                                 authorNickname = request.author?.nickname ?: "요청자",
                                 onChat = {
                                     val currentStatus = request.status?.trim()?.uppercase() ?: ""
-                                    if (currentStatus == "DONE") {
+                                    if (viewModel?.isApplied == true) {
+                                        val applicationId = viewModel.myApplicationId ?: 0
+                                        onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+                                    } else if (currentStatus == "DONE") {
                                         onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
                                     } else {
-                                        if (viewModel?.isApplied == true) {
-                                            val applicationId = viewModel.myApplicationId ?: 0
-                                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
-                                        } else {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
-                                            }
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
                                         }
                                     }
                                 }

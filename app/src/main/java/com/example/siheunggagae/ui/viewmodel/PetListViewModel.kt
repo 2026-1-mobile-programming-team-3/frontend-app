@@ -42,6 +42,7 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
     }
 
     fun silentRefresh() {
+        if (_uiState.value is PetListUiState.Loading) return
         viewModelScope.launch {
             try {
                 val resp = repository.getMe()
