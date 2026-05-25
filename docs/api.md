@@ -150,6 +150,9 @@ application = 한 봉사자가 특정 매칭에 보낸 신청 1건.
 | 메서드 | 경로 | 함수 | Response |
 |---|---|---|---|
 | GET | `/api/v1/geo/reverse?lat&lng` | `reverseGeocode` | `ReverseGeocodeResponse` (역지오코딩 → 동 라벨) |
+| GET | `/api/v1/geo/search?query&x&y&radius&size` | `searchGeo` | `GeoSearchResponse` (장소·도로명 검색, Kakao Local 프록시) |
+
+`searchGeo` 파라미터: `query` 필수, `x`/`y` 미지정 시 서버가 시흥시청 기본 좌표 사용, `radius` 최대 20000m, `size` 최대 15. 응답 `results[]` 각 항목: `place_name`, `road_address?`, `address?`, `category?`, `phone?`, `lat`, `lng`, `distance_meters?`. 카카오 401/429/5xx → `502 GEO_PROVIDER_FAILED` 통일. Redis 캐시 TTL 600s.
 
 ### Notifications
 

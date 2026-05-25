@@ -28,9 +28,6 @@ android {
         versionCode = 1
         versionName = "1.0"
         buildConfigField("String", "KAKAO_APP_KEY", "\"${localProps["kakao.app.key"]}\"")
-        val kakaoRestKey = (localProps["kakao.rest.key"] as? String)?.takeIf { it.isNotBlank() }
-            ?: (localProps["kakao.app.key"] as? String).orEmpty()
-        buildConfigField("String", "KAKAO_REST_KEY", "\"$kakaoRestKey\"")
         manifestPlaceholders["kakaoAppKey"] = localProps["kakao.app.key"] ?: ""
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

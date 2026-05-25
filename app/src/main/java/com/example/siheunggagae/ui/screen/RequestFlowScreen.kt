@@ -81,8 +81,10 @@ import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
-import com.example.siheunggagae.data.model.KakaoLocalDocument
-import com.example.siheunggagae.data.network.KakaoLocalClient
+import com.example.siheunggagae.data.model.GeoSearchResult
+import com.example.siheunggagae.data.network.RetrofitClient
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -109,14 +111,6 @@ private val quickTimes = listOf(
 )
 
 private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
-
-// ─── 주소 검색 결과 매핑 데이터 모델 ──────────────────────────────────────────
-data class SearchPlaceItem(
-    val placeName: String,
-    val addressName: String,
-    val latitude: Float,
-    val longitude: Float
-)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -306,11 +300,12 @@ fun RequestFlowScreen(
     if (showLocationSearch) {
         LocationSearchBottomSheet(
             sheetState = searchSheetState,
+            initialQuery = destination,
             onDismiss = { showLocationSearch = false },
             onPlaceSelected = { place ->
-                destination = place.addressName
-                latInput = place.latitude
-                lngInput = place.longitude
+                destination = place.placeName.ifBlank { place.roadAddress ?: place.address ?: "" }
+                latInput = place.lat.toFloat()
+                lngInput = place.lng.toFloat()
             }
         )
     }
@@ -1073,13 +1068,20 @@ private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean 
 @Composable
 private fun LocationSearchBottomSheet(
     sheetState: androidx.compose.material3.SheetState,
+    initialQuery: String = "",
     onDismiss: () -> Unit,
-    onPlaceSelected: (SearchPlaceItem) -> Unit
+    onPlaceSelected: (GeoSearchResult) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<KakaoLocalDocument>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf(initialQuery) }
+    var searchResults by remember { mutableStateOf<List<GeoSearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(180L) // 바텀시트 등장 애니메이션 후에 포커스
+        runCatching { focusRequester.requestFocus() }
+    }
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.isBlank()) {
@@ -1092,8 +1094,8 @@ private fun LocationSearchBottomSheet(
         isSearching = true
         searchError = null
         val response = runCatching {
-            KakaoLocalClient.api.searchKeyword(
-                query = "시흥 $searchQuery",
+            RetrofitClient.api.searchGeo(
+                query = searchQuery,
                 x = 126.8030,
                 y = 37.3799,
                 radius = 20000,
@@ -1101,9 +1103,10 @@ private fun LocationSearchBottomSheet(
             )
         }
         isSearching = false
-        val body = response.getOrNull()?.body()
-        if (response.isSuccess && body != null) {
-            searchResults = body.documents
+        val raw = response.getOrNull()
+        val body = raw?.body()
+        if (response.isSuccess && raw?.isSuccessful == true && body != null) {
+            searchResults = body.results
         } else {
             searchError = "검색 중 오류가 발생했어요"
             searchResults = emptyList()
@@ -1123,8 +1126,10 @@ private fun LocationSearchBottomSheet(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("장소명 또는 시흥시 도로명 주소 입력") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                placeholder = { Text("장소명 또는 도로명 주소 입력") },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Orange500F,
@@ -1135,7 +1140,7 @@ private fun LocationSearchBottomSheet(
             )
             Spacer(Modifier.height(16.dp))
 
-            LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+            LazyColumn(modifier = Modifier.heightIn(max = 480.dp)) {
                 when {
                     searchQuery.isBlank() -> {
                         item {
@@ -1185,19 +1190,12 @@ private fun LocationSearchBottomSheet(
                         }
                     }
                     else -> {
-                        items(searchResults) { doc ->
+                        items(searchResults) { place ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onPlaceSelected(
-                                            SearchPlaceItem(
-                                                placeName = doc.placeName,
-                                                addressName = doc.roadAddressName ?: doc.addressName ?: "",
-                                                latitude = doc.latitude.toFloatOrNull() ?: 0f,
-                                                longitude = doc.longitude.toFloatOrNull() ?: 0f,
-                                            )
-                                        )
+                                        onPlaceSelected(place)
                                         onDismiss()
                                     }
                                     .padding(vertical = 12.dp),
@@ -1212,21 +1210,36 @@ private fun LocationSearchBottomSheet(
                                 Spacer(Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = doc.placeName,
+                                        text = place.placeName,
                                         fontFamily = PretendardFamily,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = TextBlack,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
-                                    val addr = doc.roadAddressName ?: doc.addressName
+                                    val addr = place.roadAddress ?: place.address
                                     if (!addr.isNullOrBlank()) {
                                         Text(
                                             text = addr,
                                             fontFamily = PretendardFamily,
                                             fontSize = 11.sp,
                                             color = Brown700F,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
+                                }
+                                val distance = place.distanceMeters
+                                if (distance != null && distance > 0) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = formatDistance(distance),
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Brown400F,
+                                    )
                                 }
                             }
                             HorizontalDivider(color = Color(0xFFF4F4F4))
@@ -1238,6 +1251,10 @@ private fun LocationSearchBottomSheet(
         }
     }
 }
+
+private fun formatDistance(meters: Double): String =
+    if (meters < 1000.0) "${meters.toInt()}m"
+    else "%.1fkm".format(meters / 1000.0)
 
 private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, strokeWidth: Dp = 1.5.dp): Modifier =
     this.drawBehind {

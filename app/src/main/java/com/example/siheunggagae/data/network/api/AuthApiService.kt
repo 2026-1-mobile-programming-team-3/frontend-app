@@ -53,6 +53,7 @@ import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.ReportCreateRequest
 import com.example.siheunggagae.data.model.ReportCreatedResponse
+import com.example.siheunggagae.data.model.GeoSearchResponse
 import com.example.siheunggagae.data.model.ReverseGeocodeResponse
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
@@ -391,6 +392,15 @@ interface AuthApiService {
         @Query("lat") lat: Double,
         @Query("lng") lng: Double,
     ): Response<ReverseGeocodeResponse>
+
+    @GET("api/v1/geo/search")
+    suspend fun searchGeo(
+        @Query("query") query: String,
+        @Query("x") x: Double? = null,
+        @Query("y") y: Double? = null,
+        @Query("radius") radius: Int? = null,
+        @Query("size") size: Int? = null,
+    ): Response<GeoSearchResponse>
 
     // ── Notifications ─────────────────────────────────────────────────────────────
 
