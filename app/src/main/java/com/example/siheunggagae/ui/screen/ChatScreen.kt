@@ -115,14 +115,10 @@ private fun formatChatDate(createdAt: String): String {
 private fun formatDateDividerLabel(dateKey: String): String {
     val date = runCatching { java.time.LocalDate.parse(dateKey) }.getOrNull() ?: return dateKey
     val today = java.time.LocalDate.now(ZoneId.of("Asia/Seoul"))
-    return when (date) {
-        today -> "오늘"
-        today.minusDays(1) -> "어제"
-        else -> if (date.year == today.year)
-            "${date.monthValue}월 ${date.dayOfMonth}일"
-        else
-            "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일"
-    }
+    return if (date.year == today.year)
+        "${date.monthValue}월 ${date.dayOfMonth}일"
+    else
+        "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
