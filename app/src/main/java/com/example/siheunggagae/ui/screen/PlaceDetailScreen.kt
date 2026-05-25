@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -257,7 +258,7 @@ fun PlaceDetailScreen(
             val s = store!!
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             ) {
@@ -378,10 +379,11 @@ fun PlaceDetailScreen(
                                     }
                                 }
                                 // 매장 정보 (하단 좌측)
+                                // 흰 시트(20dp) 위로 충분히 올라오도록 bottom padding = 36dp
                                 Column(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 36.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     // 카테고리 배지
@@ -484,13 +486,13 @@ fun PlaceDetailScreen(
                                         }
                                     }
                                 }
-                                // 하단 흰 카드 연결
+                                // 하단 흰 카드 연결 (시흥가개 본문 영역과 부드럽게 이어주는 시트)
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .fillMaxWidth()
-                                        .height(32.dp)
-                                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                                        .height(20.dp)
+                                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                                         .background(Color.White),
                                 )
                             }
@@ -549,7 +551,8 @@ fun PlaceDetailScreen(
                             }
                         },
                     ) {
-                        if (s.ratingAvg != null) {
+                        // 후기 0건 또는 평점 없음 → 빈 상태로 대체 (회색 별 5개 노출 방지)
+                        if (s.ratingAvg != null && reviews.isNotEmpty()) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -580,6 +583,31 @@ fun PlaceDetailScreen(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Normal,
                                     lineHeight = 16.sp,
+                                    color = Brown700PL,
+                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = "아직 후기가 없어요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 20.sp,
+                                    color = TextBlackPL,
+                                )
+                                Text(
+                                    text = "첫 후기를 남겨주세요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    lineHeight = 18.sp,
                                     color = Brown700PL,
                                 )
                             }
@@ -1040,6 +1068,9 @@ private fun LocationCardPL(
                 ) { CopyButtonPL { onCopyPhone() } }
             }
             // 액션 버튼 행
+            // 1/3 폭에 글자가 줄바꿈되지 않도록 2글자 라벨로 통일 + maxLines=1 + contentPadding 축소
+            // 접근성을 위해 Icon contentDescription 으로 의미 보존
+            val actionBtnPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1050,10 +1081,11 @@ private fun LocationCardPL(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BrownBorderPL),
+                        contentPadding = actionBtnPadding,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_call),
-                            contentDescription = null,
+                            contentDescription = "전화 걸기",
                             tint = Brown700PL,
                             modifier = Modifier.size(14.dp),
                         )
@@ -1064,6 +1096,8 @@ private fun LocationCardPL(
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = Brown700PL,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
                         )
                     }
                 }
@@ -1076,20 +1110,23 @@ private fun LocationCardPL(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, BrownBorderPL),
+                    contentPadding = actionBtnPadding,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_map),
-                        contentDescription = null,
+                        contentDescription = "지도에서 보기",
                         tint = Brown700PL,
                         modifier = Modifier.size(14.dp),
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        "지도에서 보기",
+                        "지도",
                         fontFamily = PretendardFamily,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
                         color = Brown700PL,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
                     )
                 }
                 if (!store.address.isNullOrEmpty()) {
@@ -1098,20 +1135,23 @@ private fun LocationCardPL(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BrownBorderPL),
+                        contentPadding = actionBtnPadding,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_copy),
-                            contentDescription = null,
+                            contentDescription = "주소 복사",
                             tint = Brown700PL,
                             modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "주소 복사",
+                            "복사",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = Brown700PL,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
                         )
                     }
                 }
