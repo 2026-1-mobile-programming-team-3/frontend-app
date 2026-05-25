@@ -136,6 +136,13 @@ fun ChatScreen(
         viewModel.initChatRoom(matchId, applicationId)
     }
 
+    LaunchedEffect(uiState) {
+        if (uiState is ChatUiState.Error) {
+            snackbarHostState.showSnackbar((uiState as ChatUiState.Error).message)
+            onBack()
+        }
+    }
+
     val successState = uiState as? ChatUiState.Success
     if (successState != null && successState.hasMore) {
         val firstVisibleItemIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
@@ -182,7 +189,8 @@ fun ChatScreen(
                     CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
                 }
                 is ChatUiState.Error -> {
-                    Text(text = state.message, color = Pink500C, modifier = Modifier.align(Alignment.Center), fontFamily = PretendardFamily)
+                    // 스낵바 + onBack() 은 LaunchedEffect(uiState)에서 처리
+                    CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
                 }
                 is ChatUiState.Success -> {
                     LaunchedEffect(state.messages.size) {
