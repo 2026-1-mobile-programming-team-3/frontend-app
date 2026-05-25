@@ -139,7 +139,6 @@ fun ChatScreen(
     LaunchedEffect(uiState) {
         if (uiState is ChatUiState.Error) {
             snackbarHostState.showSnackbar((uiState as ChatUiState.Error).message)
-            onBack()
         }
     }
 
@@ -189,8 +188,13 @@ fun ChatScreen(
                     CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
                 }
                 is ChatUiState.Error -> {
-                    // 스낵바 + onBack() 은 LaunchedEffect(uiState)에서 처리
-                    CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
+                    Text(
+                        text = state.message,
+                        color = Pink500C,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                        fontFamily = PretendardFamily,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                 }
                 is ChatUiState.Success -> {
                     LaunchedEffect(state.messages.size) {
