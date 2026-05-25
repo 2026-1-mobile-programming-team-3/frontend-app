@@ -136,6 +136,12 @@ fun ChatScreen(
         viewModel.initChatRoom(matchId, applicationId)
     }
 
+    LaunchedEffect(uiState) {
+        if (uiState is ChatUiState.Error) {
+            snackbarHostState.showSnackbar((uiState as ChatUiState.Error).message)
+        }
+    }
+
     val successState = uiState as? ChatUiState.Success
     if (successState != null && successState.hasMore) {
         val firstVisibleItemIndex by remember { derivedStateOf { listState.firstVisibleItemIndex } }
@@ -182,7 +188,13 @@ fun ChatScreen(
                     CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
                 }
                 is ChatUiState.Error -> {
-                    Text(text = state.message, color = Pink500C, modifier = Modifier.align(Alignment.Center), fontFamily = PretendardFamily)
+                    Text(
+                        text = state.message,
+                        color = Pink500C,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                        fontFamily = PretendardFamily,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                 }
                 is ChatUiState.Success -> {
                     LaunchedEffect(state.messages.size) {
@@ -277,7 +289,7 @@ fun ChatScreen(
 
         if (showBlockConfirmDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             SiheungAlertDialog(
                 onDismissRequest = { showBlockConfirmDialog = false },
@@ -314,7 +326,7 @@ fun ChatScreen(
 
         if (showUserReportDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             AlertDialog(
                 onDismissRequest = { showUserReportDialog = false },

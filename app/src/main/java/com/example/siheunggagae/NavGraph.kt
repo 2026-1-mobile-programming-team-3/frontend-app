@@ -52,8 +52,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -465,13 +469,37 @@ private fun normalizeTabRoute(route: String?): String =
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun AppNavGraph(navController: NavHostController = rememberNavController()) {
+fun AppNavGraph(
+    navController: NavHostController = rememberNavController(),
+    initialLink: String? = null,
+) {
     val app = LocalContext.current.applicationContext as SiheungGagaeApp
+
+    // 세션 만료 처리
     LaunchedEffect(Unit) {
         app.sessionExpiredChannel.receiveAsFlow().collect {
             navController.navigate(Screen.Login.route) {
                 popUpTo(0) { inclusive = true }
             }
+        }
+    }
+
+    // 앱 실행 중 알림 탭 → onNewIntent → pendingDeeplinkLink 변경 시 즉시 이동
+    LaunchedEffect(Unit) {
+        app.pendingDeeplinkLink.filterNotNull().collect { link ->
+            handleNotificationDeeplink(link, navController)
+            app.pendingDeeplinkLink.value = null
+        }
+    }
+
+    // 앱 종료 상태에서 알림 탭 → cold start → 메인탭 진입 후 이동
+    LaunchedEffect(initialLink) {
+        if (!initialLink.isNullOrBlank()) {
+            snapshotFlow { navController.currentBackStackEntry?.destination?.route }
+                .filterNotNull()
+                .filter { isTopLevelTabRoute(it) }
+                .first()
+            handleNotificationDeeplink(initialLink, navController)
         }
     }
 
@@ -644,11 +672,51 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
                     NotificationRepository(notifApp.localNotificationStore)
                 )
             )
+            val notifScope = rememberCoroutineScope()
+            val notifApi = com.example.siheunggagae.data.network.RetrofitClient.api
             NotificationScreen(
                 viewModel = notifViewModel,
                 onBack = { navController.popBackStack() },
                 onItemClick = { item ->
-                    handleNotificationDeeplink(item.link, navController, item.category)
+                    // 링크 없는 채팅 알림(MATCH=요청자, VOLUNTEER=봉사자) → API로 활성 매칭 찾아 이동
+                    if (item.link.isNullOrBlank() &&
+                        (item.category == com.example.siheunggagae.data.model.NotificationCategory.MATCH ||
+                         item.category == com.example.siheunggagae.data.model.NotificationCategory.VOLUNTEER)
+                    ) {
+                        notifScope.launch {
+                            try {
+                                val isAuthor = item.category == com.example.siheunggagae.data.model.NotificationCategory.MATCH
+                                val role = if (isAuthor) "author" else "applicant"
+                                val resp = notifApi.getMyMatches(role = role, status = "PROGRESS")
+                                val items = resp.body()?.items.orEmpty()
+                                // 읽지 않은 메시지가 있는 매칭 우선, 없으면 첫 번째
+                                val match = items.firstOrNull { it.unreadMessageCount > 0 }
+                                    ?: items.firstOrNull()
+                                val matchId = match?.matchId ?: run {
+                                    navController.navigate(Screen.Matching.route); return@launch
+                                }
+                                if (isAuthor) {
+                                    // 요청자: ACCEPTED 지원 찾아 채팅으로 직행
+                                    val appResp = notifApi.getApplications(matchId)
+                                    val appId = appResp.body()?.items
+                                        ?.firstOrNull { it.status?.trim()?.uppercase() == "ACCEPTED" }
+                                        ?.applicationId
+                                    if (appId != null) {
+                                        navController.navigate(Screen.Chat.createRoute(matchId, appId))
+                                    } else {
+                                        navController.navigate(Screen.MatchingDetail.createRoute(matchId))
+                                    }
+                                } else {
+                                    // 봉사자: 공개 매칭 상세로 (상세 화면의 채팅 버튼으로 진입)
+                                    navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
+                                }
+                            } catch (_: Exception) {
+                                navController.navigate(Screen.Matching.route)
+                            }
+                        }
+                    } else {
+                        handleNotificationDeeplink(item.link, navController, item.category)
+                    }
                 },
             )
         }
@@ -1490,16 +1558,21 @@ private fun handleNotificationDeeplink(
             navController.navigate(Screen.VolunteerHistory.route)
             return true
         }
+        // 내 반려동물 목록: siheunggagae://pets
+        if (link == "siheunggagae://pets") {
+            navController.navigate(Screen.PetList.route)
+            return true
+        }
     }
 
     // link가 없을 때 카테고리 기반 폴백
     return when (category) {
         NotificationCategory.MATCH     -> { navController.navigate(Screen.Matching.route); true }
-        NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.VolunteerHistory.route); true }
+        NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.Matching.route); true }
         NotificationCategory.REVIEW    -> { navController.navigate(Screen.My.route); true }
         NotificationCategory.NEWS      -> { navController.navigate(Screen.News.route); true }
         NotificationCategory.POLICY    -> { navController.navigate(Screen.Privacy.route); true }
-        NotificationCategory.SYSTEM,
+        NotificationCategory.SYSTEM    -> { navController.navigate(Screen.PetList.route); true }
         null                           -> false
     }
 }
