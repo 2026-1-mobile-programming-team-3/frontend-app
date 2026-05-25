@@ -216,15 +216,9 @@ fun ProfileEditScreen(
                             (uiState as? ProfileEditUiState.Loaded)?.user?.profileImageUrl
                         val imageModel: Any? =
                             localImageUri?.let { Uri.parse(it) } ?: existingProfileUrl
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(imageModel)
-                                .crossfade(200)
-                                .build(),
-                            contentDescription = "프로필 사진",
-                            contentScale = ContentScale.Crop,
-                            placeholder = painterResource(R.drawable.ic_person),
-                            error = painterResource(R.drawable.ic_person),
+
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .size(88.dp)
                                 .clip(CircleShape)
@@ -234,7 +228,27 @@ fun ProfileEditScreen(
                                         PickVisualMediaRequest(PickVisualMedia.ImageOnly)
                                     )
                                 },
-                        )
+                        ) {
+                            if (imageModel != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(imageModel)
+                                        .crossfade(200)
+                                        .build(),
+                                    contentDescription = "프로필 사진",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                )
+                            } else {
+                                Text(
+                                    text = nickname.take(1),
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 32.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = androidx.compose.ui.graphics.Color.White,
+                                )
+                            }
+                        }
                         // 카메라 아이콘 뱃지
                         Box(
                             contentAlignment = Alignment.Center,
@@ -247,7 +261,7 @@ fun ProfileEditScreen(
                             Icon(
                                 imageVector = Icons.Filled.CameraAlt,
                                 contentDescription = "사진 변경",
-                                tint = Color.White,
+                                tint = androidx.compose.ui.graphics.Color.White,
                                 modifier = Modifier.size(16.dp),
                             )
                         }

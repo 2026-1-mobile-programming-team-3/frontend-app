@@ -9,13 +9,41 @@ import kotlinx.coroutines.flow.StateFlow
 
 class TokenManager(context: Context) {
 
-    private val prefs: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "secure_auth_tokens",
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    private val prefs: SharedPreferences = openPrefs(context)
+
+    companion object {
+        private const val PREFS_NAME = "secure_auth_tokens"
+        const val KEY_ACCESS    = "access_token"
+        const val KEY_REFRESH   = "refresh_token"
+        const val KEY_EXPIRES_AT = "expires_at"
+        const val KEY_PROFILE_IMAGE = "local_profile_image_uri"
+
+        private fun buildMaster(context: Context) =
+            MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+
+        private fun createPrefs(context: Context): SharedPreferences =
+            EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                buildMaster(context),
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+
+        private fun openPrefs(context: Context): SharedPreferences =
+            try {
+                createPrefs(context)
+            } catch (_: Exception) {
+                // Keystore 키-파일 불일치(OS 업그레이드·재설치 등) → 파일·키를 모두 지우고 재생성
+                context.deleteSharedPreferences(PREFS_NAME)
+                runCatching {
+                    val ks = java.security.KeyStore.getInstance("AndroidKeyStore")
+                    ks.load(null)
+                    ks.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                }
+                createPrefs(context)
+            }
+    }
 
     val accessToken: String?
         get() = prefs.getString(KEY_ACCESS, null)
@@ -55,10 +83,4 @@ class TokenManager(context: Context) {
         return exp == 0L || System.currentTimeMillis() > exp - 30_000L
     }
 
-    companion object {
-        private const val KEY_ACCESS = "access_token"
-        private const val KEY_REFRESH = "refresh_token"
-        private const val KEY_EXPIRES_AT = "expires_at"
-        private const val KEY_PROFILE_IMAGE = "local_profile_image_uri"
-    }
 }
