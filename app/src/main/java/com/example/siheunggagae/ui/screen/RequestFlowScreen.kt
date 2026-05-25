@@ -110,7 +110,6 @@ private val quickTimes = listOf(
 
 private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 
-// ─── 주소 검색 결과 매핑 데이터 모델 ──────────────────────────────────────────
 data class SearchPlaceItem(
     val placeName: String,
     val addressName: String,
@@ -135,7 +134,9 @@ fun RequestFlowScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var currentStep by remember { mutableStateOf(1) }
-    var selectedPetId by remember { mutableStateOf<Int?>(viewModel.selectedPetId) }
+
+    // 상태 제어 변수를 Set 컬렉션 구조로 변경하여 다중 선택 매커니즘 구현
+    var selectedPetIds by remember { mutableStateOf<Set<Int>>(viewModel.selectedPetIds.toSet()) }
     var selectedCategory by remember { mutableStateOf<MatchCategory?>(viewModel.selectedCategory) }
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -147,7 +148,6 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
-    // ─── 주소 검색 및 좌표 데이터 상태 ───
     var showLocationSearch by remember { mutableStateOf(false) }
     var latInput by remember { mutableStateOf(viewModel.latitude) }
     var lngInput by remember { mutableStateOf(viewModel.longitude) }
@@ -159,12 +159,12 @@ fun RequestFlowScreen(
         }
     }
 
-    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId, viewModel.desiredTime, viewModel.latitude, viewModel.longitude) {
+    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetIds, viewModel.desiredTime, viewModel.latitude, viewModel.longitude) {
         if (matchId != 0) {
             titleInput = viewModel.title
             destination = viewModel.address
             memo = viewModel.content
-            selectedPetId = viewModel.selectedPetId
+            selectedPetIds = viewModel.selectedPetIds.toSet()
             timeInput = viewModel.desiredTime?.take(5) ?: ""
             selectedTime = viewModel.desiredTime?.take(5)
             latInput = viewModel.latitude
@@ -190,7 +190,7 @@ fun RequestFlowScreen(
     }
 
     val isNextEnabled = when (currentStep) {
-        1 -> selectedPetId != null && selectedCategory != null
+        1 -> selectedPetIds.isNotEmpty() && selectedCategory != null
         2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
         else -> titleInput.isNotBlank() && destination.isNotBlank() && memo.isNotBlank()
     }
@@ -211,7 +211,7 @@ fun RequestFlowScreen(
                 isLoading = uiState is RequestUiState.Loading && currentStep == 3
             ) {
                 if (currentStep < 3) {
-                    viewModel.selectedPetId = selectedPetId
+                    viewModel.selectedPetIds = selectedPetIds.toList()
                     if (currentStep == 2) {
                         val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
                         val dayStr = selectedDay.toString().padStart(2, '0')
@@ -269,8 +269,14 @@ fun RequestFlowScreen(
             when (currentStep) {
                 1 -> Step1Content(
                     uiState = uiState,
-                    selectedPetId = selectedPetId,
-                    onSelectPet = { selectedPetId = it },
+                    selectedPetIds = selectedPetIds,
+                    onTogglePet = { petId ->
+                        selectedPetIds = if (selectedPetIds.contains(petId)) {
+                            selectedPetIds - petId
+                        } else {
+                            selectedPetIds + petId
+                        }
+                    },
                     onAddPet = onAddPet,
                     selectedCategory = selectedCategory,
                     isVolunteer = isVolunteer,
@@ -315,8 +321,6 @@ fun RequestFlowScreen(
         )
     }
 }
-
-// ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
@@ -367,8 +371,6 @@ private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
     }
 }
 
-// ─── 스텝 인디케이터 ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun StepIndicator(currentStep: Int) {
     Column(
@@ -412,13 +414,11 @@ private fun StepIndicator(currentStep: Int) {
     }
 }
 
-// ─── Step 1: 반려동물 선택 ────────────────────────────────────────
-
 @Composable
 private fun Step1Content(
     uiState: RequestUiState,
-    selectedPetId: Int?,
-    onSelectPet: (Int) -> Unit,
+    selectedPetIds: Set<Int>,
+    onTogglePet: (Int) -> Unit,
     onAddPet: () -> Unit = {},
     selectedCategory: MatchCategory?,
     isVolunteer: Boolean,
@@ -428,7 +428,7 @@ private fun Step1Content(
         Spacer(Modifier.height(24.dp))
         QuestionText("어떤 반려동물과\n함께 이동하나요?")
         Spacer(Modifier.height(8.dp))
-        SubText("도움이 필요한 반려동물을 선택해 주세요.")
+        SubText("도움이 필요한 반려동물을 선택해 주세요. (중복 선택 가능)")
         Spacer(Modifier.height(24.dp))
 
         when (uiState) {
@@ -452,8 +452,8 @@ private fun Step1Content(
                                         val pet = myPets[itemIdx]
                                         PetCard(
                                             pet = pet,
-                                            isSelected = pet.id == selectedPetId,
-                                            onClick = { pet.id?.let { onSelectPet(it) } }
+                                            isSelected = selectedPetIds.contains(pet.id),
+                                            onClick = { pet.id?.let { onTogglePet(it) } }
                                         )
                                     }
                                     itemIdx == myPets.size -> AddPetCard(onAddPet)
@@ -479,8 +479,6 @@ private fun Step1Content(
         )
     }
 }
-
-// ─── 카테고리 칩 selector ──────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -670,8 +668,6 @@ private fun AddPetCard(onAddPet: () -> Unit = {}) {
         )
     }
 }
-
-// ─── Step 2: 일정 선택 ─────────────────────────────────────────────────────────
 
 @Composable
 private fun Step2Content(
@@ -886,8 +882,6 @@ private fun CalendarSection(
     }
 }
 
-// ─── Step 3: 요청 내용 ─────────────────────────────────────────────────────────
-
 @Composable
 private fun Step3Content(
     title: String, onTitleChange: (String) -> Unit,
@@ -1008,8 +1002,6 @@ private fun flowFieldColors(leadingAlwaysOrange: Boolean = false) = OutlinedText
     cursorColor = Orange500F,
 )
 
-// ─── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun QuestionText(text: String) {
     Text(
@@ -1068,7 +1060,6 @@ private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean 
     }
 }
 
-// ─── 주소 검색용 실시간 바텀시트 레이아웃 ──────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSearchBottomSheet(
