@@ -45,6 +45,7 @@ class MyViewModel(private val repository: UserRepository) : ViewModel() {
     }
 
     fun silentRefresh() {
+        if (_uiState.value is MyUiState.Loading) return
         viewModelScope.launch {
             try {
                 val meResp = repository.getMe()

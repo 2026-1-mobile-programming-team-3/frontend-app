@@ -1045,16 +1045,11 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             val myLifecycle = LocalLifecycleOwner.current.lifecycle
             val localImageUri by myApp.tokenManager.localProfileImageUri.collectAsState()
 
-            // 최초 진입: ViewModel init이 fetchData() 호출 (Loading → Success)
-            // 복귀 시: silentRefresh()로 기존 데이터 유지하며 백그라운드 갱신 (깜빡임 없음)
+            // RESUMED마다 silentRefresh() 호출 — Loading 상태일 때는 내부에서 early return하므로
+            // 최초 진입(fetchData() 실행 중)과 복귀(백그라운드 갱신) 모두 올바르게 처리됨.
             LaunchedEffect(myLifecycle) {
-                var isFirstResume = true
                 myLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    if (isFirstResume) {
-                        isFirstResume = false
-                    } else {
-                        myViewModel.silentRefresh()
-                    }
+                    myViewModel.silentRefresh()
                 }
             }
 
@@ -1159,13 +1154,8 @@ fun AppNavGraph(navController: NavHostController = rememberNavController()) {
             )
             val petListLifecycle = LocalLifecycleOwner.current.lifecycle
             LaunchedEffect(petListLifecycle) {
-                var isFirstResume = true
                 petListLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    if (isFirstResume) {
-                        isFirstResume = false
-                    } else {
-                        petListViewModel.silentRefresh()
-                    }
+                    petListViewModel.silentRefresh()
                 }
             }
             PetListScreen(
