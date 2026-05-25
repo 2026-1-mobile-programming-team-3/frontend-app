@@ -81,8 +81,11 @@ import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
-import com.example.siheunggagae.data.model.KakaoLocalDocument
-import com.example.siheunggagae.data.network.KakaoLocalClient
+import com.example.siheunggagae.data.location.LocationProvider
+import com.example.siheunggagae.data.model.GeoSearchResult
+import com.example.siheunggagae.data.network.RetrofitClient
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -110,14 +113,6 @@ private val quickTimes = listOf(
 
 private val dayHeaders = listOf("일", "월", "화", "수", "목", "금", "토")
 
-// ─── 주소 검색 결과 매핑 데이터 모델 ──────────────────────────────────────────
-data class SearchPlaceItem(
-    val placeName: String,
-    val addressName: String,
-    val latitude: Float,
-    val longitude: Float
-)
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RequestFlowScreen(
@@ -135,7 +130,9 @@ fun RequestFlowScreen(
     val coroutineScope = rememberCoroutineScope()
 
     var currentStep by remember { mutableStateOf(1) }
-    var selectedPetId by remember { mutableStateOf<Int?>(viewModel.selectedPetId) }
+
+    // 상태 제어 변수를 Set 컬렉션 구조로 변경하여 다중 선택 매커니즘 구현
+    var selectedPetIds by remember { mutableStateOf<Set<Int>>(viewModel.selectedPetIds.toSet()) }
     var selectedCategory by remember { mutableStateOf<MatchCategory?>(viewModel.selectedCategory) }
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -147,7 +144,6 @@ fun RequestFlowScreen(
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
 
-    // ─── 주소 검색 및 좌표 데이터 상태 ───
     var showLocationSearch by remember { mutableStateOf(false) }
     var latInput by remember { mutableStateOf(viewModel.latitude) }
     var lngInput by remember { mutableStateOf(viewModel.longitude) }
@@ -159,12 +155,12 @@ fun RequestFlowScreen(
         }
     }
 
-    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetId, viewModel.desiredTime, viewModel.latitude, viewModel.longitude) {
+    LaunchedEffect(viewModel.title, viewModel.address, viewModel.content, viewModel.selectedPetIds, viewModel.desiredTime, viewModel.latitude, viewModel.longitude) {
         if (matchId != 0) {
             titleInput = viewModel.title
             destination = viewModel.address
             memo = viewModel.content
-            selectedPetId = viewModel.selectedPetId
+            selectedPetIds = viewModel.selectedPetIds.toSet()
             timeInput = viewModel.desiredTime?.take(5) ?: ""
             selectedTime = viewModel.desiredTime?.take(5)
             latInput = viewModel.latitude
@@ -190,7 +186,7 @@ fun RequestFlowScreen(
     }
 
     val isNextEnabled = when (currentStep) {
-        1 -> selectedPetId != null && selectedCategory != null
+        1 -> selectedPetIds.isNotEmpty() && selectedCategory != null
         2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
         else -> titleInput.isNotBlank() && destination.isNotBlank() && memo.isNotBlank()
     }
@@ -211,7 +207,7 @@ fun RequestFlowScreen(
                 isLoading = uiState is RequestUiState.Loading && currentStep == 3
             ) {
                 if (currentStep < 3) {
-                    viewModel.selectedPetId = selectedPetId
+                    viewModel.selectedPetIds = selectedPetIds.toList()
                     if (currentStep == 2) {
                         val monthStr = currentMonth.monthValue.toString().padStart(2, '0')
                         val dayStr = selectedDay.toString().padStart(2, '0')
@@ -269,8 +265,14 @@ fun RequestFlowScreen(
             when (currentStep) {
                 1 -> Step1Content(
                     uiState = uiState,
-                    selectedPetId = selectedPetId,
-                    onSelectPet = { selectedPetId = it },
+                    selectedPetIds = selectedPetIds,
+                    onTogglePet = { petId ->
+                        selectedPetIds = if (selectedPetIds.contains(petId)) {
+                            selectedPetIds - petId
+                        } else {
+                            selectedPetIds + petId
+                        }
+                    },
                     onAddPet = onAddPet,
                     selectedCategory = selectedCategory,
                     isVolunteer = isVolunteer,
@@ -306,17 +308,16 @@ fun RequestFlowScreen(
     if (showLocationSearch) {
         LocationSearchBottomSheet(
             sheetState = searchSheetState,
+            initialQuery = destination,
             onDismiss = { showLocationSearch = false },
             onPlaceSelected = { place ->
-                destination = place.addressName
-                latInput = place.latitude
-                lngInput = place.longitude
+                destination = place.placeName.ifBlank { place.roadAddress ?: place.address ?: "" }
+                latInput = place.lat.toFloat()
+                lngInput = place.lng.toFloat()
             }
         )
     }
 }
-
-// ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
@@ -367,8 +368,6 @@ private fun RequestFlowTopBar(step: Int, onBack: () -> Unit) {
     }
 }
 
-// ─── 스텝 인디케이터 ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun StepIndicator(currentStep: Int) {
     Column(
@@ -412,13 +411,11 @@ private fun StepIndicator(currentStep: Int) {
     }
 }
 
-// ─── Step 1: 반려동물 선택 ────────────────────────────────────────
-
 @Composable
 private fun Step1Content(
     uiState: RequestUiState,
-    selectedPetId: Int?,
-    onSelectPet: (Int) -> Unit,
+    selectedPetIds: Set<Int>,
+    onTogglePet: (Int) -> Unit,
     onAddPet: () -> Unit = {},
     selectedCategory: MatchCategory?,
     isVolunteer: Boolean,
@@ -428,7 +425,7 @@ private fun Step1Content(
         Spacer(Modifier.height(24.dp))
         QuestionText("어떤 반려동물과\n함께 이동하나요?")
         Spacer(Modifier.height(8.dp))
-        SubText("도움이 필요한 반려동물을 선택해 주세요.")
+        SubText("도움이 필요한 반려동물을 선택해 주세요. (중복 선택 가능)")
         Spacer(Modifier.height(24.dp))
 
         when (uiState) {
@@ -452,8 +449,8 @@ private fun Step1Content(
                                         val pet = myPets[itemIdx]
                                         PetCard(
                                             pet = pet,
-                                            isSelected = pet.id == selectedPetId,
-                                            onClick = { pet.id?.let { onSelectPet(it) } }
+                                            isSelected = selectedPetIds.contains(pet.id),
+                                            onClick = { pet.id?.let { onTogglePet(it) } }
                                         )
                                     }
                                     itemIdx == myPets.size -> AddPetCard(onAddPet)
@@ -479,8 +476,6 @@ private fun Step1Content(
         )
     }
 }
-
-// ─── 카테고리 칩 selector ──────────────────────────────────────────────────────
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -670,8 +665,6 @@ private fun AddPetCard(onAddPet: () -> Unit = {}) {
         )
     }
 }
-
-// ─── Step 2: 일정 선택 ─────────────────────────────────────────────────────────
 
 @Composable
 private fun Step2Content(
@@ -886,8 +879,6 @@ private fun CalendarSection(
     }
 }
 
-// ─── Step 3: 요청 내용 ─────────────────────────────────────────────────────────
-
 @Composable
 private fun Step3Content(
     title: String, onTitleChange: (String) -> Unit,
@@ -1008,8 +999,6 @@ private fun flowFieldColors(leadingAlwaysOrange: Boolean = false) = OutlinedText
     cursorColor = Orange500F,
 )
 
-// ─── 공통 컴포넌트 ─────────────────────────────────────────────────────────────
-
 @Composable
 private fun QuestionText(text: String) {
     Text(
@@ -1068,20 +1057,31 @@ private fun FlowBottomButton(text: String, enabled: Boolean, isLoading: Boolean 
     }
 }
 
-// ─── 주소 검색용 실시간 바텀시트 레이아웃 ──────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationSearchBottomSheet(
     sheetState: androidx.compose.material3.SheetState,
+    initialQuery: String = "",
     onDismiss: () -> Unit,
-    onPlaceSelected: (SearchPlaceItem) -> Unit
+    onPlaceSelected: (GeoSearchResult) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<KakaoLocalDocument>>(emptyList()) }
+    val context = LocalContext.current
+    var searchQuery by remember { mutableStateOf(initialQuery) }
+    var searchResults by remember { mutableStateOf<List<GeoSearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
+    val focusRequester = remember { FocusRequester() }
+    // 디바이스 GPS 좌표(거리 계산 기준). 권한/실패 시 null → 시흥시청 폴백.
+    var userCoords by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
-    LaunchedEffect(searchQuery) {
+    LaunchedEffect(Unit) {
+        val loc = runCatching { LocationProvider(context).getLocationOrNull() }.getOrNull()
+        if (loc != null) userCoords = loc.longitude to loc.latitude
+        delay(180L) // 바텀시트 등장 애니메이션 후에 포커스
+        runCatching { focusRequester.requestFocus() }
+    }
+
+    LaunchedEffect(searchQuery, userCoords) {
         if (searchQuery.isBlank()) {
             searchResults = emptyList()
             isSearching = false
@@ -1091,19 +1091,21 @@ private fun LocationSearchBottomSheet(
         delay(300L)
         isSearching = true
         searchError = null
+        val (cx, cy) = userCoords ?: (126.8030 to 37.3799)
         val response = runCatching {
-            KakaoLocalClient.api.searchKeyword(
-                query = "시흥 $searchQuery",
-                x = 126.8030,
-                y = 37.3799,
+            RetrofitClient.api.searchGeo(
+                query = searchQuery,
+                x = cx,
+                y = cy,
                 radius = 20000,
                 size = 15,
             )
         }
         isSearching = false
-        val body = response.getOrNull()?.body()
-        if (response.isSuccess && body != null) {
-            searchResults = body.documents
+        val raw = response.getOrNull()
+        val body = raw?.body()
+        if (response.isSuccess && raw?.isSuccessful == true && body != null) {
+            searchResults = body.results
         } else {
             searchError = "검색 중 오류가 발생했어요"
             searchResults = emptyList()
@@ -1123,8 +1125,10 @@ private fun LocationSearchBottomSheet(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("장소명 또는 시흥시 도로명 주소 입력") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                placeholder = { Text("장소명 또는 도로명 주소 입력") },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Orange500F,
@@ -1135,7 +1139,7 @@ private fun LocationSearchBottomSheet(
             )
             Spacer(Modifier.height(16.dp))
 
-            LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+            LazyColumn(modifier = Modifier.heightIn(max = 480.dp)) {
                 when {
                     searchQuery.isBlank() -> {
                         item {
@@ -1185,19 +1189,12 @@ private fun LocationSearchBottomSheet(
                         }
                     }
                     else -> {
-                        items(searchResults) { doc ->
+                        items(searchResults) { place ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onPlaceSelected(
-                                            SearchPlaceItem(
-                                                placeName = doc.placeName,
-                                                addressName = doc.roadAddressName ?: doc.addressName ?: "",
-                                                latitude = doc.latitude.toFloatOrNull() ?: 0f,
-                                                longitude = doc.longitude.toFloatOrNull() ?: 0f,
-                                            )
-                                        )
+                                        onPlaceSelected(place)
                                         onDismiss()
                                     }
                                     .padding(vertical = 12.dp),
@@ -1212,21 +1209,36 @@ private fun LocationSearchBottomSheet(
                                 Spacer(Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = doc.placeName,
+                                        text = place.placeName,
                                         fontFamily = PretendardFamily,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = TextBlack,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
-                                    val addr = doc.roadAddressName ?: doc.addressName
+                                    val addr = place.roadAddress ?: place.address
                                     if (!addr.isNullOrBlank()) {
                                         Text(
                                             text = addr,
                                             fontFamily = PretendardFamily,
                                             fontSize = 11.sp,
                                             color = Brown700F,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
+                                }
+                                val distance = place.distanceMeters
+                                if (distance != null && distance > 0) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = formatDistance(distance),
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Brown400F,
+                                    )
                                 }
                             }
                             HorizontalDivider(color = Color(0xFFF4F4F4))
@@ -1238,6 +1250,10 @@ private fun LocationSearchBottomSheet(
         }
     }
 }
+
+private fun formatDistance(meters: Double): String =
+    if (meters < 1000.0) "${meters.toInt()}m"
+    else "%.1fkm".format(meters / 1000.0)
 
 private fun Modifier.dashedBorder(color: Color, cornerRadius: Dp = 12.dp, strokeWidth: Dp = 1.5.dp): Modifier =
     this.drawBehind {

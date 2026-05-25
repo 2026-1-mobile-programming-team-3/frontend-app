@@ -74,7 +74,6 @@ import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.network.RetrofitClient
-import androidx.compose.material3.MaterialTheme
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
@@ -196,7 +195,7 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.White,
     ) { innerPadding ->
         // Apple Large Title collapse — scroll 진행에 따라 "시흥가개" 26sp → 18sp 점진 축소.
         val scrollState = rememberScrollState()
