@@ -403,103 +403,102 @@ fun MatchingDetailScreen(
                                             Text(text = appItem.message ?: "신청 메시지가 없습니다.", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
 
-                                        if (request.status?.trim()?.uppercase() != "DONE") {
-                                            if (isCardAccepted) {
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .border(1.dp, Gray300D, RoundedCornerShape(8.dp))
-                                                            .background(Color.White)
-                                                            .clickable {
-                                                                val appId = appItem.applicationId ?: 0
-                                                                onNavigate(Screen.Chat.createRoute(requestId, appId))
-                                                            }.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
+                                        if (request.status?.trim()?.uppercase() == "DONE") {
+                                            Box(
+                                                contentAlignment = Alignment.Center,
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .border(1.dp, Gray300D, RoundedCornerShape(8.dp))
+                                                    .background(Color.White.copy(alpha = 0.5f))
+                                                    .clickable {
+                                                        scope.launch {
+                                                            snackbarHostState.showSnackbar("완료된 매칭의 채팅은 더 이상 이용할 수 없어요.")
+                                                        }
                                                     }
-
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .border(1.dp, Pink500D, RoundedCornerShape(8.dp))
-                                                            .background(Color.White)
-                                                            .clickable {
-                                                                appIdToCancel = appItem.applicationId ?: -1
-                                                                showCancelDialog = true
-                                                            }.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Text("취소", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
-                                                    }
-                                                }
-                                            } else {
-                                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                            ) {
+                                                Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = Gray300D)
+                                            }
+                                        } else if (isCardAccepted) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(1.dp, Gray300D, RoundedCornerShape(8.dp))
+                                                        .background(Color.White)
+                                                        .clickable {
                                                             val appId = appItem.applicationId ?: 0
                                                             onNavigate(Screen.Chat.createRoute(requestId, appId))
                                                         }.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
-                                                    }
+                                                ) {
+                                                    Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
+                                                }
 
-                                                    val appId = appItem.applicationId ?: 0
-                                                    val isAccepting = acceptingAppId == appId
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(
-                                                            if (isAccepting) Pink500D.copy(alpha = 0.6f) else Pink500D
-                                                        ).clickable(enabled = !isAccepting) {
-                                                            acceptingAppId = appId
-                                                            viewModel.acceptApplication(requestId, appId) {
-                                                                acceptingAppId = -1
-                                                                scope.launch {
-                                                                    snackbarHostState.showSnackbar("수락했어요. 채팅을 시작해 보세요.")
-                                                                }
-                                                            }
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .border(1.dp, Pink500D, RoundedCornerShape(8.dp))
+                                                        .background(Color.White)
+                                                        .clickable {
+                                                            appIdToCancel = appItem.applicationId ?: -1
+                                                            showCancelDialog = true
                                                         }.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        if (isAccepting) {
-                                                            CircularProgressIndicator(
-                                                                color = Color.White,
-                                                                strokeWidth = 2.dp,
-                                                                modifier = Modifier.size(14.dp),
-                                                            )
-                                                        } else {
-                                                            Text("수락", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                                        }
-                                                    }
-
-                                                    Box(
-                                                        contentAlignment = Alignment.Center,
-                                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
-                                                            val appId = appItem.applicationId ?: 0
-                                                            viewModel.rejectApplication(requestId, appId)
-                                                        }.padding(horizontal = 10.dp, vertical = 6.dp)
-                                                    ) {
-                                                        Text("거절", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D)
-                                                    }
+                                                ) {
+                                                    Text("취소", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
                                                 }
                                             }
                                         } else {
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(PinkSurfaceD).padding(horizontal = 12.dp, vertical = 6.dp)
-                                            ) {
-                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.ic_handshake),
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(12.dp),
-                                                        tint = Pink500D,
-                                                    )
-                                                    Text("매칭 완료", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Pink500D)
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
+                                                        val appId = appItem.applicationId ?: 0
+                                                        onNavigate(Screen.Chat.createRoute(requestId, appId))
+                                                    }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                ) {
+                                                    Text("채팅", fontFamily = PretendardFamily, fontSize = 12.sp, color = TextBlackD)
+                                                }
+
+                                                val appId = appItem.applicationId ?: 0
+                                                val isAccepting = acceptingAppId == appId
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(
+                                                        if (isAccepting) Pink500D.copy(alpha = 0.6f) else Pink500D
+                                                    ).clickable(enabled = !isAccepting) {
+                                                        acceptingAppId = appId
+                                                        viewModel.acceptApplication(requestId, appId) {
+                                                            acceptingAppId = -1
+                                                            scope.launch {
+                                                                snackbarHostState.showSnackbar("수락했어요. 채팅을 시작해 보세요.")
+                                                            }
+                                                        }
+                                                    }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                ) {
+                                                    if (isAccepting) {
+                                                        CircularProgressIndicator(
+                                                            color = Color.White,
+                                                            strokeWidth = 2.dp,
+                                                            modifier = Modifier.size(14.dp),
+                                                        )
+                                                    } else {
+                                                        Text("수락", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                    }
+                                                }
+
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
+                                                        val appId = appItem.applicationId ?: 0
+                                                        viewModel.rejectApplication(requestId, appId)
+                                                    }.padding(horizontal = 10.dp, vertical = 6.dp)
+                                                ) {
+                                                    Text("거절", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D)
                                                 }
                                             }
                                         }
