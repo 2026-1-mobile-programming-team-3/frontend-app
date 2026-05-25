@@ -655,9 +655,16 @@ private fun AddPetCard(onAddPet: () -> Unit = {}) {
         Text(
             text = "반려동물 추가",
             fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
             color = GrayText
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = "탭하여 등록하기",
+            fontFamily = PretendardFamily,
+            fontSize = 13.sp,
+            color = GrayText.copy(alpha = 0.6f)
         )
     }
 }

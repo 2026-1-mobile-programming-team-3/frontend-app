@@ -81,6 +81,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -125,7 +126,7 @@ interface AuthApiService {
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
 
-    @DELETE("api/v1/users/me")
+    @HTTP(method = "DELETE", path = "api/v1/users/me", hasBody = true)
     suspend fun deleteMe(@Body body: AccountDeleteRequest): Response<MessageResponse>
 
     @PUT("api/v1/users/me/password")

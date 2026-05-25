@@ -102,8 +102,23 @@ private fun formatChatTime(createdAt: String): String {
     }
 }
 
+/** KST 기준 날짜를 "yyyy-MM-dd" 형태로 반환 — 메시지 그룹 구분 키로 사용 */
 private fun formatChatDate(createdAt: String): String {
-    return formatChatTime(createdAt).take(10) // "yyyy-MM-dd" 파트 분리 슬라이싱
+    val parsed = runCatching { java.time.ZonedDateTime.parse(createdAt) }.getOrNull()
+        ?: runCatching { OffsetDateTime.parse(createdAt).toZonedDateTime() }.getOrNull()
+        ?: runCatching { LocalDateTime.parse(createdAt.take(19)).atZone(ZoneId.of("UTC")) }.getOrNull()
+        ?: return createdAt
+    return parsed.withZoneSameInstant(ZoneId.of("Asia/Seoul")).toLocalDate().toString()
+}
+
+/** "yyyy-MM-dd" → 오늘/어제/5월 23일/2026년 5월 23일 */
+private fun formatDateDividerLabel(dateKey: String): String {
+    val date = runCatching { java.time.LocalDate.parse(dateKey) }.getOrNull() ?: return dateKey
+    val today = java.time.LocalDate.now(ZoneId.of("Asia/Seoul"))
+    return if (date.year == today.year)
+        "${date.monthValue}월 ${date.dayOfMonth}일"
+    else
+        "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,6 +149,12 @@ fun ChatScreen(
 
     LaunchedEffect(matchId, applicationId) {
         viewModel.initChatRoom(matchId, applicationId)
+    }
+
+    LaunchedEffect(uiState) {
+        if (uiState is ChatUiState.Error) {
+            snackbarHostState.showSnackbar((uiState as ChatUiState.Error).message)
+        }
     }
 
     val successState = uiState as? ChatUiState.Success
@@ -182,7 +203,13 @@ fun ChatScreen(
                     CircularProgressIndicator(color = Pink500C, modifier = Modifier.align(Alignment.Center))
                 }
                 is ChatUiState.Error -> {
-                    Text(text = state.message, color = Pink500C, modifier = Modifier.align(Alignment.Center), fontFamily = PretendardFamily)
+                    Text(
+                        text = state.message,
+                        color = Pink500C,
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                        fontFamily = PretendardFamily,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
                 }
                 is ChatUiState.Success -> {
                     LaunchedEffect(state.messages.size) {
@@ -208,12 +235,12 @@ fun ChatScreen(
                                 val currentMsgDate = formatChatDate(msg.createdAt)
 
                                 if (index == 0) {
-                                    DateDivider(label = currentMsgDate.replace("-", ". "))
+                                    DateDivider(label = formatDateDividerLabel(currentMsgDate))
                                     Spacer(Modifier.height(8.dp))
                                 } else {
                                     val prevMsgDate = formatChatDate(state.messages[index - 1].createdAt)
                                     if (currentMsgDate != prevMsgDate) {
-                                        DateDivider(label = currentMsgDate.replace("-", ". "))
+                                        DateDivider(label = formatDateDividerLabel(currentMsgDate))
                                         Spacer(Modifier.height(8.dp))
                                     }
                                 }
@@ -277,7 +304,7 @@ fun ChatScreen(
 
         if (showBlockConfirmDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             SiheungAlertDialog(
                 onDismissRequest = { showBlockConfirmDialog = false },
@@ -314,7 +341,7 @@ fun ChatScreen(
 
         if (showUserReportDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             AlertDialog(
                 onDismissRequest = { showUserReportDialog = false },

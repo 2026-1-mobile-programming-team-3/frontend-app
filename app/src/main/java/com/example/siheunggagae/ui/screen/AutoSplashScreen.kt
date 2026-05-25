@@ -100,14 +100,7 @@ private fun SplashLogo() {
                     modifier = Modifier.size(140.dp),
                 )
                 Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "시흥가개",
-                    fontFamily = PretendardFamily,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF614B3A),
-                )
-                Spacer(Modifier.height(8.dp))
+
                 Text(
                     text = "시흥의 모든 댕댕이를 위해 🐾",
                     fontFamily = PretendardFamily,

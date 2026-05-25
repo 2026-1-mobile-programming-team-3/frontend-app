@@ -38,14 +38,16 @@ class FcmService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: return
         val body = message.notification?.body ?: message.data["body"] ?: return
-        showNotification(title, body)
+        val link = message.data["link"]
+        showNotification(title, body, link)
     }
 
-    private fun showNotification(title: String, body: String) {
+    private fun showNotification(title: String, body: String, link: String? = null) {
         ensureNotificationChannel()
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            link?.let { putExtra("notification_link", it) }
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,

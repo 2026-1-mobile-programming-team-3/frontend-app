@@ -134,7 +134,25 @@ class MatchingViewModel(
     private fun fetch(reset: Boolean, isRefresh: Boolean = false) {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
-            if (reset && !isRefresh) _state.value = MatchingUi.Loading
+            if (reset && !isRefresh) {
+                val current = _state.value as? MatchingUi.Success
+                if (current == null) {
+                    _state.value = MatchingUi.Loading
+                } else {
+                    // Loading으로 전환하면 selectedStatus가 null이 돼
+                    // 탭 애니메이션이 "전체"를 경유하는 버그가 생김.
+                    // 대신 탭 선택만 즉시 반영하고 목록만 비운다.
+                    raw = emptyList()
+                    _state.value = current.copy(
+                        items = emptyList(),
+                        selectedStatus = selectedStatus,
+                        selectedCategory = selectedCategory,
+                        sort = sort,
+                        distance = distance,
+                        hasMore = false,
+                    )
+                }
+            }
             if (isRefresh) recompute(refreshing = true)
             val location = getCurrentLocation()
             val lat = location?.first

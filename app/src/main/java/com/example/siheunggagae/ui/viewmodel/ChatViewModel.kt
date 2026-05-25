@@ -50,6 +50,9 @@ class ChatViewModel(
     var myUserId by mutableStateOf(-1)
         private set
 
+    var opponentUserId by mutableStateOf(-1)
+        private set
+
     fun initChatRoom(matchId: Int, applicationId: Int) {
         this.mId = matchId
         this.appId = applicationId
@@ -73,11 +76,14 @@ class ChatViewModel(
                     myUserId = myId
                     isMyRequest = matchDetail?.author?.userId == myId
 
-                    opponentNickname = if (isMyRequest) {
+                    if (isMyRequest) {
                         val apps = api.getApplications(matchId).body()
-                        apps?.items?.find { it.applicationId == applicationId }?.applicant?.nickname ?: "지원자"
+                        val matchedApp = apps?.items?.find { it.applicationId == applicationId }
+                        opponentNickname = matchedApp?.applicant?.nickname ?: "지원자"
+                        opponentUserId = matchedApp?.applicant?.applicantId ?: -1
                     } else {
-                        matchDetail?.author?.nickname ?: "요청자"
+                        opponentNickname = matchDetail?.author?.nickname ?: "요청자"
+                        opponentUserId = matchDetail?.author?.userId ?: -1
                     }
 
                     hasMore = msgResponse.body()?.hasMore ?: false
@@ -194,22 +200,23 @@ class ChatViewModel(
     fun blockUser(targetUserId: Int, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
-                // TODO: 나중에 강문님이 백엔드 차단 엔드포인트 뚫어주시면 레포지토리 연동할 구역
-                onComplete(true)
+                val resp = api.createBlock(
+                    com.example.siheunggagae.data.model.BlockCreateRequest(targetUserId)
+                )
+                onComplete(resp.isSuccessful)
             } catch (e: Exception) {
                 onComplete(false)
             }
         }
     }
 
-    /**
-     * ─── 🌟 [태은-10.2] 유저 자체 전역 신고하기 (POST /reports) ───
-     */
     fun reportUser(targetUserId: Int, reason: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
-                // TODO: 나중에 강문님이 백엔드 유저 신고 엔드포인트 뚫어주시면 레포지토리 연동할 구역
-                onComplete(true)
+                val resp = api.createReport(
+                    com.example.siheunggagae.data.model.ReportCreateRequest(targetUserId, reason)
+                )
+                onComplete(resp.isSuccessful)
             } catch (e: Exception) {
                 onComplete(false)
             }
