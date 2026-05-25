@@ -1,6 +1,5 @@
 package com.example.siheunggagae.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -38,6 +37,8 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = Gray90,
 )
 
+// 현재 미사용 - 다크모드 본격 디자인 후 활성화
+@Suppress("unused")
 private val DarkColorScheme = darkColorScheme(
     // Primary — 베이지 (다크 배경 위 잘 보임)
     primary            = Brown80,
@@ -72,11 +73,12 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun SiheungGagaeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    // 다크모드 본격 디자인 전까지는 light 강제 (DarkColorScheme은 후속 단계에서 활성화)
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+        colorScheme = LightColorScheme,
         typography  = AppTypography,
         content     = content,
     )
