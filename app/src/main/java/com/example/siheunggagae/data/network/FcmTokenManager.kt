@@ -37,6 +37,20 @@ class FcmTokenManager(
         // 실패해도 푸시가 안 올 뿐 — 앱 동작에는 영향 없음
     }
 
+    /**
+     * 로그아웃 시 호출. Firebase FCM 토큰을 삭제해 이 기기로의 알림을 즉시 차단.
+     * 다음 로그인 시 새 토큰이 발급되어 신규 계정에만 등록된다.
+     */
+    suspend fun deleteDeviceToken() {
+        runCatching {
+            suspendCancellableCoroutine { cont ->
+                FirebaseMessaging.getInstance().deleteToken().addOnCompleteListener {
+                    if (cont.isActive) cont.resume(Unit)
+                }
+            }
+        }
+    }
+
     private suspend fun getFirebaseToken(): String? = suspendCancellableCoroutine { cont ->
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (cont.isActive) {

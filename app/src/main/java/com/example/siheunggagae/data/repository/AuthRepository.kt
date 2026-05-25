@@ -46,6 +46,8 @@ class AuthRepository(
 
     suspend fun logout() {
         val refreshToken = tokenManager.refreshToken
+        // FCM 토큰 삭제 → 이 기기로의 알림 즉시 차단 (다른 계정 로그인 시 크로스 알림 방지)
+        runCatching { fcmTokenManager?.deleteDeviceToken() }
         tokenManager.clearTokens()                              // 로컬 즉시 삭제
         if (refreshToken != null) {
             runCatching { api.logout(LogoutRequest(refreshToken)) }  // 서버 무효화 (실패해도 무방)
