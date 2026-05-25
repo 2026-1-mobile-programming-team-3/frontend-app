@@ -52,8 +52,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -465,13 +469,37 @@ private fun normalizeTabRoute(route: String?): String =
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun AppNavGraph(navController: NavHostController = rememberNavController()) {
+fun AppNavGraph(
+    navController: NavHostController = rememberNavController(),
+    initialLink: String? = null,
+) {
     val app = LocalContext.current.applicationContext as SiheungGagaeApp
+
+    // 세션 만료 처리
     LaunchedEffect(Unit) {
         app.sessionExpiredChannel.receiveAsFlow().collect {
             navController.navigate(Screen.Login.route) {
                 popUpTo(0) { inclusive = true }
             }
+        }
+    }
+
+    // 앱 실행 중 알림 탭 → onNewIntent → pendingDeeplinkLink 변경 시 즉시 이동
+    LaunchedEffect(Unit) {
+        app.pendingDeeplinkLink.filterNotNull().collect { link ->
+            handleNotificationDeeplink(link, navController)
+            app.pendingDeeplinkLink.value = null
+        }
+    }
+
+    // 앱 종료 상태에서 알림 탭 → cold start → 메인탭 진입 후 이동
+    LaunchedEffect(initialLink) {
+        if (!initialLink.isNullOrBlank()) {
+            snapshotFlow { navController.currentBackStackEntry?.destination?.route }
+                .filterNotNull()
+                .filter { isTopLevelTabRoute(it) }
+                .first()
+            handleNotificationDeeplink(initialLink, navController)
         }
     }
 
@@ -1490,16 +1518,21 @@ private fun handleNotificationDeeplink(
             navController.navigate(Screen.VolunteerHistory.route)
             return true
         }
+        // 내 반려동물 목록: siheunggagae://pets
+        if (link == "siheunggagae://pets") {
+            navController.navigate(Screen.PetList.route)
+            return true
+        }
     }
 
     // link가 없을 때 카테고리 기반 폴백
     return when (category) {
         NotificationCategory.MATCH     -> { navController.navigate(Screen.Matching.route); true }
-        NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.VolunteerHistory.route); true }
+        NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.Matching.route); true }
         NotificationCategory.REVIEW    -> { navController.navigate(Screen.My.route); true }
         NotificationCategory.NEWS      -> { navController.navigate(Screen.News.route); true }
         NotificationCategory.POLICY    -> { navController.navigate(Screen.Privacy.route); true }
-        NotificationCategory.SYSTEM,
+        NotificationCategory.SYSTEM    -> { navController.navigate(Screen.PetList.route); true }
         null                           -> false
     }
 }

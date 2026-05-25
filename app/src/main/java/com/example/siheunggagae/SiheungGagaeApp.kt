@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 class SiheungGagaeApp : Application(), SingletonImageLoader.Factory {
@@ -35,6 +36,9 @@ class SiheungGagaeApp : Application(), SingletonImageLoader.Factory {
         private set
 
     val sessionExpiredChannel = Channel<Unit>(Channel.CONFLATED)
+
+    /** FCM 알림 탭 시 이동할 deeplink URL. NavGraph 가 collect 해서 화면 이동 후 null 로 초기화. */
+    val pendingDeeplinkLink = MutableStateFlow<String?>(null)
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
