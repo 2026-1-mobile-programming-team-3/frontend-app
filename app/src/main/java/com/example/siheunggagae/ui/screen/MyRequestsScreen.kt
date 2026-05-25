@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.MatchStatus
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import androidx.compose.ui.res.painterResource
+import com.example.siheunggagae.R
 import com.example.siheunggagae.ui.util.bgColor
 import com.example.siheunggagae.ui.util.textColor
 import com.example.siheunggagae.ui.viewmodel.MyRequestsUiState
@@ -239,12 +241,32 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
             val timePart = request.desiredTime?.take(5) ?: "시간 미정"
             val townPart = request.address?.split(" ")?.getOrNull(2) ?: request.address ?: "동네 미정"
 
-            Text(
-                text = "📍 $townPart · 🗓️ $datePart $timePart",
-                fontFamily = PretendardFamily,
-                fontSize = 13.sp,
-                color = Brown700M
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_map_pin),
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp),
+                    tint = Brown700M,
+                )
+                Text(
+                    text = "$townPart · ",
+                    fontFamily = PretendardFamily,
+                    fontSize = 13.sp,
+                    color = Brown700M,
+                )
+                Icon(
+                    painter = painterResource(R.drawable.ic_calendar_today),
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp),
+                    tint = Brown700M,
+                )
+                Text(
+                    text = " $datePart $timePart",
+                    fontFamily = PretendardFamily,
+                    fontSize = 13.sp,
+                    color = Brown700M,
+                )
+            }
             Spacer(Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
