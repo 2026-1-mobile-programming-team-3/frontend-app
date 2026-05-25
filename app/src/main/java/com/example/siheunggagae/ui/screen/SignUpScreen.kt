@@ -10,19 +10,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,14 +55,19 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.siheunggagae.data.local.SiheungRegions
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +100,7 @@ fun SignUpScreen(
     }.collectAsState()
 
     var showEmailConflictSheet by remember { mutableStateOf(false) }
+    var showTermsSheet by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
     val fieldErrors = (uiState as? AuthUiState.FieldErrors)?.errors ?: emptyMap()
     val isLoading = uiState is AuthUiState.Loading
@@ -410,6 +420,39 @@ fun SignUpScreen(
                             placeholder = "예: 정왕동",
                         )
                         fieldErrors["region_dong"]?.let { FieldErrorText(it) }
+                        val allDongs = remember { SiheungRegions.dongCoordinates.keys.toList() }
+                        val matchingDongs = remember(dong) {
+                            when {
+                                dong.isBlank() -> emptyList()
+                                dong in allDongs -> emptyList()
+                                else -> allDongs.filter { it.contains(dong) || dong.contains(it) }.take(8)
+                            }
+                        }
+                        AnimatedVisibility(visible = matchingDongs.isNotEmpty()) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(top = 8.dp),
+                            ) {
+                                matchingDongs.forEach { d ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50.dp))
+                                            .background(Color(0xFFFFEDD4))
+                                            .clickable { dong = d }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    ) {
+                                        Text(
+                                            text = d,
+                                            fontFamily = PretendardFamily,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = Color(0xFF614B3A),
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -417,6 +460,28 @@ fun SignUpScreen(
             Spacer(Modifier.height(24.dp))
 
             // 약관 동의 (UI만, 백엔드로 전송 안 함)
+            val annotatedTerms = buildAnnotatedString {
+                pushStringAnnotation("TERMS", "service")
+                withStyle(
+                    SpanStyle(
+                        color = Color(0xFFF7A35B),
+                        textDecoration = TextDecoration.Underline,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                ) { append("이용약관") }
+                pop()
+                append(" 및 ")
+                pushStringAnnotation("TERMS", "privacy")
+                withStyle(
+                    SpanStyle(
+                        color = Color(0xFFF7A35B),
+                        textDecoration = TextDecoration.Underline,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                ) { append("개인정보처리방침") }
+                pop()
+                append("에 동의합니다")
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -444,15 +509,56 @@ fun SignUpScreen(
                         )
                     }
                 }
-                Text(
-                    text = "이용약관 및 개인정보처리방침에 동의합니다",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 20.sp,
-                    color = Brown700Reg,
-                    modifier = Modifier.clickable { termsAccepted = !termsAccepted },
+                ClickableText(
+                    text = annotatedTerms,
+                    style = TextStyle(
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        color = Color(0xFF1E120A),
+                    ),
+                    onClick = { offset ->
+                        val annotation = annotatedTerms
+                            .getStringAnnotations("TERMS", offset, offset)
+                            .firstOrNull()
+                        if (annotation != null) {
+                            showTermsSheet = annotation.item
+                        } else {
+                            termsAccepted = !termsAccepted
+                        }
+                    },
                 )
+            }
+
+            if (showTermsSheet != null) {
+                val termsSheetState = rememberModalBottomSheetState()
+                ModalBottomSheet(
+                    onDismissRequest = { showTermsSheet = null },
+                    sheetState = termsSheetState,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            .verticalScroll(rememberScrollState())
+                            .heightIn(max = 480.dp),
+                    ) {
+                        Text(
+                            text = if (showTermsSheet == "service") "이용약관" else "개인정보처리방침",
+                            fontFamily = PretendardFamily,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E120A),
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = if (showTermsSheet == "service") TERMS_SERVICE_PLACEHOLDER else TERMS_PRIVACY_PLACEHOLDER,
+                            fontFamily = PretendardFamily,
+                            fontSize = 13.sp,
+                            lineHeight = 20.sp,
+                            color = Color(0xFF1E120A),
+                        )
+                        Spacer(Modifier.height(24.dp))
+                    }
+                }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -622,9 +728,10 @@ private fun PasswordValidationHints(
     hasDigit: Boolean,
     hasSpecial: Boolean,
 ) {
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         ValidationHint(met = hasMinLength, label = "8자 이상")
         ValidationHint(met = hasLetter,    label = "영문 포함")
@@ -685,3 +792,32 @@ private fun FieldErrorText(message: String) {
 fun SignUpScreenPreview() {
     SiheungGagaeTheme { SignUpScreen() }
 }
+
+// ─── 약관 placeholder 본문 (실제 서비스 배포 전 법무 검토 필요) ─────────────────
+
+private const val TERMS_SERVICE_PLACEHOLDER = """제1조 (목적)
+본 약관은 시흥가개 서비스(이하 "서비스")의 이용과 관련하여 회사와 회원 간의 권리·의무 및 책임 사항을 규정함을 목적으로 합니다.
+
+제2조 (정의)
+1. "서비스"란 회사가 제공하는 모든 기능을 의미합니다.
+2. "회원"이란 본 약관에 동의하고 서비스 이용 자격을 부여받은 자를 의미합니다.
+
+제3조 (이용계약의 성립)
+이용계약은 회원이 본 약관에 동의하고 회사가 정한 가입 양식에 따라 회원정보를 기입한 후 가입을 신청하면, 회사가 이를 승낙함으로써 성립됩니다.
+
+* 상기 본문은 실제 약관이 아닌 시연용 예시입니다. 정식 서비스 배포 전 법무 검토를 거친 본문으로 교체될 예정입니다."""
+
+private const val TERMS_PRIVACY_PLACEHOLDER = """제1조 (개인정보의 수집 및 이용 목적)
+회사는 다음의 목적을 위하여 개인정보를 수집·이용합니다.
+1. 회원가입 및 본인확인
+2. 매칭·봉사·매장 정보 제공
+3. 서비스 이용 통계 분석
+
+제2조 (수집하는 개인정보 항목)
+필수 항목: 이메일, 비밀번호, 닉네임, 거주지(시·동), 휴대전화 번호
+선택 항목: 프로필 이미지, 반려동물 정보
+
+제3조 (개인정보의 보유 및 이용기간)
+회원 탈퇴 시까지 보유하며, 탈퇴 즉시 파기합니다. 단, 관련 법령에 따라 일정 기간 보존해야 하는 경우 그 기간 동안만 보관합니다.
+
+* 상기 본문은 실제 처리방침이 아닌 시연용 예시입니다. 정식 서비스 배포 전 개인정보보호 담당자 검토를 거친 본문으로 교체될 예정입니다."""

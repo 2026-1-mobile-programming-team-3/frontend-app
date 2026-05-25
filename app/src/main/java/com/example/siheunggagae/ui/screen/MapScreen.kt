@@ -95,9 +95,11 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.toStoreResponse
 import com.example.siheunggagae.map.MarkerSpec
 import com.example.siheunggagae.map.computeMarkerSpecs
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.CategoryVisual
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
@@ -978,27 +980,11 @@ private fun MapBottomSheetContent(
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
             if (stores.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "이 영역에는 표시할 매장이 없어요",
-                            fontFamily = PretendardFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Brown700Mp,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = "지도를 더 넓혀 보거나 다른 동네로 이동해 주세요",
-                            fontFamily = PretendardFamily,
-                            fontSize = 12.sp,
-                            color = Brown400Mp,
-                        )
-                    }
-                }
+                EmptyStateView(
+                    title = "이 영역에 매장이 없어요",
+                    subtitle = "지도를 옮기거나 확대해 보세요",
+                    iconRes = R.drawable.ic_map,
+                )
             } else {
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     items(stores, key = { it.resolvedId }) { store ->
@@ -1142,18 +1128,30 @@ private fun StoreDetailSheet(
         dragHandle = { MapDragHandle() },
     ) {
         // 그라디언트 배너
+        val visual = CategoryVisual.forCategory(store.category)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(90.dp)
-                .background(Brush.linearGradient(listOf(Color(0xFFD0FEE1), Color(0xFFE0F7FA)))),
+                .height(120.dp)
+                .background(Brush.linearGradient(visual.gradient)),
             contentAlignment = Alignment.Center,
         ) {
+            // 워터마크 (반투명 큰 아이콘)
             Icon(
-                painter = painterResource(R.drawable.ic_location_on),
+                painter = painterResource(visual.drawableRes),
                 contentDescription = null,
-                tint = Pink500Mp,
-                modifier = Modifier.size(36.dp),
+                tint = Color.White.copy(alpha = 0.18f),
+                modifier = Modifier
+                    .size(140.dp)
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 8.dp),
+            )
+            // 전경 카테고리 아이콘 (선명)
+            Icon(
+                painter = painterResource(visual.drawableRes),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(56.dp),
             )
         }
 

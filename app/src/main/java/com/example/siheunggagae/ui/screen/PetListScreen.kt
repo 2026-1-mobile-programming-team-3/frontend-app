@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,9 +52,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -224,49 +226,19 @@ fun PetListScreen(
 
     // 삭제 확인 다이얼로그
     deleteTarget?.let { pet ->
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = {
-                Text(
-                    text = "반려동물 삭제",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlackPL,
-                )
+            title = "반려동물 삭제",
+            text = "${pet.name}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                viewModel?.deletePet(pet.id)
+                deleteTarget = null
             },
-            text = {
-                Text(
-                    text = "${pet.name}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = Brown700PL,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel?.deletePet(pet.id)
-                    deleteTarget = null
-                }) {
-                    Text(
-                        text = "삭제",
-                        fontFamily = PretendardFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = Pink500PL,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) {
-                    Text(
-                        text = "취소",
-                        fontFamily = PretendardFamily,
-                        color = Brown700PL,
-                    )
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+            dismissText = "취소",
+            onDismiss = { deleteTarget = null },
+            confirmColor = Pink500PL,
+            dismissColor = Brown700PL,
         )
     }
 }
@@ -324,19 +296,29 @@ private fun PetRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(pet.species.iconBg),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_pets),
-                contentDescription = null,
-                tint = pet.species.iconTint,
-                modifier = Modifier.size(28.dp),
+        if (!pet.photoUrl.isNullOrBlank()) {
+            AppAsyncImage(
+                model = pet.photoUrl,
+                contentDescription = "${pet.name} 사진",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape),
             )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(pet.species.iconBg),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_pets),
+                    contentDescription = null,
+                    tint = pet.species.iconTint,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(

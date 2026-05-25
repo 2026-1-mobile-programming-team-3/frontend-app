@@ -277,11 +277,16 @@ private fun StorePickerSheet(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (hotel.ratingAvg != null) {
-                                Text("★ ${"%.1f".format(hotel.ratingAvg)}", color = StarYellowM, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(11.dp), tint = StarYellowM)
+                                    Text("${"%.1f".format(hotel.ratingAvg)}", color = StarYellowM, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                             Text(fmtDistanceM(hotel.distanceM), color = Brown700M, fontSize = 11.sp)
-                            if (hotel.minPriceKrw != null) {
-                                Text("%,d원~".format(hotel.minPriceKrw), color = Brown700M, fontSize = 11.sp)
+                            if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) {
+                                Text("₩%,d/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 11.sp)
+                            } else if (hotel.minPriceKrw == null || hotel.minPriceKrw == 0) {
+                                Text("가격 정보 없음", color = Brown700M, fontSize = 11.sp)
                             }
                         }
                     }
@@ -622,14 +627,14 @@ private fun TwoColMatrix(
                 label = "최저가",
                 aContent = {
                     MatrixCell(
-                        if (a.minPriceKrw != null) "%,d원".format(a.minPriceKrw) else "-",
+                        if (a.minPriceKrw != null && a.minPriceKrw > 0) "₩%,d/박".format(a.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == a.storeId,
                         modifier = Modifier.fillMaxSize(),
                     )
                 },
                 bContent = {
                     MatrixCell(
-                        if (b.minPriceKrw != null) "%,d원".format(b.minPriceKrw) else "-",
+                        if (b.minPriceKrw != null && b.minPriceKrw > 0) "₩%,d/박".format(b.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == b.storeId,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -885,7 +890,7 @@ private fun MultiColMatrix(
 
                     // Price
                     MatrixCell(
-                        if (hotel.minPriceKrw != null) "%,d원".format(hotel.minPriceKrw) else "-",
+                        if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) "₩%,d/박".format(hotel.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == hotel.storeId,
                         modifier = Modifier.width(colW),
                     )
@@ -1098,11 +1103,16 @@ private fun StoreDropdown(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (hotel.ratingAvg != null) {
-                        Text("★${"%.1f".format(hotel.ratingAvg)}", color = StarYellowM, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(10.dp), tint = StarYellowM)
+                            Text("${"%.1f".format(hotel.ratingAvg)}", color = StarYellowM, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                     Text(fmtDistanceM(hotel.distanceM), color = Brown700M, fontSize = 10.sp)
-                    if (hotel.minPriceKrw != null) {
-                        Text("%,d원~".format(hotel.minPriceKrw), color = Brown700M, fontSize = 10.sp)
+                    if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) {
+                        Text("₩%,d/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 10.sp)
+                    } else if (hotel.minPriceKrw == null || hotel.minPriceKrw == 0) {
+                        Text("가격 정보 없음", color = Brown700M, fontSize = 10.sp)
                     }
                 }
             }

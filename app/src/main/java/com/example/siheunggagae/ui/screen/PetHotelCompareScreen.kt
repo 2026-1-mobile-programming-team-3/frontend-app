@@ -339,12 +339,15 @@ private fun PetHotelCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (hotel.ratingAvg != null) {
-                        Text(
-                            "★ ${"%.1f".format(hotel.ratingAvg)}",
-                            color = StarYellowP,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(12.dp), tint = StarYellowP)
+                            Text(
+                                "${"%.1f".format(hotel.ratingAvg)}",
+                                color = StarYellowP,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                         Spacer(Modifier.width(4.dp))
                         Text(
                             "(${hotel.ratingCount})",
@@ -387,22 +390,23 @@ private fun PetHotelCard(
                         )
                     }
                     Spacer(Modifier.weight(1f))
-                    if (hotel.minPriceKrw != null) {
+                    if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) {
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("최저가 ", color = Brown700P, fontSize = 11.sp)
                             Text(
-                                "%,d".format(hotel.minPriceKrw),
+                                "₩%,d/박".format(hotel.minPriceKrw),
                                 color = Brown900P,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold,
                             )
-                            Text(
-                                "원~",
-                                color = Brown700P,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
                         }
+                    } else if (hotel.minPriceKrw == null || hotel.minPriceKrw == 0) {
+                        Text(
+                            "가격 정보 없음",
+                            color = Brown700P,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
                 }
             }

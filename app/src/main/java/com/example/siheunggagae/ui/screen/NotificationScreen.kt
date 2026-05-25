@@ -30,10 +30,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.PriorityHigh
+import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -104,6 +108,7 @@ private fun formatRelativeTime(createdAt: String): String {
 
 // ─── 화면 ──────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
     viewModel: NotificationViewModel? = null,
@@ -156,45 +161,51 @@ fun NotificationScreen(
                 selected = state.selectedTab,
                 onSelect = { viewModel?.selectTab(it) },
             )
-            when {
-                state.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Orange500N)
-                }
-                state.error != null && state.items.isEmpty() -> NotiErrorState(
-                    message = state.error ?: "오류가 발생했습니다",
-                    onRetry = { viewModel?.refresh() },
-                )
-                displayItems.isEmpty() -> EmptyNotification()
-                else -> {
-                    LazyColumn(
-                        state = listState,
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = { viewModel?.refresh() },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading -> Box(
                         modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        items(displayItems, key = { it.id }) { item ->
-                            NotificationItemRow(
-                                item = item,
-                                onClick = {
-                                    if (!item.isRead) viewModel?.markRead(item.id)
-                                    onItemClick(item)
-                                },
-                            )
-                        }
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Orange500N,
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                    )
+                        CircularProgressIndicator(color = Orange500N)
+                    }
+                    state.error != null && state.items.isEmpty() -> NotiErrorState(
+                        message = state.error ?: "오류가 발생했습니다",
+                        onRetry = { viewModel?.refresh() },
+                    )
+                    displayItems.isEmpty() -> EmptyNotification()
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(displayItems, key = { it.id }) { item ->
+                                NotificationItemRow(
+                                    item = item,
+                                    onClick = {
+                                        if (!item.isRead) viewModel?.markRead(item.id)
+                                        onItemClick(item)
+                                    },
+                                )
+                            }
+                            if (state.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Orange500N,
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -397,24 +408,13 @@ private fun NotificationItemContent(item: NotificationItem) {
 
 @Composable
 private fun EmptyNotification() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.PriorityHigh,
-                contentDescription = null,
-                tint = Color(0xFFD1D5DB),
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "알림이 없습니다",
-                fontFamily = PretendardFamily,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-                color = Brown700N,
-            )
-        }
-    }
+    EmptyStateView(
+        title = "아직 알림이 없어요",
+        subtitle = "새로운 활동이 있으면 여기에 표시됩니다",
+        iconRes = R.drawable.ic_notifications,
+        iconTint = Color(0xFF8A6E58),
+        iconBackground = Color(0xFFE8D3C2),
+    )
 }
 
 @Composable

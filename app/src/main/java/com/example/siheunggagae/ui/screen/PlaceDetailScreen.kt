@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -86,6 +87,10 @@ import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import com.example.siheunggagae.ui.util.CategoryVisual
 import com.kakao.vectormap.MapView
 import kotlinx.coroutines.launch
 
@@ -108,7 +113,7 @@ private val MapSkyPL     = Color(0xFFE0F7FA)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun PlaceDetailScreen(
     placeId: Int = 0,
@@ -117,6 +122,8 @@ fun PlaceDetailScreen(
     onBack: () -> Unit = {},
     onNavigateToMap: (lat: Double, lng: Double, storeId: Int) -> Unit = { _, _, _ -> },
     onEditRequestClick: (storeId: Int) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -251,23 +258,35 @@ fun PlaceDetailScreen(
             val s = store!!
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     bottom = innerPadding.calculateBottomPadding() + 16.dp,
                 ),
             ) {
                 // ── 히어로 헤더 ────────────────────────────────────────────────────
                 item {
+                    val visual = CategoryVisual.forCategory(s.category)
+                    // sharedElement modifier — Home 의 카테고리 아이콘 박스와 동일한 key 로 연결
+                    val heroIconModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                        with(sharedTransitionScope) {
+                            Modifier.sharedElement(
+                                rememberSharedContentState(key = "store_hero_$placeId"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                            )
+                        }
+                    } else {
+                        Modifier
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                Brush.linearGradient(listOf(MapMintPL, Color(0xFFB2DFBF), Color(0xFFD8F2DC)))
+                                Brush.linearGradient(visual.gradient)
                             ),
                     ) {
                         // 상태바 높이 + 콘텐츠 높이
                         Column {
                             Spacer(Modifier.statusBarsPadding())
-                            Box(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                            Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
                                 // 다크 오버레이 (하단 → 상단)
                                 Box(
                                     modifier = Modifier
@@ -278,6 +297,25 @@ fun PlaceDetailScreen(
                                                 1f to Color(0x80000000),
                                             )
                                         ),
+                                )
+                                // 워터마크 (반투명 큰 아이콘)
+                                Icon(
+                                    painter = painterResource(visual.drawableRes),
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.12f),
+                                    modifier = Modifier
+                                        .size(180.dp)
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = 8.dp, bottom = 8.dp),
+                                )
+                                // 전경 카테고리 아이콘 (선명) — Home 아이콘 박스와 shared element 연결
+                                Icon(
+                                    painter = painterResource(visual.drawableRes),
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = heroIconModifier
+                                        .size(72.dp)
+                                        .align(Alignment.Center),
                                 )
                                 // 플로팅 버튼 (상단)
                                 Row(
@@ -341,21 +379,29 @@ fun PlaceDetailScreen(
                                     }
                                 }
                                 // 매장 정보 (하단 좌측)
+                                // 흰 시트(20dp) 위로 충분히 올라오도록 bottom padding = 36dp
                                 Column(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 36.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     // 카테고리 배지
-                                    val catLabel = when (s.category) {
-                                        "PET_HOTEL"  -> "🏨 반려동물 호텔"
-                                        "CAFE"       -> "☕ 카페"
-                                        "RESTAURANT" -> "🍽 식당"
-                                        "PARK"       -> "🌳 공원"
+                                    val catLabelText = when (s.category) {
+                                        "PET_HOTEL"  -> "반려동물 호텔"
+                                        "CAFE"       -> "카페"
+                                        "RESTAURANT" -> "식당"
+                                        "PARK"       -> "공원"
                                         else         -> null
                                     }
-                                    if (catLabel != null) {
+                                    val catIconRes = when (s.category) {
+                                        "PET_HOTEL"  -> R.drawable.ic_hotel
+                                        "CAFE"       -> R.drawable.ic_coffee
+                                        "RESTAURANT" -> R.drawable.ic_utensils
+                                        "PARK"       -> R.drawable.ic_forest
+                                        else         -> null
+                                    }
+                                    if (catLabelText != null) {
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(50.dp))
@@ -363,14 +409,24 @@ fun PlaceDetailScreen(
                                                 .border(1.dp, Color(0x80FFFFFF), RoundedCornerShape(50.dp))
                                                 .padding(horizontal = 10.dp, vertical = 3.dp),
                                         ) {
-                                            Text(
-                                                text = catLabel,
-                                                fontFamily = PretendardFamily,
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                lineHeight = 16.sp,
-                                                color = Color.White,
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                if (catIconRes != null) {
+                                                    Icon(
+                                                        painter = painterResource(catIconRes),
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(11.dp),
+                                                        tint = Color.White,
+                                                    )
+                                                }
+                                                Text(
+                                                    text = catLabelText,
+                                                    fontFamily = PretendardFamily,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    lineHeight = 16.sp,
+                                                    color = Color.White,
+                                                )
+                                            }
                                         }
                                     }
                                     // 매장명
@@ -430,6 +486,15 @@ fun PlaceDetailScreen(
                                         }
                                     }
                                 }
+                                // 하단 흰 카드 연결 (시흥가개 본문 영역과 부드럽게 이어주는 시트)
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .height(20.dp)
+                                        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                                        .background(Color.White),
+                                )
                             }
                         }
                     }
@@ -465,7 +530,8 @@ fun PlaceDetailScreen(
                 // 후기 카드 헤더
                 item {
                     SectionCardPL(
-                        title = "💬 후기",
+                        title = "후기",
+                        leadingIcon = R.drawable.ic_chat_bubble,
                         actionContent = {
                             Box(
                                 modifier = Modifier
@@ -485,7 +551,8 @@ fun PlaceDetailScreen(
                             }
                         },
                     ) {
-                        if (s.ratingAvg != null) {
+                        // 후기 0건 또는 평점 없음 → 빈 상태로 대체 (회색 별 5개 노출 방지)
+                        if (s.ratingAvg != null && reviews.isNotEmpty()) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -516,6 +583,31 @@ fun PlaceDetailScreen(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Normal,
                                     lineHeight = 16.sp,
+                                    color = Brown700PL,
+                                )
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = "아직 후기가 없어요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    lineHeight = 20.sp,
+                                    color = TextBlackPL,
+                                )
+                                Text(
+                                    text = "첫 후기를 남겨주세요",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    lineHeight = 18.sp,
                                     color = Brown700PL,
                                 )
                             }
@@ -700,6 +792,7 @@ private fun PlaceDetailTopBar(
 private fun SectionCardPL(
     title: String,
     modifier: Modifier = Modifier,
+    leadingIcon: Int? = null,
     actionContent: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -718,14 +811,24 @@ private fun SectionCardPL(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 20.sp,
-                color = TextBlackPL,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (leadingIcon != null) {
+                    Icon(
+                        painter = painterResource(leadingIcon),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = TextBlackPL,
+                    )
+                }
+                Text(
+                    text = title,
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 20.sp,
+                    color = TextBlackPL,
+                )
+            }
             actionContent?.invoke()
         }
         HorizontalDivider(color = DividerPL, thickness = 1.dp)
@@ -743,7 +846,8 @@ private fun PlanCardPL(plans: List<PetHotelPlan>) {
     val remaining = sorted.size - 3
 
     SectionCardPL(
-        title = "💰 요금 플랜",
+        title = "요금 플랜",
+        leadingIcon = R.drawable.ic_banknote,
         actionContent = {
             Text(
                 text = "${plans.size}개",
@@ -836,7 +940,7 @@ private fun LocationCardPL(
     val mapLat = store.latitude?.takeIf { it != 0.0 } ?: initialLat.takeIf { it != 0.0 }
     val mapLng = store.longitude?.takeIf { it != 0.0 } ?: initialLng.takeIf { it != 0.0 }
 
-    SectionCardPL(title = "📍 위치 & 연락처") {
+    SectionCardPL(title = "위치 & 연락처", leadingIcon = R.drawable.ic_map_pin) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -846,8 +950,8 @@ private fun LocationCardPL(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                 ) {
                     AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
                     Box(
@@ -884,13 +988,32 @@ private fun LocationCardPL(
                             )
                         }
                     }
+                    // 우하단 CTA pill
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .shadow(2.dp, RoundedCornerShape(50.dp))
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Color.White.copy(alpha = 0.92f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "지도에서 보기 →",
+                            fontFamily = PretendardFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Brown900PL,
+                        )
+                    }
                 }
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Brush.linearGradient(listOf(MapSkyPL, MapMintPL))),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -945,6 +1068,9 @@ private fun LocationCardPL(
                 ) { CopyButtonPL { onCopyPhone() } }
             }
             // 액션 버튼 행
+            // 1/3 폭에 글자가 줄바꿈되지 않도록 2글자 라벨로 통일 + maxLines=1 + contentPadding 축소
+            // 접근성을 위해 Icon contentDescription 으로 의미 보존
+            val actionBtnPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -955,20 +1081,23 @@ private fun LocationCardPL(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BrownBorderPL),
+                        contentPadding = actionBtnPadding,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_call),
-                            contentDescription = null,
+                            contentDescription = "전화 걸기",
                             tint = Brown700PL,
                             modifier = Modifier.size(14.dp),
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "📞 전화",
+                            "전화",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = Brown700PL,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
                         )
                     }
                 }
@@ -981,13 +1110,23 @@ private fun LocationCardPL(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, BrownBorderPL),
+                    contentPadding = actionBtnPadding,
                 ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_map),
+                        contentDescription = "지도에서 보기",
+                        tint = Brown700PL,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
                     Text(
-                        "🧭 지도에서 보기",
+                        "지도",
                         fontFamily = PretendardFamily,
                         fontSize = 12.sp,
                         lineHeight = 16.sp,
                         color = Brown700PL,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
                     )
                 }
                 if (!store.address.isNullOrEmpty()) {
@@ -996,13 +1135,23 @@ private fun LocationCardPL(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(1.dp, BrownBorderPL),
+                        contentPadding = actionBtnPadding,
                     ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_copy),
+                            contentDescription = "주소 복사",
+                            tint = Brown700PL,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            "📋 주소 복사",
+                            "복사",
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
                             color = Brown700PL,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
                         )
                     }
                 }

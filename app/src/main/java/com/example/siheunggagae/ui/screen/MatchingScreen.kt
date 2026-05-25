@@ -82,6 +82,7 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
+import com.example.siheunggagae.ui.component.ShimmerBox
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -93,6 +94,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
 
 private val Brown900M     = Color(0xFF614B3A)
@@ -322,14 +324,14 @@ private fun SkeletonCards() {
                     .alpha(a),
             ) {
                 Row(Modifier.padding(14.dp)) {
-                    Box(Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFFF4F4F4)))
+                    ShimmerBox(Modifier.size(60.dp), shape = RoundedCornerShape(12.dp))
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Box(Modifier.height(14.dp).fillMaxWidth(0.5f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(14.dp).fillMaxWidth(0.5f), shape = RoundedCornerShape(6.dp))
                         Spacer(Modifier.height(8.dp))
-                        Box(Modifier.height(14.dp).fillMaxWidth(0.8f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(14.dp).fillMaxWidth(0.8f), shape = RoundedCornerShape(6.dp))
                         Spacer(Modifier.height(8.dp))
-                        Box(Modifier.height(10.dp).fillMaxWidth(0.6f).clip(RoundedCornerShape(6.dp)).background(Color(0xFFF4F4F4)))
+                        ShimmerBox(Modifier.height(10.dp).fillMaxWidth(0.6f), shape = RoundedCornerShape(6.dp))
                     }
                 }
             }
@@ -406,6 +408,8 @@ internal fun MatchCardR(
 ) {
     val status = item.status ?: "RECRUITING"
     val cardAlpha = if (status == "DONE") 0.55f else 1f
+    val interaction = rememberAppleInteractionSource()
+    val haptic = LocalHapticFeedback.current
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -414,7 +418,11 @@ internal fun MatchCardR(
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 6.dp)
             .alpha(cardAlpha)
-            .clickable { onClick() },
+            .appleTapScale(interaction)
+            .clickable(interactionSource = interaction, indication = null) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            },
     ) {
         Box {
             Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
@@ -544,7 +552,7 @@ private fun StatusChip(status: String) {
         "REVIEWING" -> Triple(Color(0xFFFEF3C7), Color(0xFFCA8A04), "검토중")
         "IN_PROGRESS" -> Triple(Color(0xFFDCFCE7), Color(0xFF16A34A), "진행중")
         "DONE" -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), "완료")
-        else -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), status)
+        else -> Triple(Color(0xFFF3F4F6), Color(0xFF6B7280), matchStatusToKorean(status))
     }
     Box(
         modifier = Modifier

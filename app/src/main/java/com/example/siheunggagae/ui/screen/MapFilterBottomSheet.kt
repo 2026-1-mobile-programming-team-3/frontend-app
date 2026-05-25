@@ -1,6 +1,7 @@
 ﻿package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.component.SheetHandle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -78,7 +79,7 @@ fun MapFilterBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         containerColor = Color.White,
-        dragHandle = null,
+        dragHandle = { SheetHandle() },
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
 

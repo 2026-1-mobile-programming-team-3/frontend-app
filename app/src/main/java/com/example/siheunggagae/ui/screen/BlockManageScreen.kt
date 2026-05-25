@@ -24,7 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -185,49 +185,19 @@ fun BlockManageScreen(
     // 차단 해제 확인 다이얼로그
     val target = pendingUnblock
     if (target != null) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { pendingUnblock = null },
-            title = {
-                Text(
-                    text = "차단 해제",
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlackB,
-                )
+            title = "차단 해제",
+            text = "${target.targetNickname ?: "이 사용자"}님의 차단을 해제하시겠어요?",
+            confirmText = "해제",
+            onConfirm = {
+                target.blockId?.let { viewModel?.unblock(it) }
+                pendingUnblock = null
             },
-            text = {
-                Text(
-                    text = "${target.targetNickname ?: "이 사용자"}님의 차단을 해제하시겠어요?",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = Brown700B,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    target.blockId?.let { viewModel?.unblock(it) }
-                    pendingUnblock = null
-                }) {
-                    Text(
-                        text = "해제",
-                        fontFamily = PretendardFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = Pink500B,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingUnblock = null }) {
-                    Text(
-                        text = "취소",
-                        fontFamily = PretendardFamily,
-                        color = Brown700B,
-                    )
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(16.dp),
+            dismissText = "취소",
+            onDismiss = { pendingUnblock = null },
+            confirmColor = Pink500B,
+            dismissColor = Brown700B,
         )
     }
 }

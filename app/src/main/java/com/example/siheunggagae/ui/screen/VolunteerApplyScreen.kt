@@ -226,6 +226,13 @@ fun VolunteerApplyScreen(
                         placeholder = "예: 봉사자 자격 요청드립니다.",
                         singleLine = true,
                     )
+                    Text(
+                        text = "본인 확인용 메모입니다 (서버에 저장되지 않아요)",
+                        fontFamily = PretendardFamily,
+                        fontSize = 11.sp,
+                        color = Brown700VA,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                    )
                 },
             )
 

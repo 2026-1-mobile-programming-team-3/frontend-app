@@ -20,7 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
@@ -195,35 +195,18 @@ fun StoreRequestDetailScreen(
     }
 
     if (showCancelDialog) {
-        AlertDialog(
+        SiheungAlertDialog(
             onDismissRequest = { showCancelDialog = false },
-            title = {
-                Text(
-                    "요청 취소",
-                    fontFamily = PretendardFamily,
-                    fontWeight = FontWeight.Bold,
-                )
+            title = "요청 취소",
+            text = "정말 이 요청을 취소할까요? 이 작업은 되돌릴 수 없어요.",
+            confirmText = "취소하기",
+            onConfirm = {
+                showCancelDialog = false
+                viewModel?.cancelRequest()
             },
-            text = {
-                Text(
-                    "정말 이 요청을 취소할까요? 이 작업은 되돌릴 수 없어요.",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showCancelDialog = false
-                    viewModel?.cancelRequest()
-                }) {
-                    Text("취소하기", color = Pink500D, fontFamily = PretendardFamily)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCancelDialog = false }) {
-                    Text("닫기", fontFamily = PretendardFamily)
-                }
-            },
+            dismissText = "닫기",
+            onDismiss = { showCancelDialog = false },
+            confirmColor = Pink500D,
         )
     }
 }
