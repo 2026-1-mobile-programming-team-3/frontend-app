@@ -41,6 +41,7 @@ data class HomeUiState(
     val news: List<NewsItem> = emptyList(),
     val selectedCategory: StoreCategory = StoreCategory.ALL,
     val location: Location? = null,
+    val isLocationInSiheung: Boolean = false,
     val mapCenter: Pair<Double, Double>? = null,
 )
 
@@ -76,6 +77,7 @@ class HomeViewModel(
                     api.reverseGeocode(location.latitude, location.longitude).body()
                 }.getOrNull()?.takeIf { it.isInSiheung }?.label
             } else null
+            _uiState.update { it.copy(isLocationInSiheung = gpsDong != null) }
 
             // 우선순위: 수동 선택(로컬 저장) > GPS > 서버 저장값 > 기본값
             val manualDong = prefs.getString(KEY_MANUAL_DONG, null)
@@ -138,8 +140,8 @@ class HomeViewModel(
                 }
             }
 
-            val lat = location?.latitude ?: 37.3795
-            val lng = location?.longitude ?: 126.8025
+            // GPS가 시흥 안일 때만 GPS 사용, 아니면 regionDong 좌표로 폴백
+            val (lat, lng) = resolveStoresAnchor(location, gpsDong)
             val stores = runCatching {
                 api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
             }.getOrDefault(emptyList())
@@ -161,8 +163,13 @@ class HomeViewModel(
                 if (_uiState.value.allStores.isNotEmpty()) {
                     _uiState.update { it.copy(displayedStores = _uiState.value.allStores) }
                 } else {
-                    val lat = _uiState.value.location?.latitude ?: 37.3795
-                    val lng = _uiState.value.location?.longitude ?: 126.8025
+                    val loc = _uiState.value.location
+                    val (lat, lng) = if (loc != null && _uiState.value.isLocationInSiheung) {
+                        loc.latitude to loc.longitude
+                    } else {
+                        SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
+                            ?: SiheungRegions.CITY_HALL
+                    }
                     val stores = runCatching {
                         api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
                     }.getOrDefault(emptyList())
@@ -194,6 +201,23 @@ class HomeViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * 매장 조회 기준 좌표 결정.
+     * - GPS가 시흥 안(`gpsDong != null`)이면 GPS 좌표 사용
+     * - 아니면 현재 regionDong(이미 manualDong → gpsDong → serverDong → 기본값 폴백됨) 좌표
+     * - 알 수 없는 동이면 시청(CITY_HALL) 좌표
+     */
+    private fun resolveStoresAnchor(
+        location: Location?,
+        gpsDong: String?,
+    ): Pair<Double, Double> {
+        if (location != null && gpsDong != null) {
+            return location.latitude to location.longitude
+        }
+        return SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
+            ?: SiheungRegions.CITY_HALL
     }
 
     fun resetToCurrentLocation() {
