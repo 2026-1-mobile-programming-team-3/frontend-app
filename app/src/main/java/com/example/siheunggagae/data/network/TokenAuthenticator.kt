@@ -26,6 +26,9 @@ class TokenAuthenticator(
         // auth 관련 경로(login, signup, refresh)는 재시도하지 않음
         if ("/auth/" in response.request.url.encodedPath) return null
 
+        // 이미 한 번 재시도했는데도 401이면 무한루프 방지를 위해 포기
+        if (response.priorResponse != null) return null
+
         val staleToken = response.request.header("Authorization")?.removePrefix("Bearer ")
         val currentToken = tokenManager.accessToken
 
