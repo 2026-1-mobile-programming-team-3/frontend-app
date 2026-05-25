@@ -81,6 +81,7 @@ import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
 import com.example.siheunggagae.ui.viewmodel.RequestViewModel
+import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.GeoSearchResult
 import com.example.siheunggagae.data.network.RetrofitClient
 import androidx.compose.ui.focus.FocusRequester
@@ -1064,18 +1065,23 @@ private fun LocationSearchBottomSheet(
     onDismiss: () -> Unit,
     onPlaceSelected: (GeoSearchResult) -> Unit
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf(initialQuery) }
     var searchResults by remember { mutableStateOf<List<GeoSearchResult>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
+    // 디바이스 GPS 좌표(거리 계산 기준). 권한/실패 시 null → 시흥시청 폴백.
+    var userCoords by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     LaunchedEffect(Unit) {
+        val loc = runCatching { LocationProvider(context).getLocationOrNull() }.getOrNull()
+        if (loc != null) userCoords = loc.longitude to loc.latitude
         delay(180L) // 바텀시트 등장 애니메이션 후에 포커스
         runCatching { focusRequester.requestFocus() }
     }
 
-    LaunchedEffect(searchQuery) {
+    LaunchedEffect(searchQuery, userCoords) {
         if (searchQuery.isBlank()) {
             searchResults = emptyList()
             isSearching = false
@@ -1085,11 +1091,12 @@ private fun LocationSearchBottomSheet(
         delay(300L)
         isSearching = true
         searchError = null
+        val (cx, cy) = userCoords ?: (126.8030 to 37.3799)
         val response = runCatching {
             RetrofitClient.api.searchGeo(
                 query = searchQuery,
-                x = 126.8030,
-                y = 37.3799,
+                x = cx,
+                y = cy,
                 radius = 20000,
                 size = 15,
             )
