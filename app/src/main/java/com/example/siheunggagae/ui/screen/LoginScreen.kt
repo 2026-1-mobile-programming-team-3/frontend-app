@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
@@ -65,9 +64,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 private val BackgroundLogin  = Color(0xFFFEFEFE)
 private val TextBlackLogin   = Color(0xFF1E120A)
+private val Brown900Login    = Color(0xFF614B3A)
 private val Brown700Login    = Color(0xFF8A6E58)
 private val BorderBeigeLogin = Color(0xFFE8D3C2)
-private val PlaceholderLogin = Color(0xFFC1AEA0)
+private val PlaceholderLogin = Color(0xFFA68A77)
+private val OrangeSandLogin  = Color(0xFFFFEDD4)
 private val Orange500Login   = Color(0xFFF7A35B)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
@@ -122,8 +123,8 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(if (isLoading) Orange500Login.copy(alpha = 0.6f) else Orange500Login)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isLoading) Brown900Login.copy(alpha = 0.6f) else Brown900Login)
                         .then(
                             if (!isLoading) Modifier.clickable {
                                 viewModel?.login(emailInput, passwordInput)
@@ -140,9 +141,9 @@ fun LoginScreen(
                         Text(
                             text = "로그인",
                             fontFamily = PretendardFamily,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 28.sp,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            lineHeight = 24.sp,
                             color = Color.White,
                         )
                     }
@@ -165,7 +166,7 @@ fun LoginScreen(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 20.sp,
-                        color = Orange500Login,
+                        color = Brown900Login,
                         modifier = Modifier.clickable { onNavigateToRegister() },
                     )
                 }
@@ -182,12 +183,9 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFFFFEDD4), Color(0xFFFEFEFE)),
-                        )
-                    ),
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
+                    .background(OrangeSandLogin),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -204,7 +202,7 @@ fun LoginScreen(
                         fontFamily = PretendardFamily,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF614B3A),
+                        color = Brown900Login,
                     )
                 }
             }
@@ -254,7 +252,7 @@ fun LoginScreen(
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
                                     lineHeight = 20.sp,
-                                    color = PlaceholderLogin,
+                                    color = Brown700Login,
                                 )
                             }
                             if (errorMessage != null) {
