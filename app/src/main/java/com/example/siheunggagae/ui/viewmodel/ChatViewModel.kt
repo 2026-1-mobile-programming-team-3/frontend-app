@@ -50,6 +50,9 @@ class ChatViewModel(
     var myUserId by mutableStateOf(-1)
         private set
 
+    var opponentUserId by mutableStateOf(-1)
+        private set
+
     fun initChatRoom(matchId: Int, applicationId: Int) {
         this.mId = matchId
         this.appId = applicationId
@@ -73,11 +76,14 @@ class ChatViewModel(
                     myUserId = myId
                     isMyRequest = matchDetail?.author?.userId == myId
 
-                    opponentNickname = if (isMyRequest) {
+                    if (isMyRequest) {
                         val apps = api.getApplications(matchId).body()
-                        apps?.items?.find { it.applicationId == applicationId }?.applicant?.nickname ?: "지원자"
+                        val matchedApp = apps?.items?.find { it.applicationId == applicationId }
+                        opponentNickname = matchedApp?.applicant?.nickname ?: "지원자"
+                        opponentUserId = matchedApp?.applicant?.applicantId ?: -1
                     } else {
-                        matchDetail?.author?.nickname ?: "요청자"
+                        opponentNickname = matchDetail?.author?.nickname ?: "요청자"
+                        opponentUserId = matchDetail?.author?.userId ?: -1
                     }
 
                     hasMore = msgResponse.body()?.hasMore ?: false

@@ -277,7 +277,7 @@ fun ChatScreen(
 
         if (showBlockConfirmDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             SiheungAlertDialog(
                 onDismissRequest = { showBlockConfirmDialog = false },
@@ -314,7 +314,7 @@ fun ChatScreen(
 
         if (showUserReportDialog) {
             val state = uiState as? ChatUiState.Success
-            val opponentId = state?.messages?.firstOrNull { it.senderId != viewModel.myUserId }?.senderId ?: -1
+            val opponentId = viewModel.opponentUserId
 
             AlertDialog(
                 onDismissRequest = { showUserReportDialog = false },
