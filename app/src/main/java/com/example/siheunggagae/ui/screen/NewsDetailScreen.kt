@@ -68,13 +68,29 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.util.newsFallbackDrawable
 
+private fun categoryToKorean(category: String?) = when (category?.uppercase()) {
+    "POLICY"    -> "정책"
+    "EVENT"     -> "행사"
+    "VOLUNTEER" -> "봉사"
+    "SUPPORT"   -> "지원"
+    else        -> category ?: "소식"
+}
+
 private val Brown900ND    = Color(0xFF614B3A)
 private val Brown700ND    = Color(0xFF8A6E58)
 private val BrownBorderND = Color(0xFFE8D3C2)
 private val Orange500ND   = Color(0xFFF7A35B)
+private val Green500ND    = Color(0xFF00A63E)
 private val OrangeSandND  = Color(0xFFFFEDD4)
 private val PinkSurfaceND = Color(0xFFFEE7EC)
 private val BackgroundND  = Color(0xFFFEFEFE)
+
+private fun categoryColor(category: String?) = when (categoryToKorean(category)) {
+    "행사" -> Green500ND
+    "봉사" -> Pink500ND
+    "지원" -> Orange500ND
+    else   -> Brown700ND
+}
 private val TextBlackND   = Color(0xFF1E120A)
 private val Pink500ND     = Color(0xFFF04268)
 
@@ -275,11 +291,11 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
             .padding(24.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val category = detail?.category ?: "소식"
+            val category = categoryToKorean(detail?.category)
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Orange500ND)
+                    .background(categoryColor(detail?.category))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             ) {
                 Text(
@@ -450,7 +466,7 @@ private fun RelatedNewsSection(items: List<NewsItem>, onItemClick: (String) -> U
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = news.category ?: "소식",
+                            text = categoryToKorean(news.category),
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,
