@@ -7,13 +7,13 @@ import com.google.gson.annotations.SerializedName
 data class MatchCreateRequest(
     val title: String,
     val content: String,
-    val category: MatchCategory,           // 신규 필수 (백엔드 §2)
+    val category: MatchCategory,
     val latitude: Float,
     val longitude: Float,
     val address: String? = null,
     val desiredDate: String? = null,
     @SerializedName("desired_time") val desiredTime: String? = null,
-    val petId: Int? = null,
+    @SerializedName("pet_ids") val petIds: List<Int>? = null, // 1번 개선: 단일 petId에서 다중 petIds 배열로 확장
 )
 
 data class MatchCreateResponse(
@@ -25,18 +25,17 @@ data class MatchCreateResponse(
 data class MatchUpdateRequest(
     val title: String? = null,
     val content: String? = null,
-    val category: MatchCategory? = null,   // 신규 옵셔널 (백엔드 §3)
+    val category: MatchCategory? = null,
     val latitude: Float? = null,
     val longitude: Float? = null,
     val address: String? = null,
     val desiredDate: String? = null,
-    @com.google.gson.annotations.SerializedName("desired_time") val desiredTime: String? = null,
-    val petId: Int? = null,
+    @SerializedName("desired_time") val desiredTime: String? = null,
+    @SerializedName("pet_ids") val petIds: List<Int>? = null, // 1번 개선: 단일 petId에서 다중 petIds 배열로 확장
 )
 
 enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER, OTHER }
 
-/** 봉사자 자격(VOLUNTEER role) 보유자만 작성 가능한 카테고리. 백엔드 확정: VOLUNTEER 단일. */
 fun MatchCategory.requiresVolunteerRole(): Boolean = this == MatchCategory.VOLUNTEER
 
 data class MatchListItem(
@@ -55,7 +54,6 @@ data class MatchListItem(
     @SerializedName("unread_message_count") val unreadMessageCount: Int = 0,
     @SerializedName("my_application_status") val myApplicationStatus: String? = null,
     @SerializedName("received_rating") val receivedRating: Int? = null,
-    // ── 신규 (매칭 화면 개선) ──
     val category: MatchCategory? = null,
     @SerializedName(value = "author_user_id", alternate = ["authorUserId"])
     val authorUserId: Int? = null,
@@ -85,7 +83,8 @@ data class MatchPet(
 data class MatchDetailResponse(
     val matchId: Int? = null,
     val author: MatchAuthor? = null,
-    val pet: MatchPet? = null,
+    val pet: MatchPet? = null, // 하이브리드 스펙 유지
+    @SerializedName("pets") val pets: List<MatchPet>? = null, // 1번 개선: 여러 마리 정보 반환을 수용할 수 있는 복수 배열 추가
     val title: String? = null,
     val content: String? = null,
     val address: String? = null,
@@ -135,16 +134,16 @@ data class ApplicationActionResponse(
 )
 
 data class ApplicationApplicant(
-    @SerializedName("applicant_id") val applicantId: Int? = null,     //  핵심 버그 해결 포인트!
+    @SerializedName("applicant_id") val applicantId: Int? = null,
     val nickname: String? = null,
 )
 
 data class ApplicationItem(
-    @SerializedName("application_id") val applicationId: Int? = null, //  핵심 버그 해결 포인트!
+    @SerializedName("application_id") val applicationId: Int? = null,
     val applicant: ApplicationApplicant? = null,
     val message: String? = null,
     val status: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null,       //  추가
+    @SerializedName("created_at") val createdAt: String? = null,
 )
 
 data class ApplicationListResponse(
