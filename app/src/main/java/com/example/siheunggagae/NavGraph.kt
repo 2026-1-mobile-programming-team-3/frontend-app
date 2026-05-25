@@ -672,61 +672,11 @@ fun AppNavGraph(
                     NotificationRepository(notifApp.localNotificationStore)
                 )
             )
-            val notifScope = rememberCoroutineScope()
-            val notifApi = com.example.siheunggagae.data.network.RetrofitClient.api
             NotificationScreen(
                 viewModel = notifViewModel,
                 onBack = { navController.popBackStack() },
                 onItemClick = { item ->
-                    // 링크 없는 채팅 알림(MATCH=요청자, VOLUNTEER=봉사자) → API로 활성 매칭 찾아 이동
-                    if (item.link.isNullOrBlank() &&
-                        (item.category == com.example.siheunggagae.data.model.NotificationCategory.MATCH ||
-                         item.category == com.example.siheunggagae.data.model.NotificationCategory.VOLUNTEER)
-                    ) {
-                        notifScope.launch {
-                            try {
-                                val isAuthor = item.category == com.example.siheunggagae.data.model.NotificationCategory.MATCH
-                                val role = if (isAuthor) "author" else "applicant"
-                                val resp = notifApi.getMyMatches(role = role, status = "PROGRESS")
-                                val matchItems = resp.body()?.items.orEmpty()
-                                // 읽지 않은 메시지가 있는 매칭 우선, 없으면 첫 번째
-                                val match = matchItems.firstOrNull { it.unreadMessageCount > 0 }
-                                    ?: matchItems.firstOrNull()
-                                val matchId = match?.matchId ?: run {
-                                    navController.navigate(Screen.Matching.route); return@launch
-                                }
-
-                                // 해당 매칭의 지원 목록으로 applicationId 탐색
-                                val appResp = notifApi.getApplications(matchId)
-                                val appItems = appResp.body()?.items.orEmpty()
-
-                                val appId: Int? = if (isAuthor) {
-                                    // 요청자: ACCEPTED 상태 지원의 applicationId
-                                    appItems.firstOrNull { it.status?.trim()?.uppercase() == "ACCEPTED" }?.applicationId
-                                } else {
-                                    // 봉사자: 내 userId와 일치하는 지원의 applicationId
-                                    val myId = notifApi.getMe().body()?.id
-                                    appItems.firstOrNull { it.applicant?.applicantId == myId }?.applicationId
-                                }
-
-                                if (appId != null) {
-                                    // 채팅 직행
-                                    navController.navigate(Screen.Chat.createRoute(matchId, appId))
-                                } else {
-                                    // 폴백: 해당 요청 모집글로 이동
-                                    if (isAuthor) {
-                                        navController.navigate(Screen.MatchingDetail.createRoute(matchId))
-                                    } else {
-                                        navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
-                                    }
-                                }
-                            } catch (_: Exception) {
-                                navController.navigate(Screen.Matching.route)
-                            }
-                        }
-                    } else {
-                        handleNotificationDeeplink(item.link, navController, item.category)
-                    }
+                    handleNotificationDeeplink(item.link, navController, item.category)
                 },
             )
         }
