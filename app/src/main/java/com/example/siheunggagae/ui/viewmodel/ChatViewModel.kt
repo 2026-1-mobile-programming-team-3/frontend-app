@@ -109,8 +109,8 @@ class ChatViewModel(
                 val oldestMessageId = currentMessages.first().id
                 val response = api.getChatMessages(mId, appId, beforeId = oldestMessageId)
 
-                if (response.isSuccessful && response.body() != null) {
-                    val pageData = response.body()!!
+                val pageData = response.body()
+                if (response.isSuccessful && pageData != null) {
                     hasMore = pageData.hasMore
 
                     val oldMessages = pageData.items.reversed()
@@ -152,8 +152,8 @@ class ChatViewModel(
                 val body = com.example.siheunggagae.data.model.ChatMessageCreateRequest(content)
                 val response = api.sendChatMessage(mId, appId, body)
 
-                if (response.isSuccessful && response.body() != null) {
-                    val resBody = response.body()!!
+                val resBody = response.body()
+                if (response.isSuccessful && resBody != null) {
                     val newMessage = ChatMessageItem(
                         id = resBody.id,
                         content = resBody.content,

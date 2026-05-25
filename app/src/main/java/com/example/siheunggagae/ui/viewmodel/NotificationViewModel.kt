@@ -94,8 +94,8 @@ class NotificationViewModel(
         loadJob = viewModelScope.launch {
             try {
                 val resp = repository.getNotifications(page = currentPage, size = 20)
-                if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
                     total = body.total
                     buffer.addAll(body.items)
                     currentPage++

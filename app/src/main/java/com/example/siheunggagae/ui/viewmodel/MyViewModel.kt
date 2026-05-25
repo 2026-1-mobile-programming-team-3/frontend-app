@@ -31,8 +31,10 @@ class MyViewModel(private val repository: UserRepository) : ViewModel() {
             try {
                 val meResp = repository.getMe()
                 val statsResp = repository.getActivityStats()
-                if (meResp.isSuccessful && statsResp.isSuccessful) {
-                    _uiState.value = MyUiState.Success(meResp.body()!!, statsResp.body()!!)
+                val me = meResp.body()
+                val stats = statsResp.body()
+                if (meResp.isSuccessful && statsResp.isSuccessful && me != null && stats != null) {
+                    _uiState.value = MyUiState.Success(me, stats)
                 } else {
                     _uiState.value = MyUiState.Error("정보를 불러오지 못했습니다")
                 }
@@ -47,8 +49,10 @@ class MyViewModel(private val repository: UserRepository) : ViewModel() {
             try {
                 val meResp = repository.getMe()
                 val statsResp = repository.getActivityStats()
-                if (meResp.isSuccessful && statsResp.isSuccessful) {
-                    _uiState.value = MyUiState.Success(meResp.body()!!, statsResp.body()!!)
+                val me = meResp.body()
+                val stats = statsResp.body()
+                if (meResp.isSuccessful && statsResp.isSuccessful && me != null && stats != null) {
+                    _uiState.value = MyUiState.Success(me, stats)
                 }
             } catch (_: Exception) { }
         }

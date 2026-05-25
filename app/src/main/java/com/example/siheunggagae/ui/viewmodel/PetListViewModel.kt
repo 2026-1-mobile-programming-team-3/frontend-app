@@ -29,8 +29,9 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
             _uiState.value = PetListUiState.Loading
             try {
                 val resp = repository.getMe()
-                _uiState.value = if (resp.isSuccessful && resp.body() != null) {
-                    PetListUiState.Success(resp.body()!!.pets)
+                val body = resp.body()
+                _uiState.value = if (resp.isSuccessful && body != null) {
+                    PetListUiState.Success(body.pets)
                 } else {
                     PetListUiState.Error("반려동물 정보를 불러오지 못했습니다")
                 }
@@ -44,8 +45,9 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 val resp = repository.getMe()
-                if (resp.isSuccessful && resp.body() != null) {
-                    _uiState.value = PetListUiState.Success(resp.body()!!.pets)
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    _uiState.value = PetListUiState.Success(body.pets)
                 }
             } catch (_: Exception) { }
         }

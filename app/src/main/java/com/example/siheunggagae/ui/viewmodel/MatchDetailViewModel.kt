@@ -42,8 +42,8 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
             isReviewWritten = false // 초기화
             try {
                 val response = api.getMatchDetail(matchId)
-                if (response.isSuccessful && response.body() != null) {
-                    val detail = response.body()!!
+                val detail = response.body()
+                if (response.isSuccessful && detail != null) {
 
                     // ─── 🌟 [신규 매핑 완료] 백엔드가 추가해 준 후기 작성 여부 값을 프론트 상태 변수에 동기화 ───
                     isReviewWritten = detail.isReviewed ?: false

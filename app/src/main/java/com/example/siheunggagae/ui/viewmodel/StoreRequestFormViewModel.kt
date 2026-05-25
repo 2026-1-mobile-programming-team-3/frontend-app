@@ -235,8 +235,9 @@ class StoreRequestFormViewModel(
         viewModelScope.launch {
             _submit.value = SubmitState.Submitting
             val resp = repository.submit(body)
-            _submit.value = if (resp.isSuccessful) {
-                SubmitState.Submitted(resp.body()!!.requestId)
+            val respBody = resp.body()
+            _submit.value = if (resp.isSuccessful && respBody != null) {
+                SubmitState.Submitted(respBody.requestId)
             } else when (resp.code()) {
                 409 -> SubmitState.Failed("이미 검토 중인 요청이 있어요")
                 429 -> SubmitState.Failed("잠시 후 다시 시도해주세요")

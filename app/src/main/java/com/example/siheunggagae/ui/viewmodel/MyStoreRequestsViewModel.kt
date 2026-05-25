@@ -41,8 +41,8 @@ class MyStoreRequestsViewModel(
         viewModelScope.launch {
             _state.value = MyStoreRequestsUiState.Loading
             val resp = repository.list(status = currentFilter, page = 1, size = 20)
-            if (resp.isSuccessful) {
-                val body = resp.body()!!
+            val body = resp.body()
+            if (resp.isSuccessful && body != null) {
                 _state.value = MyStoreRequestsUiState.Success(
                     items = body.items,
                     total = body.total,
@@ -60,8 +60,8 @@ class MyStoreRequestsViewModel(
         viewModelScope.launch {
             try {
                 val resp = repository.list(status = currentFilter, page = 1, size = 20)
-                if (resp.isSuccessful) {
-                    val body = resp.body()!!
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
                     _state.value = MyStoreRequestsUiState.Success(
                         items = body.items,
                         total = body.total,
@@ -80,8 +80,8 @@ class MyStoreRequestsViewModel(
         viewModelScope.launch {
             val next = s.page + 1
             val resp = repository.list(status = currentFilter, page = next, size = 20)
-            if (resp.isSuccessful) {
-                val body = resp.body()!!
+            val body = resp.body()
+            if (resp.isSuccessful && body != null) {
                 _state.value = s.copy(
                     items = s.items + body.items,
                     page = next,
