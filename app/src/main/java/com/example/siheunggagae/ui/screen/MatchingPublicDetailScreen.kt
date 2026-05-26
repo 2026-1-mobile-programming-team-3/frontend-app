@@ -52,7 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
+import com.example.siheunggagae.data.local.CurrentUserStore
+import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
@@ -98,9 +101,36 @@ fun MatchingPublicDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isVolunteer = remember { CurrentUserStore(context).isVolunteer() }
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
+    }
+
+    // 채팅/후기 진입 가드 — BottomBar와 RequesterCard에서 동일 로직을 공유.
+    // ACCEPTED 일 때만 실제 채팅 진입. PENDING은 수락 대기 안내, 미신청은 신청 유도, DONE은 후기로.
+    val handleChatClick: () -> Unit = {
+        val state = uiState as? MatchDetailUiState.Success
+        val currentStatus = state?.detail?.status?.trim()?.uppercase() ?: ""
+        when {
+            viewModel?.isAccepted == true -> {
+                val applicationId = viewModel.myApplicationId ?: 0
+                onNavigate(Screen.Chat.createRoute(requestId, applicationId))
+            }
+            currentStatus == "DONE" -> {
+                onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
+            }
+            viewModel?.isApplied == true -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar("요청자가 수락한 뒤에 채팅할 수 있어요.")
+                }
+            }
+            else -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -119,23 +149,18 @@ fun MatchingPublicDetailScreen(
                     currentStatus = currentStatus,
                     isMyRequest = isMyRequest,
                     isApplied = viewModel?.isApplied ?: false,
+                    isAccepted = viewModel?.isAccepted ?: false,
                     myApplicationStatus = viewModel?.myApplicationStatus ?: "",
+                    category = state.detail.category,
+                    isVolunteer = isVolunteer,
                     onApply = { showApplyDialog = true },
-                    onChat = {
-                        if (viewModel?.isApplied == true) {
-                            val applicationId = viewModel.myApplicationId ?: 0
-                            onNavigate(Screen.Chat.createRoute(requestId, applicationId))
-                        } else if (currentStatus == "DONE") {
-                            onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
-                        } else {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
-                            }
-                        }
-                    },
+                    onChat = handleChatClick,
                     onManageRequest = {
                         onNavigate(Screen.MatchingDetail.createRoute(requestId))
-                    }
+                    },
+                    onVolunteerApply = {
+                        onNavigate(Screen.VolunteerApply.route)
+                    },
                 )
             }
         },
@@ -175,19 +200,7 @@ fun MatchingPublicDetailScreen(
                             Text(text = "요청자 정보", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown700P)
                             RequesterCard(
                                 authorNickname = request.author?.nickname ?: "요청자",
-                                onChat = {
-                                    val currentStatus = request.status?.trim()?.uppercase() ?: ""
-                                    if (viewModel?.isApplied == true) {
-                                        val applicationId = viewModel.myApplicationId ?: 0
-                                        onNavigate(Screen.Chat.createRoute(requestId, applicationId))
-                                    } else if (currentStatus == "DONE") {
-                                        onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
-                                    } else {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("봉사 신청 후 채팅이 가능합니다!")
-                                        }
-                                    }
-                                }
+                                onChat = handleChatClick,
                             )
                         }
                     }
@@ -198,7 +211,10 @@ fun MatchingPublicDetailScreen(
 
         if (showApplyDialog) {
             AlertDialog(
-                onDismissRequest = { showApplyDialog = false },
+                onDismissRequest = {
+                    showApplyDialog = false
+                    applyMessage = ""
+                },
                 title = { Text("봉사 신청하기", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) },
                 text = {
                     OutlinedTextField(
@@ -210,8 +226,10 @@ fun MatchingPublicDetailScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel?.applyForMatch(requestId, applyMessage) { _, msg ->
+                        val message = applyMessage
+                        viewModel?.applyForMatch(requestId, message) { _, msg ->
                             showApplyDialog = false
+                            applyMessage = ""
                             scope.launch {
                                 snackbarHostState.showSnackbar(msg)
                             }
@@ -219,7 +237,10 @@ fun MatchingPublicDetailScreen(
                     }) { Text("신청하기", fontFamily = PretendardFamily) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showApplyDialog = false }) { Text("취소", fontFamily = PretendardFamily) }
+                    TextButton(onClick = {
+                        showApplyDialog = false
+                        applyMessage = ""
+                    }) { Text("취소", fontFamily = PretendardFamily) }
                 }
             )
         }
@@ -242,23 +263,6 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlackP,
             modifier = Modifier.align(Alignment.Center),
         )
-        Row(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PublicTopBarIcon(iconRes = R.drawable.ic_bookmark, desc = "북마크")
-            PublicTopBarIcon(iconRes = R.drawable.ic_share, desc = "공유")
-        }
-    }
-}
-
-@Composable
-private fun PublicTopBarIcon(iconRes: Int, desc: String) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { },
-    ) {
-        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -475,11 +479,20 @@ private fun PublicDetailBottomBar(
     currentStatus: String,
     isMyRequest: Boolean,
     isApplied: Boolean,
+    isAccepted: Boolean,
     myApplicationStatus: String,
+    category: MatchCategory?,
+    isVolunteer: Boolean,
     onApply: () -> Unit,
     onChat: () -> Unit,
-    onManageRequest: () -> Unit
+    onManageRequest: () -> Unit,
+    onVolunteerApply: () -> Unit,
 ) {
+    // 봉사자 자격이 필요한 카테고리인데 본인이 봉사자가 아니면 신청을 막는다.
+    // 이미 신청한 상태(isApplied)나 본인 요청(isMyRequest)은 가드 대상 아님.
+    val isBlockedByVolunteerRequirement =
+        category?.requiresVolunteerRole() == true && !isVolunteer && !isMyRequest && !isApplied
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -496,6 +509,42 @@ private fun PublicDetailBottomBar(
                     modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Brown900C).clickable { onManageRequest() },
                 ) {
                     Text(text = "지원 현황 및 목록 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+
+            isBlockedByVolunteerRequirement && currentStatus != "DONE" -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color(0xFFF2F2F2)),
+                ) {
+                    Text(
+                        text = "봉사자 자격이 필요한 요청이에요",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray,
+                    )
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Green600P)
+                        .clickable { onVolunteerApply() }
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Text(
+                        text = "자격 신청",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
                 }
             }
 
@@ -542,6 +591,17 @@ private fun PublicDetailBottomBar(
                 }
             }
 
+            // 신청은 했으나 아직 수락 전(PENDING) — 채팅 진입 차단, 안내만 노출
+            isApplied && !isAccepted -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Color(0xFFF2F2F2)),
+                ) {
+                    Text(text = "요청자 수락 대기 중", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                }
+            }
+
+            // ACCEPTED — 채팅 진입 가능
             else -> {
                 Box(
                     contentAlignment = Alignment.Center,

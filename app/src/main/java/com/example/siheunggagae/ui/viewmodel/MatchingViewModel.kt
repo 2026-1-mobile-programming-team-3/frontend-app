@@ -139,6 +139,24 @@ class MatchingViewModel(
         recompute()
     }
 
+    /**
+     * 본인 글 삭제. 성공 시 raw 목록에서 즉시 제거하고 recompute. 실패 시 onResult(false, msg).
+     * 부분 갱신만 하므로 페이지 카운터/lastIdSet 은 그대로 둔다 — 다음 refresh 때 자연 동기화.
+     */
+    fun deleteMatch(matchId: Int, onResult: (success: Boolean, message: String) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.deleteMatch(matchId)
+            result.onSuccess {
+                raw = raw.filterNot { it.matchId == matchId }
+                lastIdSet = lastIdSet - matchId
+                recompute()
+                onResult(true, "요청을 삭제했어요")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "삭제에 실패했어요")
+            }
+        }
+    }
+
     fun enterSearch() {
         if (isSearchMode) return
         isSearchMode = true

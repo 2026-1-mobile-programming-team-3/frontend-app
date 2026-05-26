@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -552,8 +551,6 @@ private fun MatchingDetailTopBar(
             if (isMyRequest && currentStatus != "DONE") {
                 TopBarIconD(imageVector = Icons.Default.Edit, desc = "수정", onClick = onEdit, tint = Brown700D)
                 TopBarIconD(imageVector = Icons.Default.Delete, desc = "삭제", onClick = onDelete, tint = Pink500D)
-            } else {
-                TopBarIconD(imageVector = Icons.Default.MoreVert, desc = "더보기")
             }
         }
     }

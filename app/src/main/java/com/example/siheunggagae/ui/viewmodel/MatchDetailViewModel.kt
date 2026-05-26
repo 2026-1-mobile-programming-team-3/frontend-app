@@ -23,7 +23,10 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
     private val _uiState = MutableStateFlow<MatchDetailUiState>(MatchDetailUiState.Loading)
     val uiState: StateFlow<MatchDetailUiState> = _uiState
 
+    /** 신청 기록이 존재하고 PENDING 또는 ACCEPTED 상태인지. */
     var isApplied by mutableStateOf(false)
+    /** 수락된 상태(ACCEPTED)인지 — 채팅 진입 가드용. */
+    var isAccepted by mutableStateOf(false)
     var myApplicationId by mutableStateOf<Int?>(null)
     var currentUserId by mutableStateOf<Int?>(null)
     var isReviewWritten by mutableStateOf(false) // 👈 하단 바 후기 분기용 변수
@@ -36,6 +39,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = MatchDetailUiState.Loading
             isApplied = false
+            isAccepted = false
             myApplicationId = null
             myApplicationStatus = null
             applicantList = emptyList()
@@ -64,6 +68,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                         val rawStatus = myApp?.status?.trim()?.uppercase()
 
                         isApplied = myApp != null && (rawStatus == "PENDING" || rawStatus == "ACCEPTED")
+                        isAccepted = rawStatus == "ACCEPTED"
                         myApplicationId = myApp?.applicationId
                         myApplicationStatus = rawStatus
                     }
