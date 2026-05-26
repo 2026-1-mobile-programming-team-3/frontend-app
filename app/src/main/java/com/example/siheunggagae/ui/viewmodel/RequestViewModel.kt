@@ -36,6 +36,9 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
     var address: String = ""
     var latitude: Float = 37.3801f
     var longitude: Float = 126.8029f
+    // 사용자가 갤러리에서 선택한 사진의 content:// URI 목록. 백엔드의 multipart upload 추가 전까지는
+    // 작성 직후 본인 기기 메모리에만 살아 있고, 백엔드가 echo 해주지 않는 한 디테일 화면에서는 비어 보인다.
+    var selectedImageUris: List<String> = emptyList()
 
     fun setCategory(category: MatchCategory) {
         selectedCategory = category
@@ -58,6 +61,7 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
 
                     // 하이브리드 파싱: 신규 스펙(pets) 리스트가 있으면 매핑하고, 구버전 단일 객체(pet)만 있으면 리스트로 변환해 결합
                     selectedPetIds = data.pets?.mapNotNull { it.petId } ?: listOfNotNull(data.pet?.petId)
+                    selectedImageUris = data.imageUrls.orEmpty()
 
                     _uiState.value = RequestUiState.Idle
                 } else {
@@ -88,7 +92,8 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                     address = address,
                     desiredDate = desiredDate,
                     desiredTime = desiredTime,
-                    petIds = selectedPetIds // DTO에 리스트 대입
+                    petIds = selectedPetIds, // DTO에 리스트 대입
+                    imageUrls = selectedImageUris.ifEmpty { null },
                 )
                 val response = api.updateMatch(matchId, updateBody)
                 if (response.isSuccessful) _uiState.value = RequestUiState.Success
@@ -138,7 +143,8 @@ class RequestViewModel(private val api: AuthApiService) : ViewModel() {
                     latitude = latitude, longitude = longitude,
                     address = address, desiredDate = desiredDate,
                     desiredTime = desiredTime,
-                    petIds = selectedPetIds // DTO에 리스트 대입
+                    petIds = selectedPetIds, // DTO에 리스트 대입
+                    imageUrls = selectedImageUris.ifEmpty { null },
                 )
                 val response = api.createMatch(requestBody)
                 if (response.isSuccessful) {

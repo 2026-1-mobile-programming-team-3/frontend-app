@@ -38,7 +38,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -80,7 +80,7 @@ fun VolunteerHistoryScreen(
 ) {
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: MutableStateFlow(VolunteerHistoryUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = BackgroundH,

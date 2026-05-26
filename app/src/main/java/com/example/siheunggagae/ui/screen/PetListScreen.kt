@@ -7,6 +7,11 @@ import com.example.siheunggagae.data.model.PetSpecies
 import com.example.siheunggagae.ui.viewmodel.PetListUiState
 import com.example.siheunggagae.ui.viewmodel.PetListViewModel
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +41,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,7 +102,7 @@ fun PetListScreen(
 ) {
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: MutableStateFlow(PetListUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     // 삭제 확인 다이얼로그 상태
     var deleteTarget by remember { mutableStateOf<PetResponse?>(null) }
@@ -121,7 +126,14 @@ fun PetListScreen(
             }
         },
     ) { innerPadding ->
-        when (uiState) {
+        // Loading → Error/Success 전환을 클래스 단위로 부드럽게 페이드.
+        // Success 안에서 pets 갱신은 같은 클래스라 재전환되지 않음.
+        AnimatedContent(
+            targetState = uiState,
+            contentKey = { it::class },
+            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+            label = "petListState",
+        ) { state -> when (state) {
             is PetListUiState.Loading -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(innerPadding),
@@ -140,7 +152,7 @@ fun PetListScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
-                            text = (uiState as PetListUiState.Error).message,
+                            text = state.message,
                             fontFamily = PretendardFamily,
                             fontSize = 14.sp,
                             color = Brown700PL,
@@ -160,7 +172,7 @@ fun PetListScreen(
                 }
             }
             is PetListUiState.Success -> {
-                val pets = (uiState as PetListUiState.Success).pets
+                val pets = state.pets
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -238,8 +250,7 @@ fun PetListScreen(
                     Spacer(Modifier.height(24.dp))
                 }
             }
-            else -> {}
-        }
+        } }
     }
 
     // 삭제 확인 다이얼로그

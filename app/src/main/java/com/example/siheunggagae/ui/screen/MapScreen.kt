@@ -32,6 +32,10 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.BottomSheetScaffold
@@ -39,6 +43,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -58,7 +63,7 @@ import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +91,7 @@ import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
@@ -158,7 +164,7 @@ fun MapScreen(
             focusStoreId = focusStoreId,
         )
     )
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val locationPermission = rememberLocationPermissionState { granted ->
@@ -1248,9 +1254,15 @@ private fun StoreDetailSheet(
                 }
                 detail.phone?.let { phone ->
                     Row(
-                        modifier = Modifier.clickable {
-                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-                        },
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clickable(onClickLabel = "전화 걸기") {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                                }.onFailure {
+                                    Toast.makeText(context, "전화 앱을 열 수 없어요", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -1392,6 +1404,7 @@ private fun MapSearchOverlay(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<StoreSearchResult>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(query) {
         if (query.isBlank()) {
@@ -1463,6 +1476,8 @@ private fun MapSearchOverlay(
                             fontSize = 15.sp,
                             color = TextBlack,
                         ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

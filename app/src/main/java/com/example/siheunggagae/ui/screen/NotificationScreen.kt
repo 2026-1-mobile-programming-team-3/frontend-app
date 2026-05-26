@@ -49,7 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -99,13 +99,18 @@ private val NotificationCategory.iconColor
         NotificationCategory.SYSTEM   -> Green500N
     }
 
-private fun formatRelativeTime(createdAt: String): String {
-    val formats = listOf(
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).also { it.timeZone = TimeZone.getTimeZone("UTC") },
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).also { it.timeZone = TimeZone.getTimeZone("UTC") },
+// Composable에서 main thread로만 호출되므로 SimpleDateFormat을 톱레벨에 캐싱해도 안전.
+private val Iso8601Parsers: List<SimpleDateFormat> by lazy {
+    val utc = TimeZone.getTimeZone("UTC")
+    listOf(
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = utc },
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = utc },
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
     )
-    val date = formats.firstNotNullOfOrNull { runCatching { it.parse(createdAt) }.getOrNull() }
+}
+
+private fun formatRelativeTime(createdAt: String): String {
+    val date = Iso8601Parsers.firstNotNullOfOrNull { runCatching { it.parse(createdAt) }.getOrNull() }
         ?: return createdAt
     val diffMin = (System.currentTimeMillis() - date.time) / 60_000
     return when {
@@ -139,7 +144,7 @@ fun NotificationScreen(
 ) {
     val state by remember(viewModel) {
         viewModel?.state ?: MutableStateFlow(NotificationState())
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val haptic = LocalHapticFeedback.current

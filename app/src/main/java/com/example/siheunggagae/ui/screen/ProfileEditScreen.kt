@@ -27,7 +27,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -44,7 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,11 +105,11 @@ fun ProfileEditScreen(
     val context = LocalContext.current
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(ProfileEditUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val localImageUri by remember(viewModel) {
         viewModel?.localImageUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     // 갤러리 피커
     val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
@@ -318,6 +322,7 @@ fun ProfileEditScreen(
                                     value = nickname,
                                     onValueChange = { nickname = it; clearErrors() },
                                     placeholder = "닉네임을 입력하세요",
+                                    imeAction = ImeAction.Next,
                                 )
                                 nicknameConflict?.let { PEFieldError(it) }
                                 fieldErrors["nickname"]?.let { PEFieldError(it) }
@@ -332,6 +337,7 @@ fun ProfileEditScreen(
                                     onValueChange = { phone = it; clearErrors() },
                                     placeholder = "예: 010-1234-5678",
                                     keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Done,
                                 )
                                 if (!isPhoneValid) {
                                     PEFieldError("전화번호 형식이 올바르지 않아요 (예: 010-1234-5678)")
@@ -391,6 +397,7 @@ fun ProfileEditScreen(
     // ─── 활동 지역 선택 시트 ───────────────────────────────────────────────────────
     if (showRegionSheet) {
         val dongsChunked = remember { siheungDongsPE.chunked(4) }
+        val regionFocusManager = LocalFocusManager.current
         ModalBottomSheet(
             onDismissRequest = { showRegionSheet = false },
             sheetState = regionSheetState,
@@ -432,6 +439,8 @@ fun ProfileEditScreen(
                         )
                     },
                     shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { regionFocusManager.clearFocus() }),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Orange500PE,
                         unfocusedBorderColor = BorderPE,
@@ -563,12 +572,22 @@ private fun PETextField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Done,
+    onImeAction: (() -> Unit)? = null,
 ) {
+    val focusManager = LocalFocusManager.current
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+            onDone = {
+                focusManager.clearFocus()
+                onImeAction?.invoke()
+            },
+        ),
         textStyle = TextStyle(
             fontFamily = PretendardFamily,
             fontSize = 16.sp,

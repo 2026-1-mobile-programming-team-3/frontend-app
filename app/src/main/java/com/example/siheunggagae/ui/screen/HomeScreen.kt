@@ -38,12 +38,13 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,7 +84,14 @@ import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.viewmodel.HomeViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
@@ -146,7 +154,7 @@ fun HomeScreen(
             prefs = context.getSharedPreferences("home_prefs", android.content.Context.MODE_PRIVATE),
         )
     )
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val siheungPrefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
     LaunchedEffect(uiState.nickname) {
@@ -349,23 +357,33 @@ fun HomeTopBar(
                         modifier = Modifier.size(22.dp),
                     )
                 }
-                if (unreadCount > 0) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Pink500H)
-                            .align(Alignment.TopEnd),
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = unreadCount > 0,
+                        enter = scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        ) + fadeIn(),
+                        exit = scaleOut() + fadeOut(),
                     ) {
-                        Text(
-                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                            fontFamily = PretendardFamily,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            lineHeight = 8.sp,
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Pink500H),
+                        ) {
+                            Text(
+                                text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                fontFamily = PretendardFamily,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                lineHeight = 8.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -549,7 +567,9 @@ fun NearbyStoresSection(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.clickable { onMapClick() },
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clickable(onClickLabel = "지도 화면으로 이동") { onMapClick() },
             ) {
                 Icon(painterResource(R.drawable.ic_map), null, tint = Orange500H, modifier = Modifier.size(16.dp))
                 Text("지도 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Orange500H)
@@ -998,7 +1018,7 @@ private fun DongChangeModal(
             HorizontalDivider(color = Color(0xFFF3F4F6))
 
             LazyColumn(modifier = Modifier.height(280.dp)) {
-                items(siheungDongs) { dong ->
+                items(siheungDongs, key = { it }) { dong ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

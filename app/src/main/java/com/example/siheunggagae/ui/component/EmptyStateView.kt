@@ -1,6 +1,11 @@
 package com.example.siheunggagae.ui.component
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -15,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,57 +57,66 @@ fun EmptyStateView(
     onAction: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp, horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    // 컴포지션 직후 한 번 페이드/슬라이드 인. 동일 인스턴스가 살아 있는 동안은 다시 재생되지 않음.
+    val transitionState = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = transitionState,
+        modifier = modifier,
+        enter = fadeIn(tween(durationMillis = 220)) +
+            slideInVertically(tween(durationMillis = 260)) { it / 12 },
     ) {
-        Box(
-            modifier = Modifier.size(80.dp).clip(CircleShape).background(iconBackground),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 48.dp, horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(36.dp),
-            )
-        }
-        Spacer(Modifier.height(14.dp))
-        Text(
-            text = title,
-            fontFamily = PretendardFamily,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF1E120A),
-        )
-        if (!subtitle.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                fontFamily = PretendardFamily,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Normal,
-                color = Color(0xFF8A6E58),
-            )
-        }
-        if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(16.dp))
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Color(0xFF614B3A))
-                    .clickable { onAction() }
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                modifier = Modifier.size(80.dp).clip(CircleShape).background(iconBackground),
+                contentAlignment = Alignment.Center,
             ) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = title,
+                fontFamily = PretendardFamily,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF1E120A),
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = actionLabel,
+                    text = subtitle,
                     fontFamily = PretendardFamily,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    fontWeight = FontWeight.Normal,
+                    color = Color(0xFF8A6E58),
                 )
+            }
+            if (actionLabel != null && onAction != null) {
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color(0xFF614B3A))
+                        .clickable { onAction() }
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = actionLabel,
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
             }
         }
     }

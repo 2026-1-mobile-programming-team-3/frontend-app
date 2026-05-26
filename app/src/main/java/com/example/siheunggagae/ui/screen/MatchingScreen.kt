@@ -59,7 +59,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +85,7 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.component.ShimmerBox
 import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
@@ -105,6 +105,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.focus.FocusRequester
@@ -489,7 +493,7 @@ internal fun MatchCardR(
     ) {
         Box {
             Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
-                CardThumbnail(category = item.category)
+                CardThumbnail(category = item.category, thumbnailUrl = item.thumbnailUrl)
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f).padding(end = 28.dp)) {
                     FlowRow(
@@ -575,7 +579,18 @@ internal fun MatchCardR(
 }
 
 @Composable
-private fun CardThumbnail(category: MatchCategory?) {
+private fun CardThumbnail(category: MatchCategory?, thumbnailUrl: String? = null) {
+    // 첨부 사진이 있으면 그 사진을 우선 표시. 없으면 카테고리 그라디언트 + 아이콘.
+    if (!thumbnailUrl.isNullOrBlank()) {
+        AppAsyncImage(
+            model = thumbnailUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(60.dp)
+                .clip(RoundedCornerShape(12.dp)),
+        )
+        return
+    }
     val brush = when (category) {
         MatchCategory.WALK -> Brush.linearGradient(listOf(Color(0xFFFFEDD4), Color(0xFFF7A35B)))
         MatchCategory.VET -> Brush.linearGradient(listOf(Color(0xFFDCFCE7), Color(0xFF16A34A)))
@@ -729,6 +744,7 @@ private fun MatchSearchBar(
     onQueryChange: (String) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -761,6 +777,8 @@ private fun MatchSearchBar(
                     color = TextBlackM,
                     fontFamily = PretendardFamily,
                 ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 decorationBox = { inner ->
                     Box {
                         if (query.isEmpty()) {

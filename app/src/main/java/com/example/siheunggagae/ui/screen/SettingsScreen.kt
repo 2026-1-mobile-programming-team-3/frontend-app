@@ -47,7 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,7 +65,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -130,7 +132,7 @@ fun SettingsScreen(
     }
 
     // ── 알림 설정 ──────────────────────────────────────────────────────────────
-    val notifState by (notifViewModel?.uiState?.collectAsState()
+    val notifState by (notifViewModel?.uiState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<NotificationSettingsUiState>(NotificationSettingsUiState.Loading) })
     val notifSuccess = notifState as? NotificationSettingsUiState.Success
     var matchingNotifLocal     by remember { mutableStateOf(true) }
@@ -141,9 +143,9 @@ fun SettingsScreen(
     val reviewNotif       = notifSuccess?.reviewEnabled ?: reviewNotifLocal
 
     // ── 위치 설정 ──────────────────────────────────────────────────────────────
-    val currentDong   by (locationViewModel?.regionDong?.collectAsState()
+    val currentDong   by (locationViewModel?.regionDong?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<String?>(null) })
-    val isLocUpdating by (locationViewModel?.isUpdating?.collectAsState()
+    val isLocUpdating by (locationViewModel?.isUpdating?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) })
     var showLocationSheet by remember { mutableStateOf(false) }
     var locationInput     by remember { mutableStateOf("") }
@@ -151,7 +153,7 @@ fun SettingsScreen(
     val locationSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // ── 비밀번호 변경 ──────────────────────────────────────────────────────────
-    val isAccLoading by (accountViewModel?.isLoading?.collectAsState()
+    val isAccLoading by (accountViewModel?.isLoading?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) })
     var showPasswordSheet by remember { mutableStateOf(false) }
     var pwCurrent         by remember { mutableStateOf("") }
@@ -614,6 +616,7 @@ private fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -630,7 +633,11 @@ private fun SettingsSwitchItem(
         }
         Text(label, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackSt, modifier = Modifier.weight(1f))
         Switch(
-            checked = checked, onCheckedChange = onCheckedChange,
+            checked = checked,
+            onCheckedChange = { v ->
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onCheckedChange(v)
+            },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White, checkedTrackColor = Brown900St, checkedBorderColor = Brown900St,
                 uncheckedThumbColor = Color.White, uncheckedTrackColor = SwitchTrackOffSt, uncheckedBorderColor = SwitchTrackOffSt,
