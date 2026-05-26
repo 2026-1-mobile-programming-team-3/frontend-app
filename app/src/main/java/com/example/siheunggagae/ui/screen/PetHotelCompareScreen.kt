@@ -394,7 +394,7 @@ private fun PetHotelCard(
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("최저가 ", color = Brown700P, fontSize = 11.sp)
                             Text(
-                                "₩%,d/박".format(hotel.minPriceKrw),
+                                "%,d원/박".format(hotel.minPriceKrw),
                                 color = Brown900P,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold,

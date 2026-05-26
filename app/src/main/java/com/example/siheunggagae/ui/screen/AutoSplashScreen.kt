@@ -77,6 +77,12 @@ fun AutoSplashScreen(
     SplashLogo()
 }
 
+private val OrangeSandSplash  = Color(0xFFFFEDD4)
+private val BackgroundSplash  = Color(0xFFFEFEFE)
+private val Brown700Splash    = Color(0xFF8A6E58)
+private val Orange500Splash   = Color(0xFFF7A35B)
+private val PinkSurfaceSplash = Color(0xFFFEE7EC)
+
 @Composable
 private fun SplashLogo() {
     val context = LocalContext.current
@@ -85,7 +91,7 @@ private fun SplashLogo() {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFFFEDD4), Color(0xFFFEFEFE)),
+                    listOf(OrangeSandSplash, BackgroundSplash),
                 )
             ),
         contentAlignment = Alignment.Center,
@@ -110,13 +116,13 @@ private fun SplashLogo() {
                     fontFamily = PretendardFamily,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF8A6E58),
+                    color = Brown700Splash,
                 )
             }
         }
         LinearProgressIndicator(
-            color = Color(0xFFF7A35B),
-            trackColor = Color(0xFFFEE7EC),
+            color = Orange500Splash,
+            trackColor = PinkSurfaceSplash,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 80.dp)

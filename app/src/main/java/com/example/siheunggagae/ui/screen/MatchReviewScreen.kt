@@ -153,7 +153,7 @@ fun MatchReviewScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             for (i in 1..5) {
                                 val isSelected = i <= rating
                                 val starScale by animateFloatAsState(
@@ -161,15 +161,21 @@ fun MatchReviewScreen(
                                     animationSpec = spring(stiffness = Spring.StiffnessHigh),
                                     label = "starScale_$i",
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "$i 점",
-                                    tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8D3C2),
+                                Box(
+                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .scale(starScale)
-                                        .clickable(enabled = !isReadOnly) { rating = i }
-                                )
+                                        .size(48.dp)
+                                        .clickable(enabled = !isReadOnly) { rating = i },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "$i 점",
+                                        tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8D3C2),
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .scale(starScale),
+                                    )
+                                }
                             }
                         }
                         AnimatedVisibility(

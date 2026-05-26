@@ -353,7 +353,7 @@ private fun NameSection(
     error: String?,
     onNameChange: (String) -> Unit,
 ) {
-    FormSection(label = "매장명") {
+    FormSection(label = "매장명", required = true) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(
                 modifier = Modifier
@@ -425,7 +425,7 @@ private fun CategorySection(
     error: String?,
     onSelect: (String) -> Unit,
 ) {
-    FormSection(label = "카테고리") {
+    FormSection(label = "카테고리", required = true) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             // 2x2 그리드
             val rows = categoryEntries.chunked(2)
@@ -501,7 +501,7 @@ private fun LocationSection(
     error: String?,
     onPickLocation: (lat: Double?, lng: Double?) -> Unit,
 ) {
-    FormSection(label = "위치") {
+    FormSection(label = "위치", required = true) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(
                 modifier = Modifier
@@ -1369,6 +1369,7 @@ private fun FormSection(
     label: String,
     sublabel: String? = null,
     labelSuffix: (@Composable () -> Unit)? = null,
+    required: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1384,6 +1385,15 @@ private fun FormSection(
                 lineHeight = 20.sp,
                 color = TextBlackF,
             )
+            if (required) {
+                Text(
+                    text = "*",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Pink500F,
+                )
+            }
             labelSuffix?.invoke()
         }
         if (sublabel != null) {

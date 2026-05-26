@@ -482,15 +482,29 @@ private fun NotificationItemContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Text(
-                    text = item.title,
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (!item.isRead) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Pink500N),
+                        )
+                    }
+                    Text(
+                        text = item.title,
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = if (!item.isRead) FontWeight.ExtraBold else FontWeight.Medium,
+                        lineHeight = 24.sp,
+                        color = TextBlack,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = relativeTime,

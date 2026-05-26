@@ -284,7 +284,7 @@ private fun StorePickerSheet(
                             }
                             Text(fmtDistanceM(hotel.distanceM), color = Brown700M, fontSize = 11.sp)
                             if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) {
-                                Text("₩%,d/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 11.sp)
+                                Text("%,d원/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 11.sp)
                             } else if (hotel.minPriceKrw == null || hotel.minPriceKrw == 0) {
                                 Text("가격 정보 없음", color = Brown700M, fontSize = 11.sp)
                             }
@@ -389,7 +389,7 @@ private fun StarRatingCell(
                 )
             }
         } else {
-            Text("-", color = Brown700M, fontSize = 12.sp)
+            Text("정보 없음", color = Brown700M, fontSize = 11.sp)
         }
     }
 }
@@ -627,14 +627,14 @@ private fun TwoColMatrix(
                 label = "최저가",
                 aContent = {
                     MatrixCell(
-                        if (a.minPriceKrw != null && a.minPriceKrw > 0) "₩%,d/박".format(a.minPriceKrw) else "가격 정보 없음",
+                        if (a.minPriceKrw != null && a.minPriceKrw > 0) "%,d원/박".format(a.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == a.storeId,
                         modifier = Modifier.fillMaxSize(),
                     )
                 },
                 bContent = {
                     MatrixCell(
-                        if (b.minPriceKrw != null && b.minPriceKrw > 0) "₩%,d/박".format(b.minPriceKrw) else "가격 정보 없음",
+                        if (b.minPriceKrw != null && b.minPriceKrw > 0) "%,d원/박".format(b.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == b.storeId,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -890,7 +890,7 @@ private fun MultiColMatrix(
 
                     // Price
                     MatrixCell(
-                        if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) "₩%,d/박".format(hotel.minPriceKrw) else "가격 정보 없음",
+                        if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) "%,d원/박".format(hotel.minPriceKrw) else "가격 정보 없음",
                         isBest = insight.cheapestId == hotel.storeId,
                         modifier = Modifier.width(colW),
                     )
@@ -1110,7 +1110,7 @@ private fun StoreDropdown(
                     }
                     Text(fmtDistanceM(hotel.distanceM), color = Brown700M, fontSize = 10.sp)
                     if (hotel.minPriceKrw != null && hotel.minPriceKrw > 0) {
-                        Text("₩%,d/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 10.sp)
+                        Text("%,d원/박".format(hotel.minPriceKrw), color = Brown700M, fontSize = 10.sp)
                     } else if (hotel.minPriceKrw == null || hotel.minPriceKrw == 0) {
                         Text("가격 정보 없음", color = Brown700M, fontSize = 10.sp)
                     }

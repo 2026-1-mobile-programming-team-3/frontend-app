@@ -220,7 +220,7 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
                         Text("새 메시지", fontFamily = PretendardFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 } else if (request.createdAt != null) {
-                    Text(text = request.createdAt.take(10), fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700M)
+                    Text(text = formatCreatedAtKr(request.createdAt), fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700M)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -307,4 +307,23 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * ISO 시각("2026-05-23T12:34:56Z" 등)을 사용자에게 친숙한 한국어 표현으로 변환한다.
+ * 오늘/어제는 텍스트로, 그 외는 "M월 d일"로 표시한다.
+ */
+private fun formatCreatedAtKr(iso: String): String {
+    return runCatching {
+        val instant = java.time.Instant.parse(iso)
+        val zone = java.time.ZoneId.of("Asia/Seoul")
+        val date = instant.atZone(zone).toLocalDate()
+        val today = java.time.LocalDate.now(zone)
+        when (val diff = java.time.temporal.ChronoUnit.DAYS.between(date, today)) {
+            0L -> "오늘"
+            1L -> "어제"
+            in 2..6 -> "${diff}일 전"
+            else -> "${date.monthValue}월 ${date.dayOfMonth}일"
+        }
+    }.getOrElse { iso.take(10) }
 }

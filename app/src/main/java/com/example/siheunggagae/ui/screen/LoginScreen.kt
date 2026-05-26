@@ -312,7 +312,7 @@ private fun LoginTopBar(onBack: () -> Unit) {
                 .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.White)
-                .clickable { onBack() },
+                .clickable(onClickLabel = "뒤로") { onBack() },
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,

@@ -297,7 +297,7 @@ fun PetAddScreen(
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(if (canSave) Brown900PA else Brown900PA.copy(alpha = 0.4f))
+                        .background(if (canSave) Brown900PA else Gray300PA)
                         .then(if (canSave) Modifier.clickable {
                             viewModel?.save(
                                 name = nameInput,
@@ -314,7 +314,7 @@ fun PetAddScreen(
                     if (isSaving || isLoading) {
                         CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
                     } else {
-                        Text(text = "저장하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = Color.White)
+                        Text(text = "저장하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = if (canSave) Color.White else Brown700PA)
                     }
                 }
             }
