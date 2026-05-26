@@ -117,7 +117,7 @@ class NotificationViewModel(
             val localIds = ids.filter { it < 0 }
             val serverIds = ids.filter { it > 0 }
             if (localIds.isNotEmpty()) repository.deleteLocalNotifications(localIds)
-            if (serverIds.isNotEmpty()) repository.addHiddenServerIds(serverIds)
+            if (serverIds.isNotEmpty()) repository.deleteServerNotifications(serverIds)
             buffer.removeAll { it.id in ids }
             total = maxOf(0, total - count)
             _state.update {

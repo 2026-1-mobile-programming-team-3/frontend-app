@@ -2,6 +2,7 @@ package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.local.LocalNotificationStore
 import com.example.siheunggagae.data.model.MarkAllReadResponse
+import com.example.siheunggagae.data.model.NotificationDeleteRequest
 import com.example.siheunggagae.data.model.NotificationListResponse
 import com.example.siheunggagae.data.model.NotificationReadResponse
 import com.example.siheunggagae.data.model.UnreadCountResponse
@@ -66,6 +67,9 @@ class NotificationRepository(
     fun markAllLocalRead() = localStore?.markAllRead()
     fun deleteLocalNotifications(ids: List<Int>) = localStore?.deleteItems(ids.toSet())
 
-    // 서버 알림 클라이언트 측 영구 숨김 (삭제 API 없음)
-    fun addHiddenServerIds(ids: List<Int>) = localStore?.addHiddenServerIds(ids.toSet())
+    // 서버 알림 삭제 — API 성공 여부와 무관하게 클라이언트 hidden IDs 에도 추가 (belt-and-suspenders)
+    suspend fun deleteServerNotifications(ids: List<Int>) {
+        runCatching { api.deleteNotifications(NotificationDeleteRequest(ids)) }
+        localStore?.addHiddenServerIds(ids.toSet())
+    }
 }
