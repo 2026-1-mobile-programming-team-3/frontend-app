@@ -34,7 +34,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -533,12 +535,15 @@ private fun BasicInfoCard(
         ) {
             Text(text = "이름", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
+            val nameFocusManager = LocalFocusManager.current
             BasicTextField(
                 value = nameInput,
                 onValueChange = onNameChange,
                 singleLine = true,
                 textStyle = TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackPA, textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Orange500PA),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { nameFocusManager.clearFocus() }),
                 modifier = Modifier.width(160.dp),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth()) {
@@ -573,12 +578,15 @@ private fun BasicInfoCard(
         ) {
             Text(text = "품종(선택)", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
+            val breedFocusManager = LocalFocusManager.current
             BasicTextField(
                 value = breedInput,
                 onValueChange = onBreedChange,
                 singleLine = true,
                 textStyle = TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackPA, textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Orange500PA),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { breedFocusManager.clearFocus() }),
                 modifier = Modifier.width(160.dp),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth()) {
