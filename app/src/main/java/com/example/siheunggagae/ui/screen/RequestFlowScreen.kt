@@ -32,12 +32,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -90,6 +92,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId // 👈 대한민국 시간대 고정을 위한 패키지 임포트
 import java.time.YearMonth
 
 private val Brown900F    = Color(0xFF614B3A)
@@ -131,13 +135,17 @@ fun RequestFlowScreen(
 
     var currentStep by remember { mutableStateOf(1) }
 
-    // 상태 제어 변수를 Set 컬렉션 구조로 변경하여 다중 선택 매커니즘 구현
     var selectedPetIds by remember { mutableStateOf<Set<Int>>(viewModel.selectedPetIds.toSet()) }
     var selectedCategory by remember { mutableStateOf<MatchCategory?>(viewModel.selectedCategory) }
 
-    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    // 🕒 대한민국 기준 타임존 가드 상수 정의
+    val kstZone = remember { ZoneId.of("Asia/Seoul") }
+
+    var currentMonth by remember { mutableStateOf(YearMonth.now(kstZone)) }
     var selectedDay by remember { mutableStateOf<Int?>(null) }
-    var timeInput by remember { mutableStateOf("") }
+
+    var hourInput by remember { mutableStateOf("") }
+    var minuteInput by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf<String?>(null) }
 
     var titleInput by remember { mutableStateOf(viewModel.title) }
@@ -161,7 +169,12 @@ fun RequestFlowScreen(
             destination = viewModel.address
             memo = viewModel.content
             selectedPetIds = viewModel.selectedPetIds.toSet()
-            timeInput = viewModel.desiredTime?.take(5) ?: ""
+
+            val timeParts = viewModel.desiredTime?.split(":")
+            if (timeParts != null && timeParts.size >= 2) {
+                hourInput = timeParts[0]
+                minuteInput = timeParts[1]
+            }
             selectedTime = viewModel.desiredTime?.take(5)
             latInput = viewModel.latitude
             lngInput = viewModel.longitude
@@ -185,9 +198,17 @@ fun RequestFlowScreen(
         else -> if (matchId != 0) "수정 완료하기" else "요청 등록하기"
     }
 
+    // ─── 🕒 [KST 대한민국 기준 과거 시간 실시간 연산 필터] ───
+    val isToday = selectedDay != null && currentMonth.atDay(selectedDay!!) == LocalDate.now(kstZone)
+    val now = LocalTime.now(kstZone)
+    val currentHour = hourInput.toIntOrNull()
+    val currentMinute = minuteInput.toIntOrNull()
+    val isPastTimeSelected = isToday && currentHour != null && currentMinute != null &&
+            (currentHour < now.hour || (currentHour == now.hour && currentMinute < now.minute))
+
     val isNextEnabled = when (currentStep) {
         1 -> selectedPetIds.isNotEmpty() && selectedCategory != null
-        2 -> selectedDay != null && (timeInput.isNotBlank() || selectedTime != null)
+        2 -> selectedDay != null && hourInput.isNotBlank() && minuteInput.isNotBlank() && !isPastTimeSelected
         else -> titleInput.isNotBlank() && destination.isNotBlank() && memo.isNotBlank()
     }
 
@@ -213,29 +234,9 @@ fun RequestFlowScreen(
                         val dayStr = selectedDay.toString().padStart(2, '0')
                         viewModel.desiredDate = "${currentMonth.year}-$monthStr-$dayStr"
 
-                        val rawTime = if (timeInput.isNotBlank()) timeInput else selectedTime ?: "12:00"
-                        val formattedTime = when {
-                            rawTime.matches(Regex("^\\d{4}$")) -> "${rawTime.take(2)}:${rawTime.drop(2)}:00"
-                            rawTime.matches(Regex("^\\d{2}:\\d{2}$")) -> "$rawTime:00"
-                            rawTime.matches(Regex("^\\d{1}:\\d{2}$")) -> "0$rawTime:00"
-                            rawTime.contains("오전") -> {
-                                val clean = rawTime.replace("오전", "").trim()
-                                val parts = clean.split(":")
-                                val h = parts.getOrNull(0)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
-                                val m = parts.getOrNull(1)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
-                                "$h:$m:00"
-                            }
-                            rawTime.contains("오후") -> {
-                                val clean = rawTime.replace("오후", "").trim()
-                                val parts = clean.split(":")
-                                var h = parts.getOrNull(0)?.toIntOrNull() ?: 12
-                                if (h < 12) h += 12
-                                val m = parts.getOrNull(1)?.toIntOrNull()?.toString()?.padStart(2, '0') ?: "00"
-                                "$h:$m:00"
-                            }
-                            else -> if (rawTime.contains(":")) "$rawTime:00" else "12:00:00"
-                        }
-                        viewModel.desiredTime = formattedTime
+                        val hStr = hourInput.padStart(2, '0')
+                        val mStr = minuteInput.padStart(2, '0')
+                        viewModel.desiredTime = "$hStr:$mStr:00"
                     }
                     currentStep++
                 } else {
@@ -286,13 +287,14 @@ fun RequestFlowScreen(
                     onMonthChange = { currentMonth = it },
                     selectedDay = selectedDay,
                     onSelectDay = { selectedDay = it },
-                    timeInput = timeInput,
-                    onTimeChange = { input ->
-                        timeInput = input.filter { it.isDigit() }.take(4)
-                        selectedTime = null
-                    },
+                    hourInput = hourInput,
+                    onHourChange = { hourInput = it; selectedTime = if(it.length == 2 && minuteInput.length == 2) "$it:$minuteInput" else null },
+                    minuteInput = minuteInput,
+                    onMinuteChange = { minuteInput = it; selectedTime = if(hourInput.length == 2 && it.length == 2) "$hourInput:$it" else null },
                     selectedTime = selectedTime,
-                    onSelectTime = { selectedTime = it; timeInput = it }
+                    onSelectTime = { selectedTime = it },
+                    isPastTimeSelected = isPastTimeSelected,
+                    kstZone = kstZone
                 )
                 3 -> Step3Content(
                     title = titleInput, onTitleChange = { titleInput = it },
@@ -666,16 +668,21 @@ private fun AddPetCard(onAddPet: () -> Unit = {}) {
     }
 }
 
+// ─── 🕒 대한민국 시간 기준 동기화 가드 통합 섹션 ───
 @Composable
 private fun Step2Content(
     currentMonth: YearMonth,
     onMonthChange: (YearMonth) -> Unit,
     selectedDay: Int?,
     onSelectDay: (Int) -> Unit,
-    timeInput: String,
-    onTimeChange: (String) -> Unit,
+    hourInput: String,
+    onHourChange: (String) -> Unit,
+    minuteInput: String,
+    onMinuteChange: (String) -> Unit,
     selectedTime: String?,
     onSelectTime: (String) -> Unit,
+    isPastTimeSelected: Boolean,
+    kstZone: ZoneId
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
@@ -686,7 +693,8 @@ private fun Step2Content(
             yearMonth = currentMonth,
             onMonthChange = onMonthChange,
             selectedDay = selectedDay,
-            onSelectDay = onSelectDay
+            onSelectDay = onSelectDay,
+            kstZone = kstZone
         )
 
         Spacer(Modifier.height(24.dp))
@@ -699,39 +707,68 @@ private fun Step2Content(
             lineHeight = 27.sp,
             color = TextBlack
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = timeInput,
-            onValueChange = onTimeChange,
+        // 🛠️ 1번, 2번 개선 완료: 직접 설정 칩을 상단으로 올리고 콤팩트 키패드 입력창 교체 (짤림 완벽 해결)
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            placeholder = {
-                Text(
-                    text = "예: 1430 (오후 2시 30분)",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = Brown400F
-                )
-            },
-            leadingIcon = {
-                Icon(painter = painterResource(R.drawable.ic_schedule), contentDescription = null, tint = Orange500F)
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Orange500F,
-                unfocusedBorderColor = BrownBorderF,
-                focusedLeadingIconColor = Orange500F,
-                unfocusedLeadingIconColor = Orange500F,
-                cursorColor = Orange500F,
-            ),
-            shape = RoundedCornerShape(12.dp)
-        )
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = hourInput,
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() }.take(2)
+                    val num = filtered.toIntOrNull()
+                    if (filtered.isEmpty() || (num != null && num in 0..23)) {
+                        onHourChange(filtered)
+                    }
+                },
+                modifier = Modifier.width(72.dp),
+                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = PretendardFamily),
+                placeholder = { Text("00", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Orange500F, unfocusedBorderColor = BrownBorderF, cursorColor = Orange500F),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Text(
+                text = "시",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 6.dp, end = 16.dp),
+                color = TextBlack
+            )
 
-        Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = minuteInput,
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() }.take(2)
+                    val num = filtered.toIntOrNull()
+                    if (filtered.isEmpty() || (num != null && num in 0..59)) {
+                        onMinuteChange(filtered)
+                    }
+                },
+                modifier = Modifier.width(72.dp),
+                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = PretendardFamily),
+                placeholder = { Text("00", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Orange500F, unfocusedBorderColor = BrownBorderF, cursorColor = Orange500F),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Text(
+                text = "분",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 6.dp),
+                color = TextBlack
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
         Text(
             text = "빠른 선택",
             fontFamily = PretendardFamily,
@@ -740,7 +777,11 @@ private fun Step2Content(
             lineHeight = 16.sp,
             color = Brown700F
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
+
+        // 🛠️ 3번 개선 완료: 네이버 예매 시스템 표준화 (대한민국 KST 기준 실시간 과거 버튼 회색 비활성화 동결)
+        val now = LocalTime.now(kstZone)
+        val isToday = (selectedDay != null && currentMonth.atDay(selectedDay) == LocalDate.now(kstZone))
 
         quickTimes.chunked(4).forEach { rowTimes ->
             Row(
@@ -748,18 +789,26 @@ private fun Step2Content(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 rowTimes.forEach { time ->
+                    val tabHour = time.take(2).toIntOrNull() ?: 0
+                    val tabMinute = time.drop(3).toIntOrNull() ?: 0
+                    val isPast = isToday && (tabHour < now.hour || (tabHour == now.hour && tabMinute < now.minute))
                     val isSel = time == selectedTime
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSel) Orange100F else Color.White)
+                            .background(if (isPast) Color(0xFFF4F4F4) else if (isSel) Orange100F else Color.White)
                             .border(
-                                width = if (isSel) 1.5.dp else 1.dp,
-                                color = if (isSel) Orange500F else BrownBorderF,
+                                width = if (isSel && !isPast) 1.5.dp else 1.dp,
+                                color = if (isPast) Color.Transparent else if (isSel) Orange500F else BrownBorderF,
                                 shape = RoundedCornerShape(8.dp)
                             )
-                            .clickable { onSelectTime(time) }
+                            .clickable(enabled = !isPast) {
+                                onSelectTime(time)
+                                onHourChange(time.take(2))
+                                onMinuteChange(time.drop(3))
+                            }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -769,7 +818,7 @@ private fun Step2Content(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             lineHeight = 20.sp,
-                            color = if (isSel) Orange500F else Brown700F,
+                            color = if (isPast) GrayText else if (isSel) Orange500F else Brown700F,
                         )
                     }
                 }
@@ -777,6 +826,20 @@ private fun Step2Content(
             }
             Spacer(Modifier.height(8.dp))
         }
+
+        if (isPastTimeSelected) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = "현재 시간 이후의 시간을 선택해 주세요.",
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = Pink500F,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -786,6 +849,7 @@ private fun CalendarSection(
     onMonthChange: (YearMonth) -> Unit,
     selectedDay: Int?,
     onSelectDay: (Int) -> Unit,
+    kstZone: ZoneId
 ) {
     val firstDay = yearMonth.atDay(1)
     val startOffset = firstDay.dayOfWeek.let { if (it == DayOfWeek.SUNDAY) 0 else it.value }
@@ -847,7 +911,7 @@ private fun CalendarSection(
                         if (day != null) {
                             val isSelected = day == selectedDay
                             val cellDate = yearMonth.atDay(day)
-                            val today = LocalDate.now()
+                            val today = LocalDate.now(kstZone)
                             val isPast = cellDate.isBefore(today)
                             Box(
                                 modifier = Modifier
@@ -1000,7 +1064,7 @@ private fun flowFieldColors(leadingAlwaysOrange: Boolean = false) = OutlinedText
 )
 
 @Composable
-private fun QuestionText(text: String) {
+fun QuestionText(text: String) {
     Text(
         text = text,
         fontFamily = PretendardFamily,
@@ -1012,7 +1076,7 @@ private fun QuestionText(text: String) {
 }
 
 @Composable
-private fun SubText(text: String) {
+fun SubText(text: String) {
     Text(
         text = text,
         fontFamily = PretendardFamily,
@@ -1071,13 +1135,12 @@ private fun LocationSearchBottomSheet(
     var isSearching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     val focusRequester = remember { FocusRequester() }
-    // 디바이스 GPS 좌표(거리 계산 기준). 권한/실패 시 null → 시흥시청 폴백.
     var userCoords by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     LaunchedEffect(Unit) {
         val loc = runCatching { LocationProvider(context).getLocationOrNull() }.getOrNull()
         if (loc != null) userCoords = loc.longitude to loc.latitude
-        delay(180L) // 바텀시트 등장 애니메이션 후에 포커스
+        delay(180L)
         runCatching { focusRequester.requestFocus() }
     }
 
