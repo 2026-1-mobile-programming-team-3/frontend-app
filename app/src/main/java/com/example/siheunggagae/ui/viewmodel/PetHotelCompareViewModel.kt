@@ -66,6 +66,7 @@ class PetHotelCompareViewModel(
     private val initialLat: Double,
     private val initialLng: Double,
     initialRadius: Int = RADIUS_DEFAULT_M,
+    initialViewportBounds: DoubleArray? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<PetHotelCompareUi>(PetHotelCompareUi.Loading)
@@ -76,6 +77,14 @@ class PetHotelCompareViewModel(
     private var radius: Int = initialRadius.coerceIn(1000, RADIUS_MAX_M)
     private var raw: List<PetHotelResponse> = emptyList()
     private var fetchJob: Job? = null
+
+    /**
+     * 지도에서 진입할 때 함께 전달된 viewport bbox(\[swLat, swLng, neLat, neLng\]).
+     * /maps/pet-hotels 는 원형 radius 만 지원하지만, 지도의 viewport 마커 카운트와 결과를 일치시키기
+     * 위해 응답을 이 bbox 로 한 번 더 잘라낸다. 사용자가 [expandRadius] 로 범위를 넓히면
+     * 의도적으로 더 멀리 보겠다는 신호이므로 클립을 해제한다.
+     */
+    private var viewportClip: DoubleArray? = initialViewportBounds?.takeIf { it.size >= 4 }
 
     companion object {
         const val RADIUS_DEFAULT_M = 5000
@@ -101,6 +110,7 @@ class PetHotelCompareViewModel(
         val next = (radius + RADIUS_STEP_M).coerceAtMost(RADIUS_MAX_M)
         if (next == radius) return
         radius = next
+        viewportClip = null
         fetch()
     }
 
@@ -137,11 +147,22 @@ class PetHotelCompareViewModel(
             _state.value = PetHotelCompareUi.Loading
             val resp = repository.getNearby(initialLat, initialLng, radius)
             if (resp.isSuccessful) {
-                raw = resp.body()?.petHotels.orEmpty()
+                raw = clipToViewport(resp.body()?.petHotels.orEmpty())
                 recompute()
             } else {
                 _state.value = PetHotelCompareUi.Error("주변 펫호텔을 불러오지 못했어요 (${resp.code()})")
             }
+        }
+    }
+
+    private fun clipToViewport(items: List<PetHotelResponse>): List<PetHotelResponse> {
+        val clip = viewportClip ?: return items
+        val swLat = clip[0]
+        val swLng = clip[1]
+        val neLat = clip[2]
+        val neLng = clip[3]
+        return items.filter {
+            it.latitude in swLat..neLat && it.longitude in swLng..neLng
         }
     }
 
@@ -166,11 +187,12 @@ class PetHotelCompareViewModel(
         private val initialLat: Double,
         private val initialLng: Double,
         private val initialRadius: Int = RADIUS_DEFAULT_M,
+        private val initialViewportBounds: DoubleArray? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
             PetHotelCompareViewModel(
-                repository, userRepository, initialLat, initialLng, initialRadius,
+                repository, userRepository, initialLat, initialLng, initialRadius, initialViewportBounds,
             ) as T
     }
 }

@@ -291,19 +291,25 @@ class MapViewModel(
         lng: Double,
         category: StoreCategory = _uiState.value.selectedCategory,
     ) {
-        val response = runCatching {
-            if (category == StoreCategory.ALL || category.apiValue == null) {
-                api.getNearbyStores(lat, lng)
-            } else {
-                api.getFilteredStores(category = category.apiValue)
-            }
-        }.getOrNull()
+        // 카테고리별 별도 엔드포인트(getFilteredStores)는 lat/lng 를 받지 않아 위치를 무시하므로,
+        // 항상 위치 기반 nearby 결과를 받아 클라이언트에서 카테고리로 필터링한다.
+        val response = runCatching { api.getNearbyStores(lat, lng) }.getOrNull()
         val body = response?.body()
         val favoriteIds = FavoritesCache.ids.value
-        val stores = (body?.stores ?: emptyList()).map { s ->
+        val all = (body?.stores ?: emptyList()).map { s ->
             s.copy(isFavorited = s.resolvedId in favoriteIds)
         }
-        _uiState.update { it.copy(stores = stores, totalCount = body?.total ?: 0) }
+        val stores = if (category == StoreCategory.ALL || category.apiValue == null) {
+            all
+        } else {
+            all.filter { it.category == category.apiValue }
+        }
+        val total = if (category == StoreCategory.ALL || category.apiValue == null) {
+            body?.total ?: stores.size
+        } else {
+            stores.size
+        }
+        _uiState.update { it.copy(stores = stores, totalCount = total) }
 
         // 진입 시 특정 매장을 바로 선택해 바텀시트를 열어야 하는 경우
         if (focusStoreId != 0 && _uiState.value.selectedStore == null) {

@@ -426,14 +426,16 @@ fun MapScreen(
                                 val center = uiState.cameraTarget
                                 val lat = center?.first ?: 37.3799
                                 val lng = center?.second ?: 126.8030
-                                // viewport 대각선의 절반을 radius 로 — 배너 카운트(viewport 결과)와
-                                // 비교 화면(/maps/pet-hotels?radius=…)의 결과 차이를 최소화.
+                                // /maps/pet-hotels 는 원형 radius 만 지원하므로 viewport 대각선의 절반을
+                                // radius 로 넘겨 일단 viewport 를 외접하도록 가져온 뒤, 비교 화면에서
+                                // viewport bbox 로 다시 클리핑해 배너 카운트와 결과 개수를 일치시킨다.
                                 val radius = radiusFromViewport(uiState.viewportBounds)
                                 onNavigate(
                                     com.example.siheunggagae.Screen.PetHotelCompare.createRoute(
                                         lat = lat,
                                         lng = lng,
                                         radius = radius,
+                                        viewportBounds = uiState.viewportBounds,
                                     ),
                                 )
                             },
