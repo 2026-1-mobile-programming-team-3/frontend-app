@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +28,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.withLink
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
@@ -442,26 +445,27 @@ fun SignUpScreen(
             Spacer(Modifier.height(24.dp))
 
             // 약관 동의 (UI만, 백엔드로 전송 안 함)
+            val linkStyle = SpanStyle(
+                color = Color(0xFFF7A35B),
+                textDecoration = TextDecoration.Underline,
+                fontWeight = FontWeight.SemiBold,
+            )
             val annotatedTerms = buildAnnotatedString {
-                pushStringAnnotation("TERMS", "service")
-                withStyle(
-                    SpanStyle(
-                        color = Color(0xFFF7A35B),
-                        textDecoration = TextDecoration.Underline,
-                        fontWeight = FontWeight.SemiBold,
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = "service",
+                        styles = TextLinkStyles(style = linkStyle),
+                        linkInteractionListener = { showTermsSheet = "service" },
                     )
                 ) { append("이용약관") }
-                pop()
                 append(" 및 ")
-                pushStringAnnotation("TERMS", "privacy")
-                withStyle(
-                    SpanStyle(
-                        color = Color(0xFFF7A35B),
-                        textDecoration = TextDecoration.Underline,
-                        fontWeight = FontWeight.SemiBold,
+                withLink(
+                    LinkAnnotation.Clickable(
+                        tag = "privacy",
+                        styles = TextLinkStyles(style = linkStyle),
+                        linkInteractionListener = { showTermsSheet = "privacy" },
                     )
                 ) { append("개인정보처리방침") }
-                pop()
                 append("에 동의합니다")
             }
             Row(
@@ -491,23 +495,19 @@ fun SignUpScreen(
                         )
                     }
                 }
-                ClickableText(
+                // 링크 영역(이용약관/개인정보처리방침)은 LinkAnnotation 이 우선 처리하고,
+                // 일반 텍스트 영역을 탭하면 체크박스와 동일하게 동의 상태를 토글한다.
+                Text(
                     text = annotatedTerms,
                     style = TextStyle(
                         fontFamily = PretendardFamily,
                         fontSize = 13.sp,
                         color = Color(0xFF1E120A),
                     ),
-                    onClick = { offset ->
-                        val annotation = annotatedTerms
-                            .getStringAnnotations("TERMS", offset, offset)
-                            .firstOrNull()
-                        if (annotation != null) {
-                            showTermsSheet = annotation.item
-                        } else {
-                            termsAccepted = !termsAccepted
-                        }
-                    },
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { termsAccepted = !termsAccepted },
                 )
             }
 

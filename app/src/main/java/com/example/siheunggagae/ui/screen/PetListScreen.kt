@@ -238,7 +238,6 @@ fun PetListScreen(
                     Spacer(Modifier.height(24.dp))
                 }
             }
-            else -> {}
         }
     }
 
