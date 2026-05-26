@@ -176,7 +176,11 @@ fun MatchingScreen(
             ) {
                 Column(Modifier.fillMaxSize()) {
                     MatchTopBar(
-                        onSearchClick = { viewModel.enterSearch() },
+                        isSearchMode = isSearchMode,
+                        onSearchToggle = {
+                            if (isSearchMode) { keyboardController?.hide(); viewModel.exitSearch() }
+                            else viewModel.enterSearch()
+                        },
                         onMyRequestsClick = onMyRequestsClick,
                     )
                     androidx.compose.animation.AnimatedVisibility(
@@ -187,10 +191,6 @@ fun MatchingScreen(
                         MatchSearchBar(
                             query = searchQuery,
                             onQueryChange = { viewModel.updateSearch(it) },
-                            onClose = {
-                                keyboardController?.hide()
-                                viewModel.exitSearch()
-                            },
                         )
                     }
                     val success = state as? MatchingUi.Success
@@ -668,7 +668,11 @@ private fun computeRemainingShort(date: String?, time: String?): String? {
 // ──────────────────────────────────────────────────────────────────────────────
 
 @Composable
-internal fun MatchTopBar(onSearchClick: () -> Unit, onMyRequestsClick: () -> Unit) {
+internal fun MatchTopBar(
+    isSearchMode: Boolean,
+    onSearchToggle: () -> Unit,
+    onMyRequestsClick: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding()
             .padding(horizontal = 18.dp).padding(top = 4.dp, bottom = 12.dp),
@@ -676,7 +680,11 @@ internal fun MatchTopBar(onSearchClick: () -> Unit, onMyRequestsClick: () -> Uni
     ) {
         Text("매칭", color = TextBlackM, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.weight(1f))
-        MatchTopBarIcon(R.drawable.ic_search) { onSearchClick() }
+        MatchTopBarIcon(
+            iconRes = R.drawable.ic_search,
+            tint = if (isSearchMode) Brown900M else Brown700M,
+            onClick = onSearchToggle,
+        )
         Spacer(Modifier.width(8.dp))
         MatchTopBarIcon(R.drawable.ic_assignment) { onMyRequestsClick() }
     }
@@ -686,88 +694,69 @@ internal fun MatchTopBar(onSearchClick: () -> Unit, onMyRequestsClick: () -> Uni
 private fun MatchSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    onClose: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
-    Row(
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
-            .padding(bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .padding(bottom = 10.dp)
+            .height(44.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = Color.White,
-            shadowElevation = 2.dp,
-            modifier = Modifier.weight(1f).height(44.dp),
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_search),
-                    contentDescription = null,
-                    tint = Brown700M,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    singleLine = true,
-                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        color = TextBlackM,
-                        fontFamily = PretendardFamily,
-                    ),
-                    decorationBox = { inner ->
-                        Box {
-                            if (query.isEmpty()) {
-                                Text(
-                                    "제목, 닉네임, 주소 검색...",
-                                    fontSize = 14.sp,
-                                    color = PlaceholderM,
-                                    fontFamily = PretendardFamily,
-                                )
-                            }
-                            inner()
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = null,
+                tint = Brown700M,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                textStyle = TextStyle(
+                    fontSize = 14.sp,
+                    color = TextBlackM,
+                    fontFamily = PretendardFamily,
+                ),
+                decorationBox = { inner ->
+                    Box {
+                        if (query.isEmpty()) {
+                            Text(
+                                "제목, 닉네임, 주소 검색...",
+                                fontSize = 14.sp,
+                                color = PlaceholderM,
+                                fontFamily = PretendardFamily,
+                            )
                         }
-                    },
+                        inner()
+                    }
+                },
+            )
+            if (query.isNotEmpty()) {
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "지우기",
+                    tint = Brown400M,
+                    modifier = Modifier.size(16.dp).clickable { onQueryChange("") },
                 )
-                if (query.isNotEmpty()) {
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "지우기",
-                        tint = Brown400M,
-                        modifier = Modifier.size(16.dp).clickable { onQueryChange("") },
-                    )
-                }
-            }
-        }
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = Color.White,
-            shadowElevation = 2.dp,
-            modifier = Modifier.height(44.dp).clickable { onClose() },
-        ) {
-            Box(
-                Modifier.fillMaxHeight().padding(horizontal = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("취소", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Brown700M)
             }
         }
     }
 }
 
 @Composable
-private fun MatchTopBarIcon(iconRes: Int, onClick: () -> Unit) {
+private fun MatchTopBarIcon(iconRes: Int, tint: Color = Brown700M, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
@@ -778,7 +767,7 @@ private fun MatchTopBarIcon(iconRes: Int, onClick: () -> Unit) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                tint = Brown700M,
+                tint = tint,
                 modifier = Modifier.size(22.dp),
             )
         }
