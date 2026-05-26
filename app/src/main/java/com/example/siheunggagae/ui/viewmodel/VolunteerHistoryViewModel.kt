@@ -46,7 +46,12 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
                 val items = resp.body()?.items.orEmpty()
                 Log.d("VolHist", "HTTP ${resp.code()} | items=${items.size} | statuses=${items.map { it.status }}")
                 val matches = items.filter { it.status == "DONE" }
-                _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
+                val avgRating = matches.mapNotNull { it.receivedRating?.toDouble() }
+                    .takeIf { it.isNotEmpty() }?.average()
+                _uiState.value = VolunteerHistoryUiState.Success(
+                    stats = stats.copy(avgRating = avgRating),
+                    matches = matches,
+                )
             }.onFailure { e ->
                 Log.e("VolHist", "exception: ${e.message}", e)
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")
