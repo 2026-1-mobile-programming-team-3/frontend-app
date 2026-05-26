@@ -242,23 +242,6 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlackP,
             modifier = Modifier.align(Alignment.Center),
         )
-        Row(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            PublicTopBarIcon(iconRes = R.drawable.ic_bookmark, desc = "북마크")
-            PublicTopBarIcon(iconRes = R.drawable.ic_share, desc = "공유")
-        }
-    }
-}
-
-@Composable
-private fun PublicTopBarIcon(iconRes: Int, desc: String) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { },
-    ) {
-        Icon(painter = painterResource(iconRes), contentDescription = desc, tint = TextBlackP, modifier = Modifier.size(20.dp))
     }
 }
 

@@ -152,7 +152,7 @@ fun MatchingScreen(
 
     var showSortSheet by remember { mutableStateOf(false) }
     var showDistanceSheet by remember { mutableStateOf(false) }
-    var moreSheetFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }  // matchId, isMine
+    var moreSheetFor by remember { mutableStateOf<Int?>(null) }  // matchId — 본인 글일 때만
     val sheetHaptic = LocalHapticFeedback.current
 
     // 무한 스크롤 trigger
@@ -275,9 +275,9 @@ fun MatchingScreen(
                                             onClick = {
                                                 item.matchId?.let { onCardClick(it, isMine) }
                                             },
-                                            onMoreClick = {
-                                                item.matchId?.let { moreSheetFor = it to isMine }
-                                            },
+                                            onMoreClick = if (isMine) {
+                                                { item.matchId?.let { moreSheetFor = it } }
+                                            } else null,
                                         )
                                     }
                                 }
@@ -321,21 +321,10 @@ fun MatchingScreen(
             onDismiss = { showDistanceSheet = false },
         )
     }
-    moreSheetFor?.let { (matchId, isMine) ->
+    moreSheetFor?.let { matchId ->
         CardMoreSheet(
-            isMine = isMine,
-            onEdit = {
-                // TODO: navigate to RequestFlow with matchId — leave as no-op for now
-            },
-            onDelete = {
-                // TODO: delete API + refresh — leave as no-op for now
-            },
-            onShare = {
-                // TODO: share intent — leave as no-op
-            },
-            onReport = {
-                // TODO: report API — leave as no-op
-            },
+            onEdit = { /* C4: 실제 연결 */ },
+            onDelete = { /* C4: 실제 연결 */ },
             onDismiss = { moreSheetFor = null },
         )
     }
@@ -435,7 +424,7 @@ internal fun MatchCardR(
     imminence: Imminence?,
     distanceLabel: String,
     onClick: () -> Unit,
-    onMoreClick: () -> Unit,
+    onMoreClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val status = item.status ?: "WAITING"
@@ -523,19 +512,21 @@ internal fun MatchCardR(
                     }
                 }
             }
-            // top-right ⋮
-            IconButton(
-                onClick = onMoreClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(36.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more_vert),
-                    contentDescription = "더보기",
-                    tint = Brown700M,
-                    modifier = Modifier.size(16.dp),
-                )
+            // top-right ⋮ — 본인 글일 때만 노출
+            if (onMoreClick != null) {
+                IconButton(
+                    onClick = onMoreClick,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(36.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_vert),
+                        contentDescription = "더보기",
+                        tint = Brown700M,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
             }
         }
     }
@@ -1110,23 +1101,14 @@ private fun EmptyState(onExpandDistance: () -> Unit, onCreate: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CardMoreSheet(
-    isMine: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onShare: () -> Unit,
-    onReport: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
-            if (isMine) {
-                MoreRow("수정") { onEdit(); onDismiss() }
-                MoreRow("끌어올림 (다시 알리기)", enabled = false) { /* TBD */ }
-                MoreRow("삭제", danger = true) { onDelete(); onDismiss() }
-            } else {
-                MoreRow("공유하기") { onShare(); onDismiss() }
-                MoreRow("신고하기", enabled = false) { /* TBD */ }
-            }
+            MoreRow("수정") { onEdit(); onDismiss() }
+            MoreRow("삭제", danger = true) { onDelete(); onDismiss() }
             Spacer(Modifier.height(8.dp))
         }
     }
