@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -782,8 +783,8 @@ private fun MultiBlock(
             contentPadding = PaddingValues(horizontal = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(items) { hotel ->
-                val isA = items.indexOf(hotel) % 2 == 0
+            itemsIndexed(items, key = { _, h -> h.storeId }) { index, hotel ->
+                val isA = index % 2 == 0
                 Box(
                     modifier = Modifier
                         .width(100.dp)

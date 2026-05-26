@@ -998,7 +998,7 @@ private fun DongChangeModal(
             HorizontalDivider(color = Color(0xFFF3F4F6))
 
             LazyColumn(modifier = Modifier.height(280.dp)) {
-                items(siheungDongs) { dong ->
+                items(siheungDongs, key = { it }) { dong ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
