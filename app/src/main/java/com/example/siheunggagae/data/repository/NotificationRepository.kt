@@ -2,6 +2,7 @@ package com.example.siheunggagae.data.repository
 
 import com.example.siheunggagae.data.local.LocalNotificationStore
 import com.example.siheunggagae.data.model.MarkAllReadResponse
+import com.example.siheunggagae.data.model.NotificationDeleteRequest
 import com.example.siheunggagae.data.model.NotificationListResponse
 import com.example.siheunggagae.data.model.NotificationReadResponse
 import com.example.siheunggagae.data.model.UnreadCountResponse
@@ -23,21 +24,33 @@ class NotificationRepository(
             page = page,
             size = size,
         )
-        // page 1에서만 로컬 알림을 앞에 붙임
-        if (page == 1 && localStore != null && serverResp.isSuccessful) {
-            val body = serverResp.body() ?: return serverResp
+        if (!serverResp.isSuccessful || localStore == null) return serverResp
+
+        val body = serverResp.body() ?: return serverResp
+        val hiddenIds = localStore.getHiddenServerIds()
+
+        // 클라이언트에서 삭제 처리된 서버 알림 필터링
+        val filteredServer = if (hiddenIds.isEmpty()) body.items
+                             else body.items.filter { it.id !in hiddenIds }
+        val removedUnread = body.items.count { it.id in hiddenIds && !it.isRead }
+
+        return if (page == 1) {
             val local = localStore.getAll()
-            if (local.isEmpty()) return serverResp
-            val merged = local + body.items
-            return Response.success(
+            Response.success(
                 body.copy(
-                    items = merged,
-                    total = body.total + local.size,
-                    unreadCount = body.unreadCount + local.count { !it.isRead },
+                    items = local + filteredServer,
+                    total = maxOf(0, body.total - hiddenIds.size) + local.size,
+                    unreadCount = maxOf(0, body.unreadCount - removedUnread) + local.count { !it.isRead },
+                ),
+            )
+        } else {
+            Response.success(
+                body.copy(
+                    items = filteredServer,
+                    total = maxOf(0, body.total - hiddenIds.size),
                 ),
             )
         }
-        return serverResp
     }
 
     suspend fun getUnreadCount(): Response<UnreadCountResponse> =
@@ -52,4 +65,11 @@ class NotificationRepository(
     // 로컬 알림 전용 (id < 0)
     fun markLocalRead(id: Int) = localStore?.markRead(id)
     fun markAllLocalRead() = localStore?.markAllRead()
+    fun deleteLocalNotifications(ids: List<Int>) = localStore?.deleteItems(ids.toSet())
+
+    // 서버 알림 삭제 — API 성공 여부와 무관하게 클라이언트 hidden IDs 에도 추가 (belt-and-suspenders)
+    suspend fun deleteServerNotifications(ids: List<Int>) {
+        runCatching { api.deleteNotifications(NotificationDeleteRequest(ids)) }
+        localStore?.addHiddenServerIds(ids.toSet())
+    }
 }

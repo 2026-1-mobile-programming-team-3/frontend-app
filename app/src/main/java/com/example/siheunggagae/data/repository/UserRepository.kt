@@ -39,6 +39,9 @@ class UserRepository {
     suspend fun getMyMatches(page: Int = 1, size: Int = 20): Response<MatchListResponse> =
         api.getMyMatches(role = "applicant", status = "DONE", page = page, size = size)
 
+    suspend fun getVolunteerHistory(page: Int = 1, size: Int = 20): Response<MatchListResponse> =
+        api.getMyMatchHistory(role = "applicant", status = null, page = page, size = size)
+
     suspend fun updateMe(request: UserUpdateRequest): Response<UserMeResponse> =
         api.updateMe(request)
 

@@ -926,19 +926,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.News.route) {
-            val newsNotifRepo = remember { NotificationRepository() }
-            val newsUnreadCount = remember { mutableStateOf(0) }
-            val newsLifecycle = LocalLifecycleOwner.current.lifecycle
-            LaunchedEffect(newsLifecycle) {
-                newsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    runCatching { newsNotifRepo.getUnreadCount() }.onSuccess { resp ->
-                        if (resp.isSuccessful) newsUnreadCount.value = resp.body()?.unreadCount ?: 0
-                    }
-                }
-            }
             NewsScreen(
-                unreadCount = newsUnreadCount.value,
-                onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNewsDetailClick = { newsId ->
                     navController.navigate(Screen.NewsDetail.createRoute(newsId))
                 },
@@ -1109,6 +1097,7 @@ fun AppNavGraph(
                     myScope.launch {
                         myAuthRepo.logout()
                         com.example.siheunggagae.data.local.CurrentUserStore(myContext).clear()
+                        myApp.localNotificationStore.clearAll()
                     }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
@@ -1163,6 +1152,7 @@ fun AppNavGraph(
                     settingsScope.launch {
                         settingsAuthRepo.logout()
                         com.example.siheunggagae.data.local.CurrentUserStore(settingsContext).clear()
+                        settingsApp.localNotificationStore.clearAll()
                     }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
@@ -1247,7 +1237,6 @@ fun AppNavGraph(
                 onMatchClick = { matchId ->
                     navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
                 },
-                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
             )
         }
 
@@ -1537,58 +1526,6 @@ private fun handleNotificationDeeplink(
     }
 }
 
-// ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────
-
-@Composable
-fun MyRequestsScreen(
-    viewModel: com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel,
-    onBack: () -> Unit = {},
-    onCardClick: (requestId: Int) -> Unit = {},
-) {
-    Scaffold(
-        containerColor = Gray95,
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .background(Color.White)
-                    .padding(vertical = 8.dp),
-            ) {
-                IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "뒤로",
-                        tint = Gray10,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Text(
-                    text = "내 봉사 요청 목록",
-                    fontFamily = PretendardFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 32.sp,
-                    color = Gray10,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            }
-        },
-    ) { padding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "준비 중입니다",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                color = Gray40,
-            )
-        }
-    }
-}
 
 // ─── Previews ──────────────────────────────────────────────────────────────────
 
