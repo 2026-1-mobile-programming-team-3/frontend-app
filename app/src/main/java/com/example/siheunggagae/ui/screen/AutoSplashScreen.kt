@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -52,6 +53,9 @@ fun AutoSplashScreen(
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as SiheungGagaeApp
+
+    // 스플래시 중 시스템 back으로 앱이 즉시 종료되는 것을 막는다.
+    BackHandler(enabled = true) { /* no-op */ }
 
     LaunchedEffect(Unit) {
         val authRepository = AuthRepository(app.tokenManager, app.fcmTokenManager)

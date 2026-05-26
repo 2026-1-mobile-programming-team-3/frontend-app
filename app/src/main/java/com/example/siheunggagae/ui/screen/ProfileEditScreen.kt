@@ -3,7 +3,9 @@ package com.example.siheunggagae.ui.screen
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.background
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -150,8 +153,23 @@ fun ProfileEditScreen(
     val fieldErrors = (uiState as? ProfileEditUiState.FieldErrors)?.errors ?: emptyMap()
     val nicknameConflict = (uiState as? ProfileEditUiState.NicknameConflict)?.message
 
+    val phoneRegex = remember { Regex("""^(01\d-\d{3,4}-\d{4}|01\d{9})$""") }
+    val isPhoneValid = phone.isBlank() || phoneRegex.matches(phone)
+
     val isSaving = uiState is ProfileEditUiState.Saving || uiState is ProfileEditUiState.Loading
-    val canSave  = nickname.isNotBlank() && !isSaving
+    val canSave  = nickname.isNotBlank() && isPhoneValid && !isSaving
+
+    // 변경 사항 추적 (dirty)
+    val loadedUser = (uiState as? ProfileEditUiState.Loaded)?.user
+    val initialNickname = loadedUser?.nickname ?: ""
+    val initialPhone    = loadedUser?.phone ?: ""
+    val initialDong     = loadedUser?.regionDong ?: ""
+    val isDirty = formInitialized && (
+        nickname != initialNickname || phone != initialPhone || dong != initialDong || localImageUri != null
+    )
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val handleBack: () -> Unit = { if (isDirty) showDiscardDialog = true else onBack() }
+    BackHandler(enabled = isDirty) { showDiscardDialog = true }
 
     fun clearErrors() {
         if (uiState is ProfileEditUiState.FieldErrors ||
@@ -161,12 +179,13 @@ fun ProfileEditScreen(
 
     Scaffold(
         containerColor = BgPE,
-        topBar = { ProfileEditTopBar(onBack = onBack) },
+        topBar = { ProfileEditTopBar(onBack = handleBack) },
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.White)
+                    .imePadding()
                     .navigationBarsPadding()
                     .padding(horizontal = 24.dp, vertical = 20.dp),
             ) {
@@ -314,6 +333,9 @@ fun ProfileEditScreen(
                                     placeholder = "예: 010-1234-5678",
                                     keyboardType = KeyboardType.Phone,
                                 )
+                                if (!isPhoneValid) {
+                                    PEFieldError("전화번호 형식이 올바르지 않아요 (예: 010-1234-5678)")
+                                }
                                 fieldErrors["phone"]?.let { PEFieldError(it) }
                             }
                         }
@@ -348,6 +370,22 @@ fun ProfileEditScreen(
                 }
             }
         }
+    }
+
+    if (showDiscardDialog) {
+        SiheungAlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = "변경 사항을 버릴까요?",
+            text = "저장하지 않은 변경 사항이 사라져요.",
+            confirmText = "나가기",
+            confirmColor = Color(0xFFEE6A46),
+            onConfirm = {
+                showDiscardDialog = false
+                onBack()
+            },
+            dismissText = "계속 편집",
+            onDismiss = { showDiscardDialog = false },
+        )
     }
 
     // ─── 활동 지역 선택 시트 ───────────────────────────────────────────────────────

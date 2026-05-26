@@ -22,7 +22,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -67,6 +71,7 @@ private val TextBlackLogin   = Color(0xFF1E120A)
 private val Brown900Login    = Color(0xFF614B3A)
 private val Brown700Login    = Color(0xFF8A6E58)
 private val BorderBeigeLogin = Color(0xFFE8D3C2)
+private val Pink500Login = Color(0xFFF04268)
 private val PlaceholderLogin = Color(0xFFA68A77)
 private val OrangeSandLogin  = Color(0xFFFFEDD4)
 private val Orange500Login   = Color(0xFFF7A35B)
@@ -105,6 +110,13 @@ fun LoginScreen(
     var emailInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val submitLogin: () -> Unit = {
+        if (!isLoading) {
+            focusManager.clearFocus()
+            viewModel?.login(emailInput, passwordInput)
+        }
+    }
 
     Scaffold(
         containerColor = BackgroundLogin,
@@ -231,6 +243,9 @@ fun LoginScreen(
                             onValueChange = { emailInput = it },
                             placeholder = "아이디 또는 이메일 입력",
                             keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                            onImeAction = { focusManager.moveFocus(FocusDirection.Down) },
+                            isError = errorMessage != null,
                         )
                     }
 
@@ -241,6 +256,9 @@ fun LoginScreen(
                                 onValueChange = { passwordInput = it },
                                 visible = passwordVisible,
                                 onToggleVisibility = { passwordVisible = !passwordVisible },
+                                imeAction = ImeAction.Done,
+                                onImeAction = submitLogin,
+                                isError = errorMessage != null,
                             )
                             Box(
                                 modifier = Modifier.fillMaxWidth(),
@@ -340,22 +358,31 @@ private fun LoginTextField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: () -> Unit = {},
+    isError: Boolean = false,
 ) {
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() },
+            onSend = { onImeAction() },
+            onGo = { onImeAction() },
+        ),
         textStyle = TextStyle(
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
             lineHeight = 24.sp,
             color = TextBlackLogin,
         ),
-        cursorBrush = SolidColor(Orange500Login),
+        cursorBrush = SolidColor(if (isError) Pink500Login else Orange500Login),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BorderBeigeLogin, RoundedCornerShape(16.dp))
+            .border(1.dp, if (isError) Pink500Login else BorderBeigeLogin, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         decorationBox = { inner ->
             if (value.isEmpty()) {
@@ -380,11 +407,14 @@ private fun PasswordTextField(
     onValueChange: (String) -> Unit,
     visible: Boolean,
     onToggleVisibility: () -> Unit,
+    imeAction: ImeAction = ImeAction.Done,
+    onImeAction: () -> Unit = {},
+    isError: Boolean = false,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, BorderBeigeLogin, RoundedCornerShape(16.dp))
+            .border(1.dp, if (isError) Pink500Login else BorderBeigeLogin, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -394,7 +424,12 @@ private fun PasswordTextField(
             onValueChange = onValueChange,
             singleLine = true,
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
+            keyboardActions = KeyboardActions(
+                onDone = { onImeAction() },
+                onGo = { onImeAction() },
+                onSend = { onImeAction() },
+            ),
             textStyle = TextStyle(
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,

@@ -6,6 +6,7 @@ import android.graphics.ImageDecoder
 import androidx.compose.runtime.collectAsState
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
@@ -97,6 +98,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.siheunggagae.R
 import com.example.siheunggagae.data.model.PetGender
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.data.model.PetSpecies
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -253,12 +255,32 @@ fun PetAddScreen(
     val isLoading = uiState is PetAddUiState.Loading
     val canSave = nameInput.isNotBlank() && !isSaving && !isLoading
 
+    val isDirty = if (isEditMode) {
+        initialPet?.let { p ->
+            nameInput != p.name ||
+            selectedSpecies != p.species.toLabel() ||
+            breedInput != (p.breed ?: "") ||
+            age != (p.age ?: 1) ||
+            gender != p.gender.toLabel() ||
+            isNeutered != p.isNeutered ||
+            noteInput != (p.note ?: "") ||
+            localPhotoUri != null
+        } ?: false
+    } else {
+        nameInput.isNotBlank() || breedInput.isNotBlank() ||
+            noteInput.isNotBlank() || localPhotoUri != null ||
+            hasBirthDate
+    }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val handleBack: () -> Unit = { if (isDirty) showDiscardDialog = true else onBack() }
+    BackHandler(enabled = isDirty) { showDiscardDialog = true }
+
     Scaffold(
         containerColor = BackgroundPA,
         topBar = {
             PetAddTopBar(
                 title = if (isEditMode) "반려동물 수정" else "반려동물 추가",
-                onBack = onBack,
+                onBack = handleBack,
             )
         },
         bottomBar = {
@@ -354,7 +376,7 @@ fun PetAddScreen(
                     onPickDateClick = { showDatePicker = true }
                 )
 
-                NoteSection(note = noteInput, onNoteChange = { if (it.length <= 300) noteInput = it })
+                NoteSection(note = noteInput, onNoteChange = { noteInput = it.take(300) })
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -389,6 +411,22 @@ fun PetAddScreen(
                 )
             )
         }
+    }
+
+    if (showDiscardDialog) {
+        SiheungAlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = "작성을 그만두시겠어요?",
+            text = "입력한 내용이 사라져요.",
+            confirmText = "나가기",
+            confirmColor = Color(0xFFEE6A46),
+            onConfirm = {
+                showDiscardDialog = false
+                onBack()
+            },
+            dismissText = "계속 작성",
+            onDismiss = { showDiscardDialog = false },
+        )
     }
 }
 
