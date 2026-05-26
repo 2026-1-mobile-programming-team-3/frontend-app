@@ -60,6 +60,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -169,6 +170,7 @@ fun MapScreen(
     var showSearch by remember { mutableStateOf(false) }
     var showDongPicker by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
+    val lastMarkerTapMs = remember { mutableLongStateOf(0L) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
@@ -272,11 +274,19 @@ fun MapScreen(
                     is MarkerSpec.Single -> {
                         val storeIdInt = spec.id.removePrefix("store_").toIntOrNull()
                         spec.copy(onTap = {
-                            byId[storeIdInt]?.toStoreResponse()?.let { viewModel.selectStore(it) }
+                            val now = System.currentTimeMillis()
+                            if (now - lastMarkerTapMs.longValue >= 400) {
+                                lastMarkerTapMs.longValue = now
+                                byId[storeIdInt]?.toStoreResponse()?.let { viewModel.selectStore(it) }
+                            }
                         })
                     }
                     is MarkerSpec.Cluster -> spec.copy(onTap = {
-                        mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
+                        val now = System.currentTimeMillis()
+                        if (now - lastMarkerTapMs.longValue >= 400) {
+                            lastMarkerTapMs.longValue = now
+                            mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
+                        }
                     })
                 }
             }

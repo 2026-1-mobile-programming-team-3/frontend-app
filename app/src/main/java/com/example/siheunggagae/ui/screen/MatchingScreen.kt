@@ -147,6 +147,13 @@ fun MatchingScreen(
     val searchQuery = (state as? MatchingUi.Success)?.searchQuery ?: ""
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    var searchInput by remember { mutableStateOf(searchQuery) }
+    LaunchedEffect(isSearchMode) { if (!isSearchMode) searchInput = "" }
+    LaunchedEffect(searchInput) {
+        kotlinx.coroutines.delay(300)
+        if (searchInput != searchQuery) viewModel.updateSearch(searchInput)
+    }
+
     BackHandler(enabled = isSearchMode) {
         keyboardController?.hide()
         viewModel.exitSearch()
@@ -197,8 +204,8 @@ fun MatchingScreen(
                         exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
                     ) {
                         MatchSearchBar(
-                            query = searchQuery,
-                            onQueryChange = { viewModel.updateSearch(it) },
+                            query = searchInput,
+                            onQueryChange = { searchInput = it },
                         )
                     }
                     val success = state as? MatchingUi.Success

@@ -175,10 +175,18 @@ fun PetAddScreen(
 
     val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (uri != null) {
-            context.contentResolver.takePersistableUriPermission(
-                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-            viewModel?.setLocalPhotoUri(uri.toString())
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                viewModel?.setLocalPhotoUri(uri.toString())
+            }.onFailure {
+                android.widget.Toast.makeText(
+                    context,
+                    "사진을 불러올 수 없어요. 다시 시도해 주세요.",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 

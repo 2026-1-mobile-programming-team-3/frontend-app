@@ -30,6 +30,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,7 +39,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -80,10 +85,13 @@ fun BlockManageScreen(
 
     // 해제 확인 다이얼로그 대상
     var pendingUnblock by remember { mutableStateOf<BlockListItem?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = BackgroundB,
         topBar = { BlockManageTopBar(onBack = onBack) },
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
     ) { innerPadding ->
         when (val state = uiState) {
             is BlockManageUiState.Loading -> {
@@ -191,8 +199,20 @@ fun BlockManageScreen(
             text = "${target.targetNickname ?: "이 사용자"}님의 차단을 해제하시겠어요?",
             confirmText = "해제",
             onConfirm = {
-                target.blockId?.let { viewModel?.unblock(it) }
+                val snapshot = target
+                snapshot.blockId?.let { viewModel?.unblock(it) }
                 pendingUnblock = null
+                val nickname = snapshot.targetNickname ?: "사용자"
+                snackbarScope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "${nickname}님의 차단을 해제했어요",
+                        actionLabel = "실행취소",
+                        withDismissAction = false,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        viewModel?.reblock(snapshot)
+                    }
+                }
             },
             dismissText = "취소",
             onDismiss = { pendingUnblock = null },

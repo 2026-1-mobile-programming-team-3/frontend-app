@@ -60,6 +60,37 @@ class BlockManageViewModel(private val repository: UserRepository) : ViewModel()
         )
     }
 
+    /**
+     * 차단 해제를 되돌린다. 스낵바의 "실행취소" 액션에서 호출.
+     * 낙관적으로 목록에 복원하고, 서버 재차단이 성공하면 새 blockId로 동기화한다.
+     */
+    fun reblock(item: BlockListItem) {
+        val targetUserId = item.targetUserId ?: return
+        val current = _uiState.value as? BlockManageUiState.Success ?: return
+        // 낙관적 복원
+        _uiState.value = BlockManageUiState.Success(
+            (current.items + item).sortedByDescending { it.createdAt }
+        )
+        viewModelScope.launch {
+            try {
+                val resp = repository.createBlock(targetUserId)
+                if (resp.isSuccessful) {
+                    fetchBlocks()
+                } else {
+                    rollbackReblock(item.blockId)
+                }
+            } catch (_: Exception) {
+                rollbackReblock(item.blockId)
+            }
+        }
+    }
+
+    private fun rollbackReblock(blockId: Int?) {
+        if (blockId == null) return
+        val current = _uiState.value as? BlockManageUiState.Success ?: return
+        _uiState.value = BlockManageUiState.Success(current.items.filter { it.blockId != blockId })
+    }
+
     class Factory(private val repository: UserRepository) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
