@@ -52,7 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
+import com.example.siheunggagae.data.local.CurrentUserStore
+import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchDetailResponse
+import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.MatchDetailUiState
@@ -98,6 +101,7 @@ fun MatchingPublicDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isVolunteer = remember { CurrentUserStore(context).isVolunteer() }
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
@@ -120,6 +124,8 @@ fun MatchingPublicDetailScreen(
                     isMyRequest = isMyRequest,
                     isApplied = viewModel?.isApplied ?: false,
                     myApplicationStatus = viewModel?.myApplicationStatus ?: "",
+                    category = state.detail.category,
+                    isVolunteer = isVolunteer,
                     onApply = { showApplyDialog = true },
                     onChat = {
                         if (viewModel?.isApplied == true) {
@@ -135,7 +141,10 @@ fun MatchingPublicDetailScreen(
                     },
                     onManageRequest = {
                         onNavigate(Screen.MatchingDetail.createRoute(requestId))
-                    }
+                    },
+                    onVolunteerApply = {
+                        onNavigate(Screen.VolunteerApply.route)
+                    },
                 )
             }
         },
@@ -459,10 +468,18 @@ private fun PublicDetailBottomBar(
     isMyRequest: Boolean,
     isApplied: Boolean,
     myApplicationStatus: String,
+    category: MatchCategory?,
+    isVolunteer: Boolean,
     onApply: () -> Unit,
     onChat: () -> Unit,
-    onManageRequest: () -> Unit
+    onManageRequest: () -> Unit,
+    onVolunteerApply: () -> Unit,
 ) {
+    // 봉사자 자격이 필요한 카테고리인데 본인이 봉사자가 아니면 신청을 막는다.
+    // 이미 신청한 상태(isApplied)나 본인 요청(isMyRequest)은 가드 대상 아님.
+    val isBlockedByVolunteerRequirement =
+        category?.requiresVolunteerRole() == true && !isVolunteer && !isMyRequest && !isApplied
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -479,6 +496,42 @@ private fun PublicDetailBottomBar(
                     modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(50.dp)).background(Brown900C).clickable { onManageRequest() },
                 ) {
                     Text(text = "지원 현황 및 목록 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            }
+
+            isBlockedByVolunteerRequirement && currentStatus != "DONE" -> {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Color(0xFFF2F2F2)),
+                ) {
+                    Text(
+                        text = "봉사자 자격이 필요한 요청이에요",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray,
+                    )
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(50.dp))
+                        .background(Green600P)
+                        .clickable { onVolunteerApply() }
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Text(
+                        text = "자격 신청",
+                        fontFamily = PretendardFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
                 }
             }
 
