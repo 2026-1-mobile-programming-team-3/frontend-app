@@ -85,6 +85,7 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.component.ShimmerBox
 import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
@@ -492,7 +493,7 @@ internal fun MatchCardR(
     ) {
         Box {
             Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
-                CardThumbnail(category = item.category)
+                CardThumbnail(category = item.category, thumbnailUrl = item.thumbnailUrl)
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f).padding(end = 28.dp)) {
                     FlowRow(
@@ -578,7 +579,18 @@ internal fun MatchCardR(
 }
 
 @Composable
-private fun CardThumbnail(category: MatchCategory?) {
+private fun CardThumbnail(category: MatchCategory?, thumbnailUrl: String? = null) {
+    // 첨부 사진이 있으면 그 사진을 우선 표시. 없으면 카테고리 그라디언트 + 아이콘.
+    if (!thumbnailUrl.isNullOrBlank()) {
+        AppAsyncImage(
+            model = thumbnailUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(60.dp)
+                .clip(RoundedCornerShape(12.dp)),
+        )
+        return
+    }
     val brush = when (category) {
         MatchCategory.WALK -> Brush.linearGradient(listOf(Color(0xFFFFEDD4), Color(0xFFF7A35B)))
         MatchCategory.VET -> Brush.linearGradient(listOf(Color(0xFFDCFCE7), Color(0xFF16A34A)))

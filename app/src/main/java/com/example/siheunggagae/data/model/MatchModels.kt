@@ -14,6 +14,9 @@ data class MatchCreateRequest(
     val desiredDate: String? = null,
     @SerializedName("desired_time") val desiredTime: String? = null,
     @SerializedName("pet_ids") val petIds: List<Int>? = null, // 1번 개선: 단일 petId에서 다중 petIds 배열로 확장
+    // 백엔드가 multipart upload 를 지원하기 전까지는 클라가 보유한 content:// URI 목록을
+    // 그대로 전송한다. 서버는 무시할 수 있고, 그 경우 다른 기기에서 볼 수 없는 로컬 미리보기만 동작.
+    @SerializedName("image_urls") val imageUrls: List<String>? = null,
 )
 
 data class MatchCreateResponse(
@@ -32,6 +35,7 @@ data class MatchUpdateRequest(
     val desiredDate: String? = null,
     @SerializedName("desired_time") val desiredTime: String? = null,
     @SerializedName("pet_ids") val petIds: List<Int>? = null, // 1번 개선: 단일 petId에서 다중 petIds 배열로 확장
+    @SerializedName("image_urls") val imageUrls: List<String>? = null,
 )
 
 enum class MatchCategory { WALK, VET, SHOPPING, MOVE, VOLUNTEER, OTHER }
@@ -59,6 +63,8 @@ data class MatchListItem(
     val authorUserId: Int? = null,
     @SerializedName(value = "distance_m", alternate = ["distanceM"])
     val distanceM: Double? = null,
+    @SerializedName(value = "thumbnail_url", alternate = ["image_url", "imageUrl"])
+    val thumbnailUrl: String? = null,
 )
 
 data class MatchListResponse(
@@ -97,6 +103,8 @@ data class MatchDetailResponse(
     val applicationsCount: Int? = null,
     val createdAt: String? = null,
     val category: MatchCategory? = null,
+    @SerializedName(value = "image_urls", alternate = ["imageUrls"])
+    val imageUrls: List<String>? = null,
 )
 
 data class MatchStatusUpdateRequest(

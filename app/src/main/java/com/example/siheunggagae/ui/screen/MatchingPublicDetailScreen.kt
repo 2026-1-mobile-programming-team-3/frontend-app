@@ -66,6 +66,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.kakao.vectormap.MapView as KakaoNativeMapView
 import com.example.siheunggagae.MapViewWrapper
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
@@ -324,6 +327,22 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
                 Text(text = "요청 메모", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
                 Spacer(Modifier.height(4.dp))
                 Text(text = request.content ?: "메모 없음", fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP)
+            }
+        }
+
+        val images = request.imageUrls.orEmpty()
+        if (images.isNotEmpty()) {
+            Text(text = "첨부 사진", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextBlackP)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(images, key = { it }) { url ->
+                    AppAsyncImage(
+                        model = url,
+                        contentDescription = "첨부 사진",
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                    )
+                }
             }
         }
     }

@@ -23,6 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -630,6 +633,23 @@ private fun RequestInfoCardD(request: MatchDetailResponse) {
         InfoRowD(MintLightD, R.drawable.ic_location_on, Green600D, "목적지", request.address ?: "미정")
         HorizontalDivider(color = Gray300D)
         InfoRowD(Gray300D, R.drawable.ic_chat_bubble, TextBlackD, "요청 메모", request.content ?: "메모 없음")
+
+        val images = request.imageUrls.orEmpty()
+        if (images.isNotEmpty()) {
+            HorizontalDivider(color = Gray300D)
+            Text(text = "첨부 사진", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextBlackD)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(images, key = { it }) { url ->
+                    AppAsyncImage(
+                        model = url,
+                        contentDescription = "첨부 사진",
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                    )
+                }
+            }
+        }
     }
 }
 

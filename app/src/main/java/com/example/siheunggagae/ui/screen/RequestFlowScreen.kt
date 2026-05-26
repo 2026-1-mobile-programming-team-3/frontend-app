@@ -1,5 +1,7 @@
 ﻿package com.example.siheunggagae.ui.screen
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -80,6 +83,7 @@ import com.example.siheunggagae.data.local.CurrentUserStore
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.PetResponse
 import androidx.activity.compose.BackHandler
+import com.example.siheunggagae.ui.component.AppAsyncImage
 import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -153,6 +157,17 @@ fun RequestFlowScreen(
     var titleInput by remember { mutableStateOf(viewModel.title) }
     var destination by remember { mutableStateOf(viewModel.address) }
     var memo by remember { mutableStateOf(viewModel.content) }
+    var selectedImageUris by remember { mutableStateOf(viewModel.selectedImageUris) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5),
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            // 최대 5장. 기존 + 새로 선택분 누적 후 dedup, 5장 초과는 trim.
+            val merged = (selectedImageUris + uris.map { it.toString() }).distinct().take(5)
+            selectedImageUris = merged
+            viewModel.selectedImageUris = merged
+        }
+    }
 
     var showLocationSearch by remember { mutableStateOf(false) }
     var latInput by remember { mutableStateOf(viewModel.latitude) }
@@ -326,7 +341,20 @@ fun RequestFlowScreen(
                     title = titleInput, onTitleChange = { titleInput = it },
                     destination = destination, onDestinationChange = { destination = it },
                     memo = memo, onMemoChange = { if (it.length <= 500) memo = it },
-                    onSearchClick = { showLocationSearch = true }
+                    onSearchClick = { showLocationSearch = true },
+                    imageUris = selectedImageUris,
+                    onPickImages = {
+                        imagePickerLauncher.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            ),
+                        )
+                    },
+                    onRemoveImage = { uri ->
+                        val next = selectedImageUris.filterNot { it == uri }
+                        selectedImageUris = next
+                        viewModel.selectedImageUris = next
+                    },
                 )
             }
             Spacer(Modifier.height(16.dp))
@@ -990,7 +1018,10 @@ private fun Step3Content(
     title: String, onTitleChange: (String) -> Unit,
     destination: String, onDestinationChange: (String) -> Unit,
     memo: String, onMemoChange: (String) -> Unit,
-    onSearchClick: () -> Unit
+    onSearchClick: () -> Unit,
+    imageUris: List<String> = emptyList(),
+    onPickImages: () -> Unit = {},
+    onRemoveImage: (String) -> Unit = {},
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
         Spacer(Modifier.height(24.dp))
@@ -1077,6 +1108,80 @@ private fun Step3Content(
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 12.dp)
             )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text = "사진 (선택, 최대 5장)",
+            fontFamily = PretendardFamily,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 16.sp,
+            color = Brown700F,
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (imageUris.size < 5) {
+                item(key = "picker") {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, BrownBorderF, RoundedCornerShape(12.dp))
+                            .background(OrangeSand.copy(alpha = 0.3f))
+                            .clickable(onClickLabel = "사진 추가") { onPickImages() },
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = null,
+                                tint = Orange500F,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "${imageUris.size}/5",
+                                fontFamily = PretendardFamily,
+                                fontSize = 11.sp,
+                                color = Brown700F,
+                            )
+                        }
+                    }
+                }
+            }
+            items(imageUris, key = { it }) { uri ->
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, BrownBorderF, RoundedCornerShape(12.dp)),
+                ) {
+                    AppAsyncImage(
+                        model = uri,
+                        contentDescription = "첨부 사진",
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x99000000))
+                            .clickable(onClickLabel = "사진 제거") { onRemoveImage(uri) },
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_x),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }
