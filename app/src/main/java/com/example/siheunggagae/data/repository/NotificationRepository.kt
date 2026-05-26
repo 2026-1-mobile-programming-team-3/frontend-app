@@ -52,4 +52,5 @@ class NotificationRepository(
     // 로컬 알림 전용 (id < 0)
     fun markLocalRead(id: Int) = localStore?.markRead(id)
     fun markAllLocalRead() = localStore?.markAllRead()
+    fun deleteLocalNotifications(ids: List<Int>) = localStore?.deleteItems(ids.toSet())
 }

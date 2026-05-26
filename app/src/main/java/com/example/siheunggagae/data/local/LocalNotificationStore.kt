@@ -52,6 +52,10 @@ class LocalNotificationStore(context: Context) {
         save(getAll().map { it.copy(isRead = true) })
     }
 
+    fun deleteItems(ids: Set<Int>) {
+        save(getAll().filter { it.id !in ids })
+    }
+
     fun clearAll() {
         prefs.edit().remove(KEY_LIST).putInt("next_id", -1).apply()
     }
