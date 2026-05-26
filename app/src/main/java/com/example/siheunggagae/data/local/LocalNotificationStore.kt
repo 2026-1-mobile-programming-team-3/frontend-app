@@ -52,6 +52,10 @@ class LocalNotificationStore(context: Context) {
         save(getAll().map { it.copy(isRead = true) })
     }
 
+    fun clearAll() {
+        prefs.edit().remove(KEY_LIST).putInt("next_id", -1).apply()
+    }
+
     private fun save(items: List<NotificationItem>) {
         prefs.edit().putString(KEY_LIST, gson.toJson(items)).apply()
     }

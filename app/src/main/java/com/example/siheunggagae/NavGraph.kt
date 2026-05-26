@@ -1097,6 +1097,7 @@ fun AppNavGraph(
                     myScope.launch {
                         myAuthRepo.logout()
                         com.example.siheunggagae.data.local.CurrentUserStore(myContext).clear()
+                        myApp.localNotificationStore.clearAll()
                     }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
@@ -1151,6 +1152,7 @@ fun AppNavGraph(
                     settingsScope.launch {
                         settingsAuthRepo.logout()
                         com.example.siheunggagae.data.local.CurrentUserStore(settingsContext).clear()
+                        settingsApp.localNotificationStore.clearAll()
                     }
                     navController.navigate(Screen.Splash.route) {
                         popUpTo(0) { inclusive = true }
