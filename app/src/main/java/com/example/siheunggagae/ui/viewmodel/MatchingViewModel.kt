@@ -68,6 +68,8 @@ sealed class MatchingUi {
         val isRefreshing: Boolean,
         val newCount: Int,
         val showVolunteerWarning: Boolean,
+        val isSearchMode: Boolean = false,
+        val searchQuery: String = "",
     ) : MatchingUi()
     data class Error(val message: String) : MatchingUi()
 }
@@ -91,6 +93,12 @@ class MatchingViewModel(
     private var selectedCategory: MatchCategory? = null
     private var sort: MatchSort = MatchSort.IMMINENT
     private var distance: DistanceFilter = DistanceFilter.KM5
+
+    private var isSearchMode: Boolean = false
+    private var searchQuery: String = ""
+    private var searchSavedStatus: String? = null
+    private var searchSavedCategory: MatchCategory? = null
+    private var searchSavedDistance: DistanceFilter = DistanceFilter.KM5
 
     init { fetch(reset = true) }
 
@@ -128,6 +136,34 @@ class MatchingViewModel(
 
     fun dismissNewCount() {
         newCount = 0
+        recompute()
+    }
+
+    fun enterSearch() {
+        if (isSearchMode) return
+        isSearchMode = true
+        searchQuery = ""
+        searchSavedStatus = selectedStatus
+        searchSavedCategory = selectedCategory
+        searchSavedDistance = distance
+        selectedStatus = null
+        selectedCategory = null
+        distance = DistanceFilter.ALL
+        fetch(reset = true)
+    }
+
+    fun exitSearch() {
+        if (!isSearchMode) return
+        isSearchMode = false
+        searchQuery = ""
+        selectedStatus = searchSavedStatus
+        selectedCategory = searchSavedCategory
+        distance = searchSavedDistance
+        fetch(reset = true)
+    }
+
+    fun updateSearch(query: String) {
+        searchQuery = query
         recompute()
     }
 
@@ -199,8 +235,16 @@ class MatchingViewModel(
         val showWarn = selectedCategory?.let {
             it.requiresVolunteerRole() && !isCurrentUserVolunteer()
         } ?: false
+        val displayItems = if (isSearchMode && searchQuery.isNotBlank()) {
+            val q = searchQuery.trim().lowercase()
+            raw.filter { item ->
+                item.title?.lowercase()?.contains(q) == true ||
+                item.authorNickname?.lowercase()?.contains(q) == true ||
+                item.address?.lowercase()?.contains(q) == true
+            }
+        } else raw
         _state.value = MatchingUi.Success(
-            items = raw,
+            items = displayItems,
             statusTabCounts = counts,
             selectedStatus = selectedStatus,
             selectedCategory = selectedCategory,
@@ -210,6 +254,8 @@ class MatchingViewModel(
             isRefreshing = refreshing,
             newCount = newCount,
             showVolunteerWarning = showWarn,
+            isSearchMode = isSearchMode,
+            searchQuery = searchQuery,
         )
     }
 

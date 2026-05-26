@@ -1527,58 +1527,6 @@ private fun handleNotificationDeeplink(
     }
 }
 
-// ─── MyRequestsScreen (placeholder) ───────────────────────────────────────────
-
-@Composable
-fun MyRequestsScreen(
-    viewModel: com.example.siheunggagae.ui.viewmodel.MyRequestsViewModel,
-    onBack: () -> Unit = {},
-    onCardClick: (requestId: Int) -> Unit = {},
-) {
-    Scaffold(
-        containerColor = Gray95,
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .background(Color.White)
-                    .padding(vertical = 8.dp),
-            ) {
-                IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "뒤로",
-                        tint = Gray10,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Text(
-                    text = "내 봉사 요청 목록",
-                    fontFamily = PretendardFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 32.sp,
-                    color = Gray10,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            }
-        },
-    ) { padding ->
-        Box(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "준비 중입니다",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                color = Gray40,
-            )
-        }
-    }
-}
 
 // ─── Previews ──────────────────────────────────────────────────────────────────
 

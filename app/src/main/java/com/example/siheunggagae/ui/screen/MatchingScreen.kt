@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -96,6 +97,16 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import com.example.siheunggagae.ui.viewmodel.MatchingViewModel
 import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 
 private val Brown900M     = Color(0xFF614B3A)
 private val Brown700M     = Color(0xFF8A6E58)
@@ -130,6 +141,14 @@ fun MatchingScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val isSearchMode = (state as? MatchingUi.Success)?.isSearchMode == true
+    val searchQuery = (state as? MatchingUi.Success)?.searchQuery ?: ""
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    BackHandler(enabled = isSearchMode) {
+        keyboardController?.hide()
+        viewModel.exitSearch()
+    }
 
     var showSortSheet by remember { mutableStateOf(false) }
     var showDistanceSheet by remember { mutableStateOf(false) }
@@ -157,13 +176,27 @@ fun MatchingScreen(
             ) {
                 Column(Modifier.fillMaxSize()) {
                     MatchTopBar(
-                        onSearchClick = onSearchClick,
+                        onSearchClick = { viewModel.enterSearch() },
                         onMyRequestsClick = onMyRequestsClick,
                     )
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isSearchMode,
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
+                    ) {
+                        MatchSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { viewModel.updateSearch(it) },
+                            onClose = {
+                                keyboardController?.hide()
+                                viewModel.exitSearch()
+                            },
+                        )
+                    }
+                    val success = state as? MatchingUi.Success
                     if (centerFallback != null) {
                         MatchingFallbackBanner(center = centerFallback)
                     }
-                    val success = state as? MatchingUi.Success
                     StatusTabRow(
                         selected = success?.selectedStatus,
                         counts = success?.statusTabCounts ?: emptyMap(),
@@ -189,8 +222,7 @@ fun MatchingScreen(
                     if (success?.showVolunteerWarning == true) {
                         VolunteerWarningBanner(onApplyClick = onVolunteerApplyClick)
                     }
-                    // 새 N건 알림 — Column 흐름에 자연스럽게 배치 (이전엔 top=200dp 하드코딩 overlay).
-                    val newCountInFlow = (state as? MatchingUi.Success)?.newCount ?: 0
+                    val newCountInFlow = success?.newCount ?: 0
                     androidx.compose.animation.AnimatedVisibility(
                         visible = newCountInFlow > 0,
                         enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
@@ -647,6 +679,90 @@ internal fun MatchTopBar(onSearchClick: () -> Unit, onMyRequestsClick: () -> Uni
         MatchTopBarIcon(R.drawable.ic_search) { onSearchClick() }
         Spacer(Modifier.width(8.dp))
         MatchTopBarIcon(R.drawable.ic_assignment) { onMyRequestsClick() }
+    }
+}
+
+@Composable
+private fun MatchSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp)
+            .padding(bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            modifier = Modifier.weight(1f).height(44.dp),
+        ) {
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_search),
+                    contentDescription = null,
+                    tint = Brown700M,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    singleLine = true,
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        color = TextBlackM,
+                        fontFamily = PretendardFamily,
+                    ),
+                    decorationBox = { inner ->
+                        Box {
+                            if (query.isEmpty()) {
+                                Text(
+                                    "제목, 닉네임, 주소 검색...",
+                                    fontSize = 14.sp,
+                                    color = PlaceholderM,
+                                    fontFamily = PretendardFamily,
+                                )
+                            }
+                            inner()
+                        }
+                    },
+                )
+                if (query.isNotEmpty()) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "지우기",
+                        tint = Brown400M,
+                        modifier = Modifier.size(16.dp).clickable { onQueryChange("") },
+                    )
+                }
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            modifier = Modifier.height(44.dp).clickable { onClose() },
+        ) {
+            Box(
+                Modifier.fillMaxHeight().padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("취소", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Brown700M)
+            }
+        }
     }
 }
 
