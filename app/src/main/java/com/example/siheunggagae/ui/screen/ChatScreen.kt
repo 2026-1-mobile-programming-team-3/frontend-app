@@ -48,6 +48,7 @@ import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import com.example.siheunggagae.ui.viewmodel.ChatUiState
 import com.example.siheunggagae.ui.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
@@ -528,7 +529,7 @@ private fun RequestPreviewCard(detail: MatchDetailResponse) {
             Text(text = "${detail.desiredDate?.take(10)} · ${detail.address}", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700C)
         }
         Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(PinkSurfaceC).padding(horizontal = 12.dp, vertical = 6.dp)) {
-            Text(text = detail.status ?: "검토 중", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Pink500C)
+            Text(text = matchStatusToKorean(detail.status), fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Pink500C)
         }
     }
 }

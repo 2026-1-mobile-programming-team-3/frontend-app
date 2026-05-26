@@ -71,7 +71,6 @@ import com.example.siheunggagae.ui.util.matchStatusToKorean
 import kotlinx.coroutines.launch
 
 private val Brown700P     = Color(0xFF8A6E58)
-private val Brown400P     = Color(0xFFC4A882)
 private val BrownBorderP  = Color(0xFFE8D3C2)
 private val Orange500P    = Color(0xFFF7A35B)
 private val Pink500P      = Color(0xFFF04268)
@@ -179,18 +178,16 @@ fun MatchingPublicDetailScreen(
                     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             PublicStatusBanner(statusText = matchStatusToKorean(request.status))
-                            PublicRequestInfoCard(request = request)
+                            PublicMapCard(latitude = request.latitude, longitude = request.longitude)
                         }
 
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            PublicRouteRow(destination = request.address ?: "목적지 미정")
-                            PublicMapCard(latitude = request.latitude, longitude = request.longitude)
+                            PublicRequestInfoCard(request = request)
                         }
 
                         Column(
@@ -353,20 +350,6 @@ private fun PublicInfoRow(iconBg: Color, iconRes: Int, iconTint: Color, label: S
 @Composable
 private fun PublicIconBox(bg: Color, content: @Composable () -> Unit) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(bg)) { content() }
-}
-
-@Composable
-private fun PublicRouteRow(destination: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50.dp)).background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(painter = painterResource(R.drawable.ic_location_on), null, tint = Orange500P, modifier = Modifier.size(16.dp))
-        Text(text = "출발지 인근", fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP)
-        Text(text = "→", fontFamily = PretendardFamily, fontSize = 14.sp, color = Brown400P)
-        Text(text = destination, fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }
 
 @Composable

@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +60,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.siheunggagae.data.repository.AuthRepository
@@ -349,9 +351,22 @@ private val DockBoundsTransform = BoundsTransform { _, _ ->
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
+    // 떠 있는 pill 형태를 유지하되, pill 아래 16dp 마진과 navigationBarsPadding 구간이
+    // 완전 투명이라 스크롤 콘텐츠가 pill 옆/아래로 비쳐 보이는 충돌이 발생.
+    // 페이지 배경색으로 향하는 수직 그라디언트를 깔아 콘텐츠가 자연스럽게 페이드되도록 처리.
+    val scrim = MaterialTheme.colorScheme.background
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        scrim.copy(alpha = 0.6f),
+                        scrim,
+                    ),
+                ),
+            )
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 6.dp),
     ) {
