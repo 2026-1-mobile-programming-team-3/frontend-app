@@ -926,19 +926,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.News.route) {
-            val newsNotifRepo = remember { NotificationRepository() }
-            val newsUnreadCount = remember { mutableStateOf(0) }
-            val newsLifecycle = LocalLifecycleOwner.current.lifecycle
-            LaunchedEffect(newsLifecycle) {
-                newsLifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    runCatching { newsNotifRepo.getUnreadCount() }.onSuccess { resp ->
-                        if (resp.isSuccessful) newsUnreadCount.value = resp.body()?.unreadCount ?: 0
-                    }
-                }
-            }
             NewsScreen(
-                unreadCount = newsUnreadCount.value,
-                onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onNewsDetailClick = { newsId ->
                     navController.navigate(Screen.NewsDetail.createRoute(newsId))
                 },

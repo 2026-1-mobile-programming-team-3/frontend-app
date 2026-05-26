@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 // UI-layer tab enum (many backend categories → few UI tabs)
 enum class NotiTab(val label: String) {
-    ALL("전체"), MATCHING("매칭"), NEWS("소식"), SYSTEM("시스템")
+    ALL("전체"), MATCHING("매칭"), SYSTEM("시스템")
 }
 
 val NotificationCategory.notiTab: NotiTab
@@ -23,7 +23,7 @@ val NotificationCategory.notiTab: NotiTab
         NotificationCategory.MATCH,
         NotificationCategory.REVIEW -> NotiTab.MATCHING
         NotificationCategory.NEWS,
-        NotificationCategory.POLICY -> NotiTab.NEWS
+        NotificationCategory.POLICY,
         NotificationCategory.SYSTEM -> NotiTab.SYSTEM
     }
 

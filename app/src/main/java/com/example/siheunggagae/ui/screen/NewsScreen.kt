@@ -52,7 +52,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -109,10 +108,8 @@ private fun categoryImageBg(category: String?) = when (categoryToKorean(category
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewsScreen(
-    unreadCount: Int = 0,
     onNewsDetailClick: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
-    onNotificationClick: () -> Unit = {},
     onNavigate: (String) -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
@@ -140,7 +137,7 @@ fun NewsScreen(
         Scaffold(containerColor = BackgroundNs) { innerPadding ->
             // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                NewsTopBar(unreadCount = unreadCount, onNotificationClick = onNotificationClick)
+                NewsTopBar()
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = { refreshKey++ },
@@ -245,7 +242,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar(unreadCount: Int = 0, onNotificationClick: () -> Unit = {}) {
+private fun NewsTopBar() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,48 +258,8 @@ private fun NewsTopBar(unreadCount: Int = 0, onNotificationClick: () -> Unit = {
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
             color = TextBlackNs,
-            modifier = Modifier.weight(1f),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NewsTopBarIcon { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackNs, modifier = Modifier.size(18.dp)) }
-            Box {
-                NewsTopBarIcon(onClick = onNotificationClick) {
-                    Icon(painter = painterResource(R.drawable.ic_notifications), contentDescription = "알림", tint = TextBlackNs, modifier = Modifier.size(18.dp))
-                }
-                if (unreadCount > 0) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .align(Alignment.TopEnd)
-                            .clip(RoundedCornerShape(50.dp))
-                            .background(Pink500Ns),
-                    ) {
-                        Text(
-                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                            fontFamily = PretendardFamily,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                        )
-                    }
-                }
-            }
-        }
     }
-}
-
-@Composable
-private fun NewsTopBarIcon(onClick: () -> Unit = {}, content: @Composable () -> Unit) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(30.dp)
-            .shadow(elevation = 1.dp, shape = RoundedCornerShape(8.dp))
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White)
-            .clickable { onClick() },
-    ) { content() }
 }
 
 // ─── 검색바 ────────────────────────────────────────────────────────────────────

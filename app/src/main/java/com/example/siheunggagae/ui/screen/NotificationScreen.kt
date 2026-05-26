@@ -127,10 +127,6 @@ fun NotificationScreen(
                 it.category == NotificationCategory.MATCH ||
                 it.category == NotificationCategory.REVIEW
             }
-            NotiTab.NEWS     -> state.items.filter {
-                it.category == NotificationCategory.NEWS ||
-                it.category == NotificationCategory.POLICY
-            }
             NotiTab.SYSTEM   -> state.items.filter { it.category == NotificationCategory.SYSTEM }
         }
     }
