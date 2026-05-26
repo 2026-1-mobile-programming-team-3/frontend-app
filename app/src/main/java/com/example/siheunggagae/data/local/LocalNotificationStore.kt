@@ -56,8 +56,22 @@ class LocalNotificationStore(context: Context) {
         save(getAll().filter { it.id !in ids })
     }
 
+    // 서버 알림 삭제 API 없음 → 숨김 ID 목록으로 클라이언트 영속 관리
+    fun addHiddenServerIds(ids: Set<Int>) {
+        val current = getHiddenServerIds()
+        prefs.edit()
+            .putStringSet(KEY_HIDDEN, (current + ids).map { it.toString() }.toSet())
+            .apply()
+    }
+
+    fun getHiddenServerIds(): Set<Int> =
+        prefs.getStringSet(KEY_HIDDEN, emptySet())
+            ?.mapNotNull { it.toIntOrNull() }
+            ?.toSet()
+            ?: emptySet()
+
     fun clearAll() {
-        prefs.edit().remove(KEY_LIST).putInt("next_id", -1).apply()
+        prefs.edit().remove(KEY_LIST).remove(KEY_HIDDEN).putInt("next_id", -1).apply()
     }
 
     private fun save(items: List<NotificationItem>) {
@@ -66,5 +80,6 @@ class LocalNotificationStore(context: Context) {
 
     companion object {
         private const val KEY_LIST = "items"
+        private const val KEY_HIDDEN = "hidden_server_ids"
     }
 }

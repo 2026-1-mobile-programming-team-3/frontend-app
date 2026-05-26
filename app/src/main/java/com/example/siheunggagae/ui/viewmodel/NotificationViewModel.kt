@@ -115,7 +115,9 @@ class NotificationViewModel(
         val count = ids.size
         viewModelScope.launch {
             val localIds = ids.filter { it < 0 }
+            val serverIds = ids.filter { it > 0 }
             if (localIds.isNotEmpty()) repository.deleteLocalNotifications(localIds)
+            if (serverIds.isNotEmpty()) repository.addHiddenServerIds(serverIds)
             buffer.removeAll { it.id in ids }
             total = maxOf(0, total - count)
             _state.update {

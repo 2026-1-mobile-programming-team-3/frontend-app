@@ -23,21 +23,33 @@ class NotificationRepository(
             page = page,
             size = size,
         )
-        // page 1에서만 로컬 알림을 앞에 붙임
-        if (page == 1 && localStore != null && serverResp.isSuccessful) {
-            val body = serverResp.body() ?: return serverResp
+        if (!serverResp.isSuccessful || localStore == null) return serverResp
+
+        val body = serverResp.body() ?: return serverResp
+        val hiddenIds = localStore.getHiddenServerIds()
+
+        // 클라이언트에서 삭제 처리된 서버 알림 필터링
+        val filteredServer = if (hiddenIds.isEmpty()) body.items
+                             else body.items.filter { it.id !in hiddenIds }
+        val removedUnread = body.items.count { it.id in hiddenIds && !it.isRead }
+
+        return if (page == 1) {
             val local = localStore.getAll()
-            if (local.isEmpty()) return serverResp
-            val merged = local + body.items
-            return Response.success(
+            Response.success(
                 body.copy(
-                    items = merged,
-                    total = body.total + local.size,
-                    unreadCount = body.unreadCount + local.count { !it.isRead },
+                    items = local + filteredServer,
+                    total = maxOf(0, body.total - hiddenIds.size) + local.size,
+                    unreadCount = maxOf(0, body.unreadCount - removedUnread) + local.count { !it.isRead },
+                ),
+            )
+        } else {
+            Response.success(
+                body.copy(
+                    items = filteredServer,
+                    total = maxOf(0, body.total - hiddenIds.size),
                 ),
             )
         }
-        return serverResp
     }
 
     suspend fun getUnreadCount(): Response<UnreadCountResponse> =
@@ -53,4 +65,7 @@ class NotificationRepository(
     fun markLocalRead(id: Int) = localStore?.markRead(id)
     fun markAllLocalRead() = localStore?.markAllRead()
     fun deleteLocalNotifications(ids: List<Int>) = localStore?.deleteItems(ids.toSet())
+
+    // 서버 알림 클라이언트 측 영구 숨김 (삭제 API 없음)
+    fun addHiddenServerIds(ids: List<Int>) = localStore?.addHiddenServerIds(ids.toSet())
 }
