@@ -35,7 +35,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,7 +81,7 @@ fun BlockManageScreen(
 ) {
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: MutableStateFlow(BlockManageUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     // 해제 확인 다이얼로그 대상
     var pendingUnblock by remember { mutableStateOf<BlockListItem?>(null) }

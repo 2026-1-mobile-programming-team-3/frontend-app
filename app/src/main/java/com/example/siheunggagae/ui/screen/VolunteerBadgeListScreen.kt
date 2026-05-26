@@ -35,7 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,11 +99,11 @@ fun VolunteerBadgeListScreen(
 ) {
     val isLoading by remember(viewModel) {
         viewModel?.isLoading ?: MutableStateFlow(false)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val badge by remember(viewModel) {
         viewModel?.badge ?: MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = BackgroundB,

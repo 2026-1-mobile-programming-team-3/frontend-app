@@ -1,5 +1,6 @@
 package com.example.siheunggagae.ui.screen
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,7 +49,7 @@ fun MyRequestsScreen(
     onNavigateToCreate: () -> Unit = {},
     onCardClick: (Int) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val tabs = listOf("전체", "매칭전", "매칭됨", "종료됨")
 
     LaunchedEffect(viewModel.selectedTab) {

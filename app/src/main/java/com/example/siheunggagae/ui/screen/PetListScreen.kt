@@ -36,7 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,7 +97,7 @@ fun PetListScreen(
 ) {
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: MutableStateFlow(PetListUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     // 삭제 확인 다이얼로그 상태
     var deleteTarget by remember { mutableStateOf<PetResponse?>(null) }

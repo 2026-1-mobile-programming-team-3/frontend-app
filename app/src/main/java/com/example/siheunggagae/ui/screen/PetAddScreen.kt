@@ -3,7 +3,7 @@
 
 import android.content.Intent
 import android.graphics.ImageDecoder
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -154,13 +154,13 @@ fun PetAddScreen(
     val context = LocalContext.current
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(PetAddUiState.Idle)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
     val initialPet by remember(viewModel) {
         viewModel?.initialPet ?: kotlinx.coroutines.flow.MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
     val localPhotoUri by remember(viewModel) {
         viewModel?.localPhotoUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     var photoBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(localPhotoUri) {

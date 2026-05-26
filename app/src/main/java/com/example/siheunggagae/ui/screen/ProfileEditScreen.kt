@@ -44,7 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,11 +101,11 @@ fun ProfileEditScreen(
     val context = LocalContext.current
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(ProfileEditUiState.Loading)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val localImageUri by remember(viewModel) {
         viewModel?.localImageUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     // 갤러리 피커
     val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->

@@ -49,7 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -139,7 +139,7 @@ fun NotificationScreen(
 ) {
     val state by remember(viewModel) {
         viewModel?.state ?: MutableStateFlow(NotificationState())
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val haptic = LocalHapticFeedback.current

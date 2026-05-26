@@ -47,7 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -130,7 +130,7 @@ fun SettingsScreen(
     }
 
     // ── 알림 설정 ──────────────────────────────────────────────────────────────
-    val notifState by (notifViewModel?.uiState?.collectAsState()
+    val notifState by (notifViewModel?.uiState?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<NotificationSettingsUiState>(NotificationSettingsUiState.Loading) })
     val notifSuccess = notifState as? NotificationSettingsUiState.Success
     var matchingNotifLocal     by remember { mutableStateOf(true) }
@@ -141,9 +141,9 @@ fun SettingsScreen(
     val reviewNotif       = notifSuccess?.reviewEnabled ?: reviewNotifLocal
 
     // ── 위치 설정 ──────────────────────────────────────────────────────────────
-    val currentDong   by (locationViewModel?.regionDong?.collectAsState()
+    val currentDong   by (locationViewModel?.regionDong?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf<String?>(null) })
-    val isLocUpdating by (locationViewModel?.isUpdating?.collectAsState()
+    val isLocUpdating by (locationViewModel?.isUpdating?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) })
     var showLocationSheet by remember { mutableStateOf(false) }
     var locationInput     by remember { mutableStateOf("") }
@@ -151,7 +151,7 @@ fun SettingsScreen(
     val locationSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // ── 비밀번호 변경 ──────────────────────────────────────────────────────────
-    val isAccLoading by (accountViewModel?.isLoading?.collectAsState()
+    val isAccLoading by (accountViewModel?.isLoading?.collectAsStateWithLifecycle()
         ?: remember { mutableStateOf(false) })
     var showPasswordSheet by remember { mutableStateOf(false) }
     var pwCurrent         by remember { mutableStateOf("") }

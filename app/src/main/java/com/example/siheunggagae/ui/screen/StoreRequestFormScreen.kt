@@ -43,7 +43,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -98,9 +98,9 @@ fun StoreRequestFormScreen(
     onPickLocation: (lat: Double?, lng: Double?) -> Unit,
     onSubmitted: (requestId: Int) -> Unit,
 ) {
-    val state by viewModel.form.collectAsState()
-    val errors by viewModel.errors.collectAsState()
-    val submitState by viewModel.submit.collectAsState()
+    val state by viewModel.form.collectAsStateWithLifecycle()
+    val errors by viewModel.errors.collectAsStateWithLifecycle()
+    val submitState by viewModel.submit.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // 제출 결과 처리
