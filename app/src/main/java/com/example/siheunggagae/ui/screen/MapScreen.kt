@@ -102,6 +102,7 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.util.CategoryVisual
 import com.example.siheunggagae.ui.util.appleSpec
 import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.matchStatusToKorean
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
 import com.example.siheunggagae.ui.viewmodel.MapViewModel
@@ -1079,7 +1080,7 @@ private fun VolunteerBottomSheetContent(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = vol.status ?: "",
+                                text = vol.status?.let { matchStatusToKorean(it) } ?: "",
                                 fontFamily = PretendardFamily,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Normal,

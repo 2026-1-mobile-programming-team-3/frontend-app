@@ -256,6 +256,12 @@ fun PlaceDetailScreen(
             }
         } else {
             val s = store!!
+            // 리뷰가 로드되어 있으면 클라이언트에서 직접 평균 계산 (서버 ratingAvg 가 stale 한 경우 대비).
+            // 리뷰가 비었을 때만 서버값을 fallback 으로 사용.
+            val displayRating: Double? = reviews.mapNotNull { it.rating?.toDouble() }
+                .takeIf { it.isNotEmpty() }
+                ?.average()
+                ?: s.ratingAvg
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
@@ -439,12 +445,12 @@ fun PlaceDetailScreen(
                                         color = Color.White,
                                     )
                                     // 별점 + 영업상태
-                                    if (s.ratingAvg != null || s.operatingHours != null) {
+                                    if (displayRating != null || s.operatingHours != null) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
-                                            if (s.ratingAvg != null) {
+                                            if (displayRating != null) {
                                                 Icon(
                                                     imageVector = Icons.Filled.Star,
                                                     contentDescription = null,
@@ -452,7 +458,7 @@ fun PlaceDetailScreen(
                                                     modifier = Modifier.size(14.dp),
                                                 )
                                                 Text(
-                                                    text = "%.1f".format(s.ratingAvg),
+                                                    text = "%.1f".format(displayRating),
                                                     fontFamily = PretendardFamily,
                                                     fontSize = 13.sp,
                                                     fontWeight = FontWeight.Bold,
@@ -552,14 +558,14 @@ fun PlaceDetailScreen(
                         },
                     ) {
                         // 후기 0건 또는 평점 없음 → 빈 상태로 대체 (회색 별 5개 노출 방지)
-                        if (s.ratingAvg != null && reviews.isNotEmpty()) {
+                        if (displayRating != null && reviews.isNotEmpty()) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 Text(
-                                    text = "%.1f".format(s.ratingAvg),
+                                    text = "%.1f".format(displayRating),
                                     fontFamily = PretendardFamily,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -567,7 +573,7 @@ fun PlaceDetailScreen(
                                     color = TextBlackPL,
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    val filled = Math.round(s.ratingAvg).toInt()
+                                    val filled = Math.round(displayRating).toInt()
                                     repeat(5) { i ->
                                         Icon(
                                             imageVector = Icons.Filled.Star,
@@ -683,12 +689,14 @@ fun PlaceDetailScreen(
             storeId = placeId,
             onDismiss = { showReviewSheet = false },
             onSubmitted = {
-                showReviewSheet = false
+                // 시트를 먼저 닫으면 refetch 완료 전까지 빈 상태("아직 후기가 없어요")가 깜빡 노출됨.
+                // 데이터 갱신을 마친 뒤 시트를 닫아 깜빡임 방지.
                 scope.launch {
                     runCatching { RetrofitClient.api.getStoreReviews(placeId).body()?.reviews }
                         .getOrNull()?.let { reviews = it }
                     runCatching { RetrofitClient.api.getStoreDetail(placeId).body() }
                         .getOrNull()?.let { store = it }
+                    showReviewSheet = false
                 }
             },
         )
