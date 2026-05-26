@@ -65,7 +65,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -614,6 +616,7 @@ private fun SettingsSwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -630,7 +633,11 @@ private fun SettingsSwitchItem(
         }
         Text(label, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackSt, modifier = Modifier.weight(1f))
         Switch(
-            checked = checked, onCheckedChange = onCheckedChange,
+            checked = checked,
+            onCheckedChange = { v ->
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onCheckedChange(v)
+            },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White, checkedTrackColor = Brown900St, checkedBorderColor = Brown900St,
                 uncheckedThumbColor = Color.White, uncheckedTrackColor = SwitchTrackOffSt, uncheckedBorderColor = SwitchTrackOffSt,

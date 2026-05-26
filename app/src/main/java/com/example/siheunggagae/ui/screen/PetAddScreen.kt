@@ -36,7 +36,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -154,6 +156,7 @@ fun PetAddScreen(
     onBack: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val uiState by remember(viewModel) {
         viewModel?.uiState ?: kotlinx.coroutines.flow.MutableStateFlow(PetAddUiState.Idle)
     }.collectAsStateWithLifecycle()
@@ -362,8 +365,19 @@ fun PetAddScreen(
                 DetailInfoCard(
                     age = age,
                     ageUnit = ageUnit,
-                    onDecrement = { if (age > 1) age-- },
-                    onIncrement = { val max = if (ageUnit == "개월") 36 else 30; if (age < max) age++ },
+                    onDecrement = {
+                        if (age > 1) {
+                            age--
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    },
+                    onIncrement = {
+                        val max = if (ageUnit == "개월") 36 else 30
+                        if (age < max) {
+                            age++
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    },
                     onAgeUnitSelect = { ageUnit = it },
                     gender = gender,
                     onGenderSelect = { gender = it },

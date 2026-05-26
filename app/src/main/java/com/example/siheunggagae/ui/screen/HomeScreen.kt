@@ -84,7 +84,14 @@ import com.example.siheunggagae.ui.util.appleTapScale
 import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.viewmodel.HomeViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateColorAsState
@@ -350,23 +357,33 @@ fun HomeTopBar(
                         modifier = Modifier.size(22.dp),
                     )
                 }
-                if (unreadCount > 0) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Pink500H)
-                            .align(Alignment.TopEnd),
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = unreadCount > 0,
+                        enter = scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        ) + fadeIn(),
+                        exit = scaleOut() + fadeOut(),
                     ) {
-                        Text(
-                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                            fontFamily = PretendardFamily,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            lineHeight = 8.sp,
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Pink500H),
+                        ) {
+                            Text(
+                                text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                fontFamily = PretendardFamily,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                lineHeight = 8.sp,
+                            )
+                        }
                     }
                 }
             }
