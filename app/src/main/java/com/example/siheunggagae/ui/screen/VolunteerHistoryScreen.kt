@@ -1,7 +1,7 @@
 package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
-import com.example.siheunggagae.data.model.MatchListItem // MyMatchResponse 대신 MatchListItem 사용
+import com.example.siheunggagae.data.model.MyMatchResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryUiState
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
@@ -142,8 +142,7 @@ fun VolunteerHistoryScreen(
                         items(state.matches) { match ->
                             MatchHistoryCard(
                                 match = match,
-                                // match.id 대신 match.matchId를 사용하고 null 안정성 처리
-                                onClick = { match.matchId?.let { onMatchClick(it) } },
+                                onClick = { onMatchClick(match.id) },
                             )
                         }
                     }
@@ -266,9 +265,8 @@ private fun StatDivider() {
 
 // ─── 매칭 이력 카드 ─────────────────────────────────────────────────────────────
 
-// 타입을 MatchListItem 으로 수정!
 @Composable
-private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
+private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -298,7 +296,7 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                         color = Green500H,
                     )
                 }
-                if (match.receivedRating != null) {
+                if (match.myRating != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Star,
@@ -308,7 +306,7 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text = String.format("%.1f", match.receivedRating.toDouble()),
+                            text = String.format("%.1f", match.myRating),
                             fontFamily = PretendardFamily,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -322,7 +320,7 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
 
             // 제목
             Text(
-                text = match.title ?: "제목 없음",
+                text = match.title,
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -346,18 +344,16 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // scheduledAt 대신 desiredDate 사용
-                    if (!match.desiredDate.isNullOrBlank()) {
+                    if (!match.scheduledAt.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.CalendarMonth, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },
-                            text = match.desiredDate.take(10),
+                            text = match.scheduledAt.take(10),
                         )
                     }
-                    // regionDong 대신 address 사용
-                    if (!match.address.isNullOrBlank()) {
+                    if (!match.regionDong.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.LocationOn, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },
-                            text = match.address,
+                            text = match.regionDong,
                         )
                     }
                 }

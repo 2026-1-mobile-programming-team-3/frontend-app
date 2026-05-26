@@ -125,6 +125,14 @@ interface AuthApiService {
         @Query("size") size: Int = 20,
     ): Response<MatchListResponse>
 
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatchHistory(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MyMatchListResponse>
+
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
 

@@ -3,7 +3,7 @@ package com.example.siheunggagae.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.siheunggagae.data.model.MatchListItem
+import com.example.siheunggagae.data.model.MyMatchResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +14,7 @@ sealed class VolunteerHistoryUiState {
     object Loading : VolunteerHistoryUiState()
     data class Success(
         val stats: VolunteerStatsResponse,
-        val matches: List<MatchListItem>,
+        val matches: List<MyMatchResponse>,
     ) : VolunteerHistoryUiState()
     data class Error(val message: String) : VolunteerHistoryUiState()
 }
@@ -29,7 +29,6 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
     fun load() {
         viewModelScope.launch {
             _uiState.value = VolunteerHistoryUiState.Loading
-            // stats 실패해도 매칭 리스트는 반드시 보여야 하므로 독립적으로 처리
             val stats = runCatching { repository.getVolunteerStats() }
                 .getOrNull()
                 ?.takeIf { it.isSuccessful }
@@ -37,8 +36,8 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
                 ?: VolunteerStatsResponse(totalCount = 0, totalHours = null, avgRating = null)
 
             runCatching {
-                val resp = repository.getMyMatches()
-                val matches = if (resp.isSuccessful) resp.body()?.items.orEmpty() else emptyList()
+                val resp = repository.getVolunteerHistory()
+                val matches = if (resp.isSuccessful) resp.body()?.content.orEmpty() else emptyList()
                 _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
             }.onFailure {
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")
