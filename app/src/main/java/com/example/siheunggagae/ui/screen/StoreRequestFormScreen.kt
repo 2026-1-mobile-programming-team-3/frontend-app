@@ -25,7 +25,11 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -367,6 +371,7 @@ private fun NameSection(
                     )
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
+                val nameFocusManager = LocalFocusManager.current
                 BasicTextField(
                     value = name,
                     onValueChange = onNameChange,
@@ -378,6 +383,8 @@ private fun NameSection(
                         lineHeight = 24.sp,
                         color = TextBlackF,
                     ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { nameFocusManager.clearFocus() }),
                     cursorBrush = SolidColor(Orange500F),
                     modifier = Modifier.fillMaxWidth(),
                     decorationBox = { inner ->
@@ -729,6 +736,7 @@ private fun PlanRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        val planFocusManager = LocalFocusManager.current
         // 플랜 이름
         BasicTextField(
             value = plan.planName,
@@ -741,6 +749,8 @@ private fun PlanRow(
                 lineHeight = 20.sp,
                 color = TextBlackF,
             ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { planFocusManager.moveFocus(FocusDirection.Next) }),
             cursorBrush = SolidColor(Orange500F),
             modifier = Modifier.weight(1f),
             decorationBox = { inner ->
@@ -773,7 +783,8 @@ private fun PlanRow(
                 color = Brown900F,
                 textAlign = TextAlign.End,
             ),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { planFocusManager.clearFocus() }),
             cursorBrush = SolidColor(Orange500F),
             modifier = Modifier.width(90.dp),
             decorationBox = { inner ->
@@ -832,6 +843,7 @@ private fun OptionalInfoSection(
     onPhoneChange: (String) -> Unit,
     onHoursChange: (String) -> Unit,
 ) {
+    val contactFocusManager = LocalFocusManager.current
     FormSection(label = "선택 정보") {
         Column(
             modifier = Modifier
@@ -865,7 +877,8 @@ private fun OptionalInfoSection(
                         lineHeight = 20.sp,
                         color = TextBlackF,
                     ),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { contactFocusManager.moveFocus(FocusDirection.Next) }),
                     cursorBrush = SolidColor(Orange500F),
                     modifier = Modifier.fillMaxWidth(),
                     decorationBox = { inner ->
@@ -916,6 +929,8 @@ private fun OptionalInfoSection(
                         lineHeight = 20.sp,
                         color = TextBlackF,
                     ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { contactFocusManager.clearFocus() }),
                     cursorBrush = SolidColor(Orange500F),
                     modifier = Modifier.fillMaxWidth(),
                     decorationBox = { inner ->
