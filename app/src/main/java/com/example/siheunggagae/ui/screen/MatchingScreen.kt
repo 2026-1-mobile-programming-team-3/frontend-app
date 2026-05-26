@@ -287,9 +287,9 @@ fun MatchingScreen(
                 }
             }
 
-            // FAB — iOS 스타일 원형 + haptic tap.
+            // FAB — 검색 모드일 때는 숨김
             val haptic = LocalHapticFeedback.current
-            FloatingActionButton(
+            if (!isSearchMode) FloatingActionButton(
                 onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onRequestFlowClick()
