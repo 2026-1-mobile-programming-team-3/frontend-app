@@ -38,6 +38,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -549,7 +550,9 @@ fun NearbyStoresSection(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.clickable { onMapClick() },
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clickable(onClickLabel = "지도 화면으로 이동") { onMapClick() },
             ) {
                 Icon(painterResource(R.drawable.ic_map), null, tint = Orange500H, modifier = Modifier.size(16.dp))
                 Text("지도 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Orange500H)

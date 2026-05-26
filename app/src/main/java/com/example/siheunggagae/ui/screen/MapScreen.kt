@@ -39,6 +39,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -86,6 +87,7 @@ import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
@@ -1248,9 +1250,15 @@ private fun StoreDetailSheet(
                 }
                 detail.phone?.let { phone ->
                     Row(
-                        modifier = Modifier.clickable {
-                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-                        },
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clickable(onClickLabel = "전화 걸기") {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                                }.onFailure {
+                                    Toast.makeText(context, "전화 앱을 열 수 없어요", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
