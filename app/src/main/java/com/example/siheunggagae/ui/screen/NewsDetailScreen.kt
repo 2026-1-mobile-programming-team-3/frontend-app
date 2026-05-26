@@ -28,19 +28,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
@@ -106,8 +99,6 @@ fun NewsDetailScreen(
     var detail by remember { mutableStateOf<NewsDetailResponse?>(null) }
     var relatedNews by remember { mutableStateOf<List<NewsItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var isBookmarked by rememberSaveable { mutableStateOf(false) }
-    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(newsId) {
         if (newsId.isNotEmpty()) {
@@ -143,11 +134,6 @@ fun NewsDetailScreen(
             NewsDetailTopBar(
                 onBack = onBack,
                 onShare = ::shareNews,
-                isBookmarked = isBookmarked,
-                onBookmarkClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    isBookmarked = !isBookmarked
-                },
             )
         },
     ) { innerPadding ->
@@ -217,8 +203,6 @@ fun NewsDetailScreen(
 private fun NewsDetailTopBar(
     onBack: () -> Unit,
     onShare: () -> Unit = {},
-    isBookmarked: Boolean = false,
-    onBookmarkClick: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier
@@ -245,33 +229,20 @@ private fun NewsDetailTopBar(
             )
         }
 
-        Row(
+        TopBarIconBtnND(
+            onClick = onShare,
             modifier = Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val bookmarkScale by animateFloatAsState(
-                targetValue = if (isBookmarked) 1.2f else 1f,
-                animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                label = "bookmarkScale",
-            )
-            TopBarIconBtnND(onClick = onBookmarkClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_bookmark),
-                    contentDescription = if (isBookmarked) "북마크 해제" else "북마크",
-                    tint = if (isBookmarked) Pink500ND else Brown700ND,
-                    modifier = Modifier.size(22.dp).scale(bookmarkScale),
-                )
-            }
-            TopBarIconBtnND(onClick = onShare) { Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
+            Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun TopBarIconBtnND(onClick: () -> Unit = {}, icon: @Composable () -> Unit) {
+private fun TopBarIconBtnND(onClick: () -> Unit = {}, modifier: Modifier = Modifier, icon: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .size(40.dp)
             .shadow(2.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
