@@ -36,15 +36,22 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 재호-1 앱 시작 스플래시
  *
- * 최소 1.5초 로고를 표시하면서 동시에 토큰 상태를 확인한다.
- *  - 토큰 없음              → onStartScreen (시작 화면)
- *  - 토큰 있고 유효함        → onHome
- *  - 토큰 만료 → 갱신 성공  → onHome
- *  - 토큰 만료 → 갱신 실패  → onStartScreen
+ * 최소 800ms 로고를 표시하면서 동시에 서버에 토큰 유효성을 확인한다.
+ *  - 토큰 없음                         → onStartScreen
+ *  - 토큰 있고 서버 검증 성공          → onHome
+ *  - 토큰 있고 서버 검증 401           → TokenAuthenticator 가 refresh 자동 시도,
+ *                                        성공 시 onHome, 실패 시 onStartScreen
+ *  - 네트워크 오류로 3초 내 응답 없음  → onStartScreen (재로그인 유도)
+ *
+ * 기존에는 클라이언트 측 만료 여부만 보고 onHome 으로 보냈는데, 서버에서 강제 로그아웃된
+ * 케이스에서는 곧장 401 → sessionExpired → Login 으로 한 번 더 튕겨, 그 사이 Home 이
+ * 0.5~1초 정도 깜빡 보이고 사라지는 현상이 있었다. /users/me 한 번으로 서버 측 실제
+ * 세션 상태를 미리 검증해 onHome 호출 자체를 미루는 식으로 깜빡임을 제거한다.
  */
 @Composable
 fun AutoSplashScreen(
@@ -60,14 +67,9 @@ fun AutoSplashScreen(
     LaunchedEffect(Unit) {
         val authRepository = AuthRepository(app.tokenManager, app.fcmTokenManager)
 
-        // 토큰 확인과 1.5초 최소 표시 시간을 병렬로 실행
+        // 토큰 확인과 800ms 최소 표시 시간을 병렬로 실행
         val goHomeDeferred = async {
-            val tokenManager = app.tokenManager
-            when {
-                tokenManager.accessToken == null          -> false   // 재호-1.4: 토큰 없음
-                !tokenManager.isAccessTokenExpired()      -> true    // 재호-1.2: 유효한 토큰
-                else                                      -> authRepository.refresh()  // 재호-1.3: 만료 → 갱신
-            }
+            withTimeoutOrNull(3_000L) { authRepository.ensureSession() } ?: false
         }
 
         delay(800L)                         // 최소 표시 시간
