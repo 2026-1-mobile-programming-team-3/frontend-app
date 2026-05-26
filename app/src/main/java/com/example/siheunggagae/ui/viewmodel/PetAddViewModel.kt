@@ -86,6 +86,7 @@ class PetAddViewModel(
         gender: PetGender?,
         isNeutered: Boolean,
         note: String?,
+        birthDate: String? = null // 👈 Screen 컴포넌트와 호환성을 위해 파라미터는 유지합니다.
     ) {
         viewModelScope.launch {
             _uiState.value = PetAddUiState.Saving
@@ -102,6 +103,7 @@ class PetAddViewModel(
                             gender = gender,
                             photoUrl = null,
                             note = note?.takeIf { it.isNotBlank() },
+                            // birthDate = birthDate 🛠️ [에러 해결] PetCreate 모델에 필드가 추가되기 전이므로 주석 처리
                         )
                     )
                 } else {
@@ -116,6 +118,7 @@ class PetAddViewModel(
                             gender = gender,
                             photoUrl = null,
                             note = note?.takeIf { it.isNotBlank() },
+                            // birthDate = birthDate 🛠️ [에러 해결] PetUpdate 모델에 필드가 추가되기 전이므로 주석 처리
                         )
                     )
                 }
@@ -129,7 +132,6 @@ class PetAddViewModel(
                             photoPrefs.edit().remove("photo_$id").apply()
                         }
                     }
-                    // 알림함에 시스템 알림 추가
                     val notifTitle = if (petId == null) "반려동물 등록됨" else "반려동물 수정됨"
                     val notifBody  = if (petId == null) "${name}이(가) 등록되었습니다."
                     else "${name} 정보가 수정되었습니다."

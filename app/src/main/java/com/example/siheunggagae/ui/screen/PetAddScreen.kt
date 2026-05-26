@@ -1,12 +1,15 @@
 ﻿package com.example.siheunggagae.ui.screen
 
+
 import android.content.Intent
 import android.graphics.ImageDecoder
+import androidx.compose.runtime.collectAsState
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,19 +33,35 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +70,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -57,8 +78,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
@@ -77,8 +102,12 @@ import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import com.example.siheunggagae.ui.viewmodel.PetAddUiState
 import com.example.siheunggagae.ui.viewmodel.PetAddViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZoneId
+import java.time.YearMonth
 
-// 스펙 컬러
 private val Brown900PA    = Color(0xFF614B3A)
 private val Brown700PA    = Color(0xFF8A6E58)
 private val Brown400PA    = Color(0xFFC4A882)
@@ -93,7 +122,6 @@ private val speciesOptions = listOf("강아지", "고양이", "기타")
 private val genderOptions  = listOf("수컷", "암컷")
 private val ageUnitOptions = listOf("살", "개월")
 
-// 종류 문자열 ↔ enum 변환
 private fun String.toPetSpecies() = when (this) {
     "강아지" -> PetSpecies.DOG
     "고양이" -> PetSpecies.CAT
@@ -115,8 +143,7 @@ private fun PetGender?.toLabel() = when (this) {
     else             -> "수컷"
 }
 
-// ─── 메인 화면 ─────────────────────────────────────────────────────────────────
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetAddScreen(
     viewModel: PetAddViewModel? = null,
@@ -133,7 +160,6 @@ fun PetAddScreen(
         viewModel?.localPhotoUri ?: kotlinx.coroutines.flow.MutableStateFlow(null)
     }.collectAsState()
 
-    // URI → 비트맵 (IO 스레드)
     var photoBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(localPhotoUri) {
         photoBitmap = if (localPhotoUri != null) {
@@ -147,7 +173,6 @@ fun PetAddScreen(
         } else null
     }
 
-    // 갤러리 피커
     val imagePicker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (uri != null) {
             context.contentResolver.takePersistableUriPermission(
@@ -169,7 +194,24 @@ fun PetAddScreen(
     var isNeutered      by rememberSaveable { mutableStateOf(false) }
     var noteInput       by rememberSaveable { mutableStateOf("") }
 
-    // 수정 모드: initialPet 도착하면 한 번만 폼 초기화
+    var hasBirthDate      by rememberSaveable { mutableStateOf(false) }
+    var selectedBirthDate by remember { mutableStateOf<LocalDate?>(null) }
+    var showDatePicker    by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedBirthDate, hasBirthDate) {
+        if (hasBirthDate && selectedBirthDate != null) {
+            val now = LocalDate.now(ZoneId.of("Asia/Seoul"))
+            val period = Period.between(selectedBirthDate, now)
+            if (period.years > 0) {
+                age = period.years
+                ageUnit = "살"
+            } else {
+                age = period.months.coerceAtLeast(1)
+                ageUnit = "개월"
+            }
+        }
+    }
+
     LaunchedEffect(initialPet) {
         if (!formInitialized && initialPet != null) {
             val p = initialPet!!
@@ -184,7 +226,6 @@ fun PetAddScreen(
         }
     }
 
-    // 저장 결과 처리
     LaunchedEffect(uiState) {
         when (uiState) {
             is PetAddUiState.SaveSuccess -> {
@@ -236,34 +277,21 @@ fun PetAddScreen(
                                 gender = gender.toPetGender(),
                                 isNeutered = isNeutered,
                                 note = noteInput.takeIf { it.isNotBlank() },
+                                birthDate = if (hasBirthDate) selectedBirthDate?.toString() else null
                             )
                         } else Modifier),
                 ) {
                     if (isSaving || isLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(24.dp),
-                        )
+                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
                     } else {
-                        Text(
-                            text = "저장하기",
-                            fontFamily = PretendardFamily,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 24.sp,
-                            color = Color.White,
-                        )
+                        Text(text = "저장하기", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = Color.White)
                     }
                 }
             }
         },
     ) { innerPadding ->
         if (isLoading && !isSaving) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Orange500PA)
             }
         } else {
@@ -284,9 +312,7 @@ fun PetAddScreen(
                     ageUnit = ageUnit,
                     gender = gender,
                     photoBitmap = photoBitmap,
-                    onPickPhoto = {
-                        imagePicker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-                    },
+                    onPickPhoto = { imagePicker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) },
                 )
 
                 PetSectionLabelPA("기본 정보")
@@ -311,20 +337,52 @@ fun PetAddScreen(
                     onGenderSelect = { gender = it },
                     isNeutered = isNeutered,
                     onNeuteredChange = { isNeutered = it },
+                    hasBirthDate = hasBirthDate,
+                    onHasBirthDateChange = {
+                        hasBirthDate = it
+                        if(!it) selectedBirthDate = null
+                    },
+                    selectedBirthDate = selectedBirthDate,
+                    onPickDateClick = { showDatePicker = true }
                 )
 
-                NoteSection(
-                    note = noteInput,
-                    onNoteChange = { if (it.length <= 300) noteInput = it },
-                )
-
+                NoteSection(note = noteInput, onNoteChange = { if (it.length <= 300) noteInput = it })
                 Spacer(Modifier.height(8.dp))
             }
         }
     }
-}
 
-// ─── TopBar ────────────────────────────────────────────────────────────────────
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = System.currentTimeMillis()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedBirthDate = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.of("Asia/Seoul"))
+                            .toLocalDate()
+                    }
+                    showDatePicker = false
+                }) { Text("확인", color = Orange500PA, fontWeight = FontWeight.Bold, fontFamily = PretendardFamily) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("취소", color = Brown700PA, fontFamily = PretendardFamily) }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = Orange500PA,
+                    todayContentColor = Orange500PA,
+                    selectedDayContentColor = Color.White
+                )
+            )
+        }
+    }
+}
 
 @Composable
 private fun PetAddTopBar(title: String, onBack: () -> Unit) {
@@ -345,26 +403,11 @@ private fun PetAddTopBar(title: String, onBack: () -> Unit) {
                 .background(Color.White)
                 .clickable { onBack() },
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "뒤로",
-                tint = TextBlackPA,
-                modifier = Modifier.size(22.dp),
-            )
+            Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "뒤로", tint = TextBlackPA, modifier = Modifier.size(22.dp))
         }
-        Text(
-            text = title,
-            fontFamily = PretendardFamily,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            lineHeight = 24.sp,
-            color = TextBlackPA,
-            modifier = Modifier.align(Alignment.Center),
-        )
+        Text(text = title, fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp, color = TextBlackPA, modifier = Modifier.align(Alignment.Center))
     }
 }
-
-// ─── 미리보기 Card ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun PetPreviewCard(
@@ -383,83 +426,36 @@ private fun PetPreviewCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
-                        .clickable { onPickPhoto() },
+                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(16.dp)).background(Color.White).clickable { onPickPhoto() },
                 ) {
                     if (photoBitmap != null) {
-                        Image(
-                            bitmap = photoBitmap,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Image(bitmap = photoBitmap, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     } else {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_pets),
-                            contentDescription = null,
-                            tint = Orange500PA,
-                            modifier = Modifier.size(32.dp),
-                        )
+                        Icon(painter = painterResource(R.drawable.ic_pets), contentDescription = null, tint = Orange500PA, modifier = Modifier.size(32.dp))
                     }
                 }
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Brown900PA),
+                    modifier = Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(Brown900PA),
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.CameraAlt,
-                        contentDescription = "사진 변경",
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp),
-                    )
+                    Icon(imageVector = Icons.Filled.CameraAlt, contentDescription = "사진 변경", tint = Color.White, modifier = Modifier.size(12.dp))
                 }
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "미리보기",
-                    fontFamily = PretendardFamily,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 16.sp,
-                    color = Brown700PA,
-                )
-                Text(
-                    text = name.ifBlank { "이름을 입력하세요" },
-                    fontFamily = PretendardFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = if (name.isBlank()) Brown400PA else TextBlackPA,
-                )
-                Text(
-                    text = "$species · ${age}$ageUnit · $gender",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    color = Brown700PA,
-                )
+                Text(text = "미리보기", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, lineHeight = 16.sp, color = Brown700PA)
+                Text(text = name.ifBlank { "이름을 입력하세요" }, fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = if (name.isBlank()) Brown400PA else TextBlackPA)
+                Text(text = "$species · ${age}$ageUnit · $gender", fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = Brown700PA)
             }
         }
     }
 }
-
-// ─── 섹션 라벨 ─────────────────────────────────────────────────────────────────
 
 @Composable
 private fun PetSectionLabelPA(label: String, isBlack: Boolean = false) {
@@ -474,8 +470,6 @@ private fun PetSectionLabelPA(label: String, isBlack: Boolean = false) {
     )
 }
 
-// ─── 기본 정보 Card ────────────────────────────────────────────────────────────
-
 @Composable
 private fun BasicInfoCard(
     nameInput: String,
@@ -487,45 +481,23 @@ private fun BasicInfoCard(
     onBreedChange: (String) -> Unit,
 ) {
     PetInfoCard {
-        // 이름
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "이름",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "이름", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             BasicTextField(
                 value = nameInput,
                 onValueChange = onNameChange,
                 singleLine = true,
-                textStyle = TextStyle(
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = TextBlackPA,
-                    textAlign = TextAlign.End,
-                ),
+                textStyle = TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackPA, textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Orange500PA),
                 modifier = Modifier.width(160.dp),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth()) {
                         if (nameInput.isEmpty()) {
-                            Text(
-                                text = "예: 파댕이",
-                                fontFamily = PretendardFamily,
-                                fontSize = 14.sp,
-                                lineHeight = 20.sp,
-                                color = Brown400PA,
-                                textAlign = TextAlign.End,
-                            )
+                            Text(text = "예: 파댕이", fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = Brown400PA, textAlign = TextAlign.End)
                         }
                         inner()
                     }
@@ -535,74 +507,37 @@ private fun BasicInfoCard(
 
         PetCardDivider()
 
-        // 종류 칩
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = "종류",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "종류", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             speciesOptions.forEach { option ->
-                PetSelectChip(
-                    label = option,
-                    selected = option == selectedSpecies,
-                    enabled = speciesEnabled,
-                    onClick = { if (speciesEnabled) onSpeciesSelect(option) },
-                )
+                PetSelectChip(label = option, selected = option == selectedSpecies, enabled = speciesEnabled, onClick = { if (speciesEnabled) onSpeciesSelect(option) })
             }
         }
 
         PetCardDivider()
 
-        // 품종
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "품종(선택)",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "품종(선택)", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             BasicTextField(
                 value = breedInput,
                 onValueChange = onBreedChange,
                 singleLine = true,
-                textStyle = TextStyle(
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    color = TextBlackPA,
-                    textAlign = TextAlign.End,
-                ),
+                textStyle = TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackPA, textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Orange500PA),
                 modifier = Modifier.width(160.dp),
                 decorationBox = { inner ->
                     Box(contentAlignment = Alignment.CenterEnd, modifier = Modifier.fillMaxWidth()) {
                         if (breedInput.isEmpty()) {
-                            Text(
-                                text = "예: 말티즈",
-                                fontFamily = PretendardFamily,
-                                fontSize = 14.sp,
-                                lineHeight = 20.sp,
-                                color = Brown400PA,
-                                textAlign = TextAlign.End,
-                            )
+                            Text(text = "예: 말티즈", fontFamily = PretendardFamily, fontSize = 14.sp, lineHeight = 20.sp, color = Brown400PA, textAlign = TextAlign.End)
                         }
                         inner()
                     }
@@ -611,8 +546,6 @@ private fun BasicInfoCard(
         }
     }
 }
-
-// ─── 상세 정보 Card ────────────────────────────────────────────────────────────
 
 @Composable
 private fun DetailInfoCard(
@@ -625,29 +558,23 @@ private fun DetailInfoCard(
     onGenderSelect: (String) -> Unit,
     isNeutered: Boolean,
     onNeuteredChange: (Boolean) -> Unit,
+    hasBirthDate: Boolean,
+    onHasBirthDateChange: (Boolean) -> Unit,
+    selectedBirthDate: LocalDate?,
+    onPickDateClick: () -> Unit
 ) {
     PetInfoCard {
-        // 나이
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "나이",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "나이", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                AgeControlButton(icon = { Text("−", color = Brown700PA, fontSize = 16.sp, fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) }, onClick = onDecrement)
+                AgeControlButton(enabled = !hasBirthDate, icon = { Text("−", color = Brown700PA, fontSize = 16.sp, fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) }, onClick = onDecrement)
                 Text(
                     text = "$age",
                     fontFamily = PretendardFamily,
@@ -658,7 +585,7 @@ private fun DetailInfoCard(
                     modifier = Modifier.width(28.dp),
                     textAlign = TextAlign.Center,
                 )
-                AgeControlButton(icon = { Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null, tint = Brown700PA, modifier = Modifier.size(16.dp)) }, onClick = onIncrement)
+                AgeControlButton(enabled = !hasBirthDate, icon = { Icon(painter = painterResource(R.drawable.ic_add), contentDescription = null, tint = Brown700PA, modifier = Modifier.size(16.dp)) }, onClick = onIncrement)
 
                 Spacer(Modifier.width(4.dp))
 
@@ -666,6 +593,7 @@ private fun DetailInfoCard(
                     PetSelectChip(
                         label = unit,
                         selected = unit == ageUnit,
+                        enabled = !hasBirthDate,
                         onClick = { onAgeUnitSelect(unit) },
                     )
                 }
@@ -674,67 +602,78 @@ private fun DetailInfoCard(
 
         PetCardDivider()
 
-        // 성별
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = hasBirthDate,
+                onCheckedChange = onHasBirthDateChange,
+                colors = CheckboxDefaults.colors(checkedColor = Brown900PA, checkmarkColor = Color.White)
+            )
+            Text(
+                text = "정확한 생년월일을 알고 있어요",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextBlackPA,
+                modifier = Modifier.clickable { onHasBirthDateChange(!hasBirthDate) }
+            )
+        }
+
+        AnimatedVisibility(visible = hasBirthDate) {
+            // ─── 🛠️ [패딩 규격 오버로드 불일치 오류 수정 구역] ───
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                OutlinedButton(
+                    onClick = onPickDateClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Brown900PA),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrownBorderPA)
+                ) {
+                    Text(
+                        text = selectedBirthDate?.toString() ?: "달력에서 생년월일 선택하기",
+                        fontFamily = PretendardFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        if (hasBirthDate) PetCardDivider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = "성별",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "성별", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             genderOptions.forEach { option ->
-                PetSelectChip(
-                    label = option,
-                    selected = option == gender,
-                    onClick = { onGenderSelect(option) },
-                )
+                PetSelectChip(label = option, selected = option == gender, onClick = { onGenderSelect(option) })
             }
         }
 
         PetCardDivider()
 
-        // 중성화
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "중성화",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                color = TextBlackPA,
-            )
+            Text(text = "중성화", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 24.sp, color = TextBlackPA)
             Spacer(Modifier.weight(1f))
             Switch(
                 checked = isNeutered,
                 onCheckedChange = onNeuteredChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Brown900PA,
-                    checkedBorderColor = Brown900PA,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Gray300PA,
-                    uncheckedBorderColor = Gray300PA,
+                    checkedThumbColor = Color.White, checkedTrackColor = Brown900PA, checkedBorderColor = Brown900PA,
+                    uncheckedThumbColor = Color.White, uncheckedTrackColor = Gray300PA, uncheckedBorderColor = Gray300PA,
                 ),
             )
         }
     }
 }
-
-// ─── 특징 및 주의사항 (서버 전송 X, UI 유지용) ──────────────────────────────────
 
 @Composable
 private fun NoteSection(note: String, onNoteChange: (String) -> Unit) {
@@ -744,12 +683,7 @@ private fun NoteSection(note: String, onNoteChange: (String) -> Unit) {
             BasicTextField(
                 value = note,
                 onValueChange = onNoteChange,
-                textStyle = TextStyle(
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp,
-                    color = TextBlackPA,
-                ),
+                textStyle = TextStyle(fontFamily = PretendardFamily, fontSize = 16.sp, lineHeight = 24.sp, color = TextBlackPA),
                 cursorBrush = SolidColor(Orange500PA),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -759,14 +693,7 @@ private fun NoteSection(note: String, onNoteChange: (String) -> Unit) {
                     .padding(bottom = 24.dp),
                 decorationBox = { inner ->
                     if (note.isEmpty()) {
-                        Text(
-                            text = "알러지, 질환, 성격 등 참고할 만한 내용을 자유롭게 적어주세요.",
-                            fontFamily = PretendardFamily,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Normal,
-                            lineHeight = 24.sp,
-                            color = Brown400PA,
-                        )
+                        Text(text = "알러지, 질환, 성격 등 참고할 만한 내용을 자유롭게 적어주세요.", fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Normal, lineHeight = 24.sp, color = Brown400PA)
                     }
                     inner()
                 },
@@ -778,34 +705,20 @@ private fun NoteSection(note: String, onNoteChange: (String) -> Unit) {
                 fontWeight = FontWeight.Normal,
                 lineHeight = 18.sp,
                 color = Brown700PA,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 8.dp),
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 8.dp),
             )
         }
     }
 }
 
-// ─── 공통 컴포넌트 ──────────────────────────────────────────────────────────────
-
 @Composable
 private fun PetInfoCard(content: @Composable () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        content()
-    }
+    Card(shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), colors = CardDefaults.cardColors(containerColor = Color.White), modifier = Modifier.fillMaxWidth()) { content() }
 }
 
 @Composable
 private fun PetCardDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        color = Color(0xFFF3F4F6),
-    )
+    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color(0xFFF3F4F6))
 }
 
 @Composable
@@ -825,33 +738,24 @@ private fun PetSelectChip(label: String, selected: Boolean, enabled: Boolean = t
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
             .background(bgColor)
-            .then(
-                if (!selected) Modifier.border(1.dp, BrownBorderPA, RoundedCornerShape(50.dp))
-                else Modifier
-            )
+            .then(if (!selected) Modifier.border(1.dp, BrownBorderPA, RoundedCornerShape(50.dp)) else Modifier)
             .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
-        Text(
-            text = label,
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            lineHeight = 20.sp,
-            color = textColor,
-        )
+        Text(text = label, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, lineHeight = 20.sp, color = textColor)
     }
 }
 
 @Composable
-private fun AgeControlButton(icon: @Composable () -> Unit, onClick: () -> Unit) {
+private fun AgeControlButton(enabled: Boolean = true, icon: @Composable () -> Unit, onClick: () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(30.dp)
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, BrownBorderPA, RoundedCornerShape(8.dp))
-            .clickable { onClick() },
+            .border(1.dp, if (enabled) BrownBorderPA else BrownBorderPA.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+            .alpha(if (enabled) 1f else 0.4f)
+            .clickable(enabled = enabled) { onClick() },
     ) {
         icon()
     }

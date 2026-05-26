@@ -15,6 +15,7 @@ data class PetCreate(
     val gender: PetGender? = null,
     @SerializedName("photo_url") val photoUrl: String? = null,
     val note: String? = null,
+    val birthDate: String? = null
 )
 
 data class PetResponse(
