@@ -19,6 +19,8 @@ class LocationSettingsViewModel(private val repository: UserRepository) : ViewMo
 
     init { loadRegion() }
 
+    fun reload() { loadRegion() }
+
     private fun loadRegion() {
         viewModelScope.launch {
             runCatching {

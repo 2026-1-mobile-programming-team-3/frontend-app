@@ -1,7 +1,7 @@
 package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
-import com.example.siheunggagae.data.model.MatchListItem // MyMatchResponse 대신 MatchListItem 사용
+import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryUiState
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -78,10 +77,9 @@ fun VolunteerHistoryScreen(
     viewModel: VolunteerHistoryViewModel? = null,
     onBack: () -> Unit = {},
     onMatchClick: (matchId: Int) -> Unit = {},
-    onVolunteerApplyClick: () -> Unit = {},
 ) {
     val uiState by remember(viewModel) {
-        viewModel?.uiState ?: MutableStateFlow(VolunteerHistoryUiState.NotVolunteer)
+        viewModel?.uiState ?: MutableStateFlow(VolunteerHistoryUiState.Loading)
     }.collectAsState()
 
     Scaffold(
@@ -96,15 +94,6 @@ fun VolunteerHistoryScreen(
                 ) {
                     CircularProgressIndicator(color = Orange500H)
                 }
-            }
-
-            is VolunteerHistoryUiState.NotVolunteer -> {
-                NotVolunteerEmptyState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    onApplyClick = onVolunteerApplyClick,
-                )
             }
 
             is VolunteerHistoryUiState.Error -> {
@@ -153,7 +142,6 @@ fun VolunteerHistoryScreen(
                         items(state.matches) { match ->
                             MatchHistoryCard(
                                 match = match,
-                                // match.id 대신 match.matchId를 사용하고 null 안정성 처리
                                 onClick = { match.matchId?.let { onMatchClick(it) } },
                             )
                         }
@@ -206,72 +194,6 @@ private fun HistoryTopBar(onBack: () -> Unit) {
     }
 }
 
-// ─── 봉사자 아님 빈 상태 ────────────────────────────────────────────────────────
-
-@Composable
-private fun NotVolunteerEmptyState(
-    modifier: Modifier = Modifier,
-    onApplyClick: () -> Unit = {},
-) {
-    Column(
-        modifier = modifier.padding(horizontal = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFF0FDF4)),
-        ) {
-            Icon(
-                imageVector = Icons.Default.VolunteerActivism,
-                contentDescription = null,
-                tint = Green500H,
-                modifier = Modifier.size(40.dp),
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = "봉사자 자격을 먼저 신청해주세요",
-            fontFamily = PretendardFamily,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 27.sp,
-            color = TextBlackH,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "봉사자 자격을 취득하면\n봉사 활동 이력을 확인할 수 있어요",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            lineHeight = 20.sp,
-            color = Brown700H,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(28.dp))
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Green500H)
-                .clickable { onApplyClick() }
-                .padding(horizontal = 28.dp, vertical = 14.dp),
-        ) {
-            Text(
-                text = "봉사자 자격 신청하기",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-            )
-        }
-    }
-}
-
 // ─── 통계 카드 ─────────────────────────────────────────────────────────────────
 
 @Composable
@@ -292,13 +214,6 @@ private fun VolunteerStatsCard(stats: VolunteerStatsResponse) {
                 value = "${stats.totalCount ?: 0}건",
                 label = "누적 봉사",
                 valueColor = Green500H,
-                modifier = Modifier.weight(1f),
-            )
-            StatDivider()
-            StatItem(
-                value = "${stats.totalHours ?: 0.0}시간",
-                label = "봉사 시간",
-                valueColor = Orange500H,
                 modifier = Modifier.weight(1f),
             )
             StatDivider()
@@ -350,7 +265,6 @@ private fun StatDivider() {
 
 // ─── 매칭 이력 카드 ─────────────────────────────────────────────────────────────
 
-// 타입을 MatchListItem 으로 수정!
 @Composable
 private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
     Card(
@@ -430,14 +344,12 @@ private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // scheduledAt 대신 desiredDate 사용
                     if (!match.desiredDate.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.CalendarMonth, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },
                             text = match.desiredDate.take(10),
                         )
                     }
-                    // regionDong 대신 address 사용
                     if (!match.address.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.LocationOn, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },

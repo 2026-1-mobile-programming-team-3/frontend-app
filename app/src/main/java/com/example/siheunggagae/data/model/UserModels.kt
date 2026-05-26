@@ -96,7 +96,7 @@ data class ActivityStatsResponse(
 data class MyMatchResponse(
     val id: Int,
     val title: String,
-    val status: MatchStatus,
+    val status: String?,
     val scheduledAt: String?,
     val regionDong: String?,
     val petTypes: List<String> = emptyList(),

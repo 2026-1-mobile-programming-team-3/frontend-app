@@ -53,3 +53,8 @@ data class UnreadCountResponse(
 data class MarkAllReadResponse(
     val updatedCount: Int,
 )
+
+data class NotificationDeleteRequest(
+    @com.google.gson.annotations.SerializedName("notification_ids")
+    val notificationIds: List<Int>,
+)

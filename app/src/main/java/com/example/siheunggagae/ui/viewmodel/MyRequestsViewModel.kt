@@ -30,26 +30,21 @@ class MyRequestsViewModel(private val api: AuthApiService) : ViewModel() {
         viewModelScope.launch {
             _uiState.value = MyRequestsUiState.Loading
             try {
-                // 백엔드가 제공하는 내 작성 글 API 엔드포인트 호출
                 val response = api.getMyMatches(role = "author", status = null)
-
-                if (response.isSuccessful && response.body() != null) {
+                if (response.isSuccessful) {
                     val allItems = response.body()?.items ?: emptyList()
-
-                    // ── [태은-9.2] 프론트엔드 조건 필터링 안전 매핑 장치 ──
                     val filteredItems = when (selectedTab) {
-                        1 -> allItems.filter { it.status == "WAITING" || it.status == "RECRUITING" } // 매칭전
-                        2 -> allItems.filter { it.status == "MATCHING" || it.status == "PROGRESS" } // 매칭됨 + 진행중
-                        3 -> allItems.filter { it.status == "DONE" } // 종료됨
-                        else -> allItems // 전체
+                        1 -> allItems.filter { it.status == "WAITING" || it.status == "RECRUITING" }
+                        2 -> allItems.filter { it.status == "MATCHING" || it.status == "PROGRESS" }
+                        3 -> allItems.filter { it.status == "DONE" }
+                        else -> allItems
                     }
-
                     _uiState.value = MyRequestsUiState.Success(filteredItems)
                 } else {
-                    _uiState.value = MyRequestsUiState.Error("목록 데이터를 불러오지 못했습니다.")
+                    _uiState.value = MyRequestsUiState.Error("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
                 }
             } catch (e: Exception) {
-                _uiState.value = MyRequestsUiState.Error("네트워크 연결 상태를 확인해 주세요.")
+                _uiState.value = MyRequestsUiState.Error("네트워크 연결 상태를 확인해주세요.")
             }
         }
     }

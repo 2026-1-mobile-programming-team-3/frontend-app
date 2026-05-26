@@ -42,6 +42,7 @@ import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.NewsDetailResponse
 import com.example.siheunggagae.data.model.NewsListResponse
 import com.example.siheunggagae.data.model.NotificationCategory
+import com.example.siheunggagae.data.model.NotificationDeleteRequest
 import com.example.siheunggagae.data.model.NotificationListResponse
 import com.example.siheunggagae.data.model.NotificationReadResponse
 import com.example.siheunggagae.data.model.NotificationSettingsResponse
@@ -118,6 +119,14 @@ interface AuthApiService {
 
     @GET("api/v1/users/me/matches")
     suspend fun getMyMatches(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MatchListResponse>
+
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatchHistory(
         @Query("role") role: String = "applicant",
         @Query("status") status: String? = null,
         @Query("page") page: Int = 1,
@@ -427,6 +436,11 @@ interface AuthApiService {
 
     @PATCH("api/v1/notifications/read-all")
     suspend fun markAllNotificationsRead(): Response<MarkAllReadResponse>
+
+    @HTTP(method = "DELETE", path = "api/v1/notifications", hasBody = true)
+    suspend fun deleteNotifications(
+        @Body body: NotificationDeleteRequest,
+    ): Response<MessageResponse>
 
     @GET("api/v1/users/me/notification-settings")
     suspend fun getNotificationSettings(): Response<NotificationSettingsResponse>

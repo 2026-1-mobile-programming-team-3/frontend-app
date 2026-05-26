@@ -54,6 +54,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.Alignment
@@ -116,6 +119,14 @@ fun SettingsScreen(
     initialSection: String? = null,
 ) {
     val scope = rememberCoroutineScope()
+
+    // 서브 화면(ProfileEdit 등)에서 돌아올 때 지역 정보 갱신
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            locationViewModel?.reload()
+        }
+    }
 
     // ── 알림 설정 ──────────────────────────────────────────────────────────────
     val notifState by (notifViewModel?.uiState?.collectAsState()
