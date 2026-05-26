@@ -219,13 +219,6 @@ private fun VolunteerStatsCard(stats: VolunteerStatsResponse) {
             )
             StatDivider()
             StatItem(
-                value = "${stats.totalHours ?: 0.0}시간",
-                label = "봉사 시간",
-                valueColor = Orange500H,
-                modifier = Modifier.weight(1f),
-            )
-            StatDivider()
-            StatItem(
                 value = stats.avgRating?.let { String.format("%.1f", it) } ?: "—",
                 label = "평균 평점",
                 valueColor = StarYellow,

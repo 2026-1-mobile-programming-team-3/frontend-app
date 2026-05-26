@@ -29,17 +29,16 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
     fun load() {
         viewModelScope.launch {
             _uiState.value = VolunteerHistoryUiState.Loading
+            // stats 실패해도 매칭 리스트는 반드시 보여야 하므로 독립적으로 처리
+            val stats = runCatching { repository.getVolunteerStats() }
+                .getOrNull()
+                ?.takeIf { it.isSuccessful }
+                ?.body()
+                ?: VolunteerStatsResponse(totalCount = 0, totalHours = null, avgRating = null)
+
             runCatching {
-                val statsResp = repository.getVolunteerStats()
-                val matchesResp = repository.getMyMatches()
-                val stats = if (statsResp.isSuccessful) statsResp.body()
-                    ?: VolunteerStatsResponse(0, 0.0, null)
-                else VolunteerStatsResponse(0, 0.0, null)
-
-                // emptyList 뒤에 <MatchListItem>을 명시하여 컴파일러 에러를 완벽하게 차단합니다.
-                val matches = if (matchesResp.isSuccessful) matchesResp.body()?.items ?: emptyList<MatchListItem>()
-                else emptyList<MatchListItem>()
-
+                val resp = repository.getMyMatches()
+                val matches = if (resp.isSuccessful) resp.body()?.items.orEmpty() else emptyList()
                 _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
             }.onFailure {
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")
