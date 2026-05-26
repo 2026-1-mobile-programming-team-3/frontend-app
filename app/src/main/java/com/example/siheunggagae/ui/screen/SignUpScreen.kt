@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,6 +68,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import com.example.siheunggagae.data.local.SiheungRegions
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -135,9 +138,11 @@ fun SignUpScreen(
     var passwordConfirm by remember { mutableStateOf("") }
     var passwordConfirmVisible by remember { mutableStateOf(false) }
     var phone by remember { mutableStateOf("") }
-    var city by remember { mutableStateOf("") }
     var dong by remember { mutableStateOf("") }
     var termsAccepted by remember { mutableStateOf(false) }
+    var showRegionSheet by remember { mutableStateOf(false) }
+    var regionInput by remember { mutableStateOf("") }
+    val regionSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val hasMinLength = password.length >= 8
     val hasLetter    = password.any { it.isLetter() }
@@ -254,7 +259,7 @@ fun SignUpScreen(
                                     password = password,
                                     nickname = nickname,
                                     phone = phone.takeIf { it.isNotBlank() },
-                                    regionSi = city.takeIf { it.isNotBlank() },
+                                    regionSi = if (dong.isNotBlank()) "시흥시" else null,
                                     regionDong = dong.takeIf { it.isNotBlank() },
                                 )
                             } else Modifier
@@ -399,60 +404,28 @@ fun SignUpScreen(
                     }
                 }
 
-                // 거주 시 (선택)
-                RegInputSection(label = "거주 시") {
+                // 활동 지역 (선택)
+                RegInputSection(label = "활동 지역") {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        RegTextField(
-                            value = city,
-                            onValueChange = { city = it; clearFieldErrors() },
-                            placeholder = "예: 시흥시",
-                        )
-                        fieldErrors["region_si"]?.let { FieldErrorText(it) }
-                    }
-                }
-
-                // 거주 동 (선택)
-                RegInputSection(label = "거주 동") {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        RegTextField(
-                            value = dong,
-                            onValueChange = { dong = it; clearFieldErrors() },
-                            placeholder = "예: 정왕동",
-                        )
-                        fieldErrors["region_dong"]?.let { FieldErrorText(it) }
-                        val allDongs = remember { SiheungRegions.dongCoordinates.keys.toList() }
-                        val matchingDongs = remember(dong) {
-                            when {
-                                dong.isBlank() -> emptyList()
-                                dong in allDongs -> emptyList()
-                                else -> allDongs.filter { it.contains(dong) || dong.contains(it) }.take(8)
-                            }
-                        }
-                        AnimatedVisibility(visible = matchingDongs.isNotEmpty()) {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(top = 8.dp),
-                            ) {
-                                matchingDongs.forEach { d ->
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(50.dp))
-                                            .background(Color(0xFFFFEDD4))
-                                            .clickable { dong = d }
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    ) {
-                                        Text(
-                                            text = d,
-                                            fontFamily = PretendardFamily,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color(0xFF614B3A),
-                                        )
-                                    }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, BorderBeigeReg, RoundedCornerShape(16.dp))
+                                .clickable {
+                                    regionInput = dong
+                                    showRegionSheet = true
                                 }
-                            }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                        ) {
+                            Text(
+                                text = dong.ifBlank { "예: 정왕동" },
+                                fontFamily = PretendardFamily,
+                                fontSize = 16.sp,
+                                lineHeight = 24.sp,
+                                color = if (dong.isBlank()) PlaceholderReg else Color(0xFF1E120A),
+                            )
                         }
+                        fieldErrors["region_dong"]?.let { FieldErrorText(it) }
                     }
                 }
             }
@@ -529,7 +502,125 @@ fun SignUpScreen(
                 )
             }
 
-            if (showTermsSheet != null) {
+            // ─── 활동 지역 선택 시트 ───────────────────────────────────────────────────────
+    if (showRegionSheet) {
+        val signupDongs = remember {
+            listOf(
+                "정왕동", "배곧동", "목감동", "신천동", "은행동",
+                "대야동", "포동", "연성동", "군자동", "월곶동",
+                "장곡동", "능곡동", "매화동", "화정동",
+            ).chunked(4)
+        }
+        ModalBottomSheet(
+            onDismissRequest = { showRegionSheet = false },
+            sheetState = regionSheetState,
+            containerColor = Color.White,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 4.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    "활동 지역 설정",
+                    fontFamily = PretendardFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E120A),
+                )
+                Text(
+                    "시흥시 내 활동 동을 선택하거나 직접 입력해주세요.",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    color = Color(0xFF8A6E58),
+                )
+                OutlinedTextField(
+                    value = regionInput,
+                    onValueChange = { regionInput = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            "예: 정왕동",
+                            fontFamily = PretendardFamily,
+                            fontSize = 14.sp,
+                            color = PlaceholderReg,
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Orange500Reg,
+                        unfocusedBorderColor = BorderBeigeReg,
+                    ),
+                )
+                Text(
+                    "빠른 선택",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF8A6E58),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    signupDongs.forEach { rowItems ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowItems.forEach { d ->
+                                val selected = regionInput == d
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50.dp))
+                                        .background(if (selected) Color(0xFF614B3A) else Color.White)
+                                        .border(
+                                            1.dp,
+                                            if (selected) Color(0xFF614B3A) else BorderBeigeReg,
+                                            RoundedCornerShape(50.dp),
+                                        )
+                                        .clickable { regionInput = d }
+                                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                                ) {
+                                    Text(
+                                        d,
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (selected) Color.White else Color(0xFF8A6E58),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (regionInput.isNotBlank()) Color(0xFF614B3A)
+                            else Color(0xFFE8E8E8)
+                        )
+                        .clickable(enabled = regionInput.isNotBlank()) {
+                            dong = regionInput
+                            showRegionSheet = false
+                        },
+                ) {
+                    Text(
+                        "확인",
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (regionInput.isNotBlank()) Color.White else Color(0xFF8A6E58),
+                    )
+                }
+            }
+        }
+    }
+
+    if (showTermsSheet != null) {
                 val termsSheetState = rememberModalBottomSheetState()
                 ModalBottomSheet(
                     onDismissRequest = { showTermsSheet = null },
