@@ -35,4 +35,14 @@ class MatchRepository(private val api: AuthApiService) {
             Result.failure(e)
         }
     }
+
+    suspend fun deleteMatch(matchId: Int): Result<Unit> {
+        return try {
+            val response = api.deleteMatch(matchId)
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(IllegalStateException("HTTP ${response.code()}"))
+        } catch (e: Throwable) {
+            Result.failure(e)
+        }
+    }
 }

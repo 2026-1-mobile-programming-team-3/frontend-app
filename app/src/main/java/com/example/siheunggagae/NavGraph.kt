@@ -727,6 +727,9 @@ fun AppNavGraph(
                 viewModel = viewModel,
                 onMyRequestsClick = { navController.navigate(Screen.MyRequests.route) },
                 onRequestFlowClick = { navController.navigate(Screen.RequestFlow.createRoute(0)) },
+                onEditRequestClick = { matchId ->
+                    navController.navigate(Screen.RequestFlow.createRoute(matchId))
+                },
                 onCardClick = { matchId, isMine ->
                     if (isMine) {
                         navController.navigate(Screen.MatchingDetail.createRoute(matchId))

@@ -84,6 +84,7 @@ import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.component.ShimmerBox
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
@@ -131,6 +132,7 @@ fun MatchingScreen(
     onBack: () -> Unit = {},
     onMyRequestsClick: () -> Unit = {},
     onRequestFlowClick: () -> Unit = {},
+    onEditRequestClick: (matchId: Int) -> Unit = {},
     onCardClick: (matchId: Int, isMine: Boolean) -> Unit = { _, _ -> },
     onVolunteerApplyClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
@@ -153,6 +155,9 @@ fun MatchingScreen(
     var showSortSheet by remember { mutableStateOf(false) }
     var showDistanceSheet by remember { mutableStateOf(false) }
     var moreSheetFor by remember { mutableStateOf<Int?>(null) }  // matchId — 본인 글일 때만
+    var pendingDeleteId by remember { mutableStateOf<Int?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
     val sheetHaptic = LocalHapticFeedback.current
 
     // 무한 스크롤 trigger
@@ -167,7 +172,10 @@ fun MatchingScreen(
             }
     }
 
-    Scaffold(containerColor = Color(0xFFFEFEFE)) { padding ->
+    Scaffold(
+        containerColor = Color(0xFFFEFEFE),
+        snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
+    ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             PullToRefreshBox(
                 isRefreshing = (state as? MatchingUi.Success)?.isRefreshing == true,
@@ -323,9 +331,32 @@ fun MatchingScreen(
     }
     moreSheetFor?.let { matchId ->
         CardMoreSheet(
-            onEdit = { /* C4: 실제 연결 */ },
-            onDelete = { /* C4: 실제 연결 */ },
+            onEdit = {
+                onEditRequestClick(matchId)
+            },
+            onDelete = {
+                pendingDeleteId = matchId
+            },
             onDismiss = { moreSheetFor = null },
+        )
+    }
+
+    pendingDeleteId?.let { matchId ->
+        SiheungAlertDialog(
+            onDismissRequest = { pendingDeleteId = null },
+            title = "요청 글 삭제",
+            text = "정말로 이 도움 요청을 삭제하시겠습니까?\n삭제하면 되돌릴 수 없어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                pendingDeleteId = null
+                viewModel.deleteMatch(matchId) { _, msg ->
+                    snackbarScope.launch { snackbarHostState.showSnackbar(msg) }
+                }
+            },
+            dismissText = "취소",
+            onDismiss = { pendingDeleteId = null },
+            confirmColor = Pink500M,
+            dismissColor = TextBlackM,
         )
     }
 }
