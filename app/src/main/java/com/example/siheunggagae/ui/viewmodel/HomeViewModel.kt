@@ -163,28 +163,28 @@ class HomeViewModel(
     fun selectCategory(category: StoreCategory) {
         _uiState.update { it.copy(selectedCategory = category) }
         viewModelScope.launch {
-            if (category == StoreCategory.ALL || category.apiValue == null) {
-                if (_uiState.value.allStores.isNotEmpty()) {
-                    _uiState.update { it.copy(displayedStores = _uiState.value.allStores) }
+            // allStores 캐시가 비어있으면 위치 기반 nearby 한 번 받아온다.
+            // getFilteredStores 는 lat/lng 를 받지 않아 위치 무시 결과를 주므로 사용하지 않는다.
+            if (_uiState.value.allStores.isEmpty()) {
+                val loc = _uiState.value.location
+                val (lat, lng) = if (loc != null && _uiState.value.isLocationInSiheung) {
+                    loc.latitude to loc.longitude
                 } else {
-                    val loc = _uiState.value.location
-                    val (lat, lng) = if (loc != null && _uiState.value.isLocationInSiheung) {
-                        loc.latitude to loc.longitude
-                    } else {
-                        SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
-                            ?: SiheungRegions.CITY_HALL
-                    }
-                    val stores = runCatching {
-                        api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
-                    }.getOrDefault(emptyList())
-                    _uiState.update { it.copy(allStores = stores, displayedStores = stores) }
+                    SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
+                        ?: SiheungRegions.CITY_HALL
                 }
-                return@launch
+                val stores = runCatching {
+                    api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
+                }.getOrDefault(emptyList())
+                _uiState.update { it.copy(allStores = stores) }
             }
-            val stores = runCatching {
-                api.getFilteredStores(category = category.apiValue).body()?.stores ?: emptyList()
-            }.getOrDefault(emptyList())
-            _uiState.update { it.copy(displayedStores = stores) }
+            val all = _uiState.value.allStores
+            val filtered = if (category == StoreCategory.ALL || category.apiValue == null) {
+                all
+            } else {
+                all.filter { it.category == category.apiValue }
+            }
+            _uiState.update { it.copy(displayedStores = filtered) }
         }
     }
 
