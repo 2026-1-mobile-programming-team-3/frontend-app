@@ -31,7 +31,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -153,6 +155,7 @@ fun MatchReviewScreen(
                         fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlackC
                     )
                     Spacer(Modifier.height(12.dp))
+                    val starHaptic = LocalHapticFeedback.current
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             for (i in 1..5) {
@@ -166,7 +169,12 @@ fun MatchReviewScreen(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .clickable(enabled = !isReadOnly) { rating = i },
+                                        .clickable(enabled = !isReadOnly) {
+                                            if (rating != i) {
+                                                rating = i
+                                                starHaptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            }
+                                        },
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
