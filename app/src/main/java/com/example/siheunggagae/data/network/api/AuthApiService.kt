@@ -131,7 +131,7 @@ interface AuthApiService {
         @Query("status") status: String? = null,
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20,
-    ): Response<MyMatchListResponse>
+    ): Response<MatchListResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>

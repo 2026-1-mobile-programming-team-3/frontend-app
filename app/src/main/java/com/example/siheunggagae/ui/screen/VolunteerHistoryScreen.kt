@@ -1,7 +1,7 @@
 package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
-import com.example.siheunggagae.data.model.MyMatchResponse
+import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryUiState
 import com.example.siheunggagae.ui.viewmodel.VolunteerHistoryViewModel
@@ -142,7 +142,7 @@ fun VolunteerHistoryScreen(
                         items(state.matches) { match ->
                             MatchHistoryCard(
                                 match = match,
-                                onClick = { onMatchClick(match.id) },
+                                onClick = { match.matchId?.let { onMatchClick(it) } },
                             )
                         }
                     }
@@ -266,7 +266,7 @@ private fun StatDivider() {
 // ─── 매칭 이력 카드 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
+private fun MatchHistoryCard(match: MatchListItem, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -296,7 +296,7 @@ private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
                         color = Green500H,
                     )
                 }
-                if (match.myRating != null) {
+                if (match.receivedRating != null) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Star,
@@ -306,7 +306,7 @@ private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
                         )
                         Spacer(Modifier.width(2.dp))
                         Text(
-                            text = String.format("%.1f", match.myRating),
+                            text = String.format("%.1f", match.receivedRating.toDouble()),
                             fontFamily = PretendardFamily,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -320,7 +320,7 @@ private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
 
             // 제목
             Text(
-                text = match.title,
+                text = match.title ?: "제목 없음",
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -344,16 +344,16 @@ private fun MatchHistoryCard(match: MyMatchResponse, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!match.scheduledAt.isNullOrBlank()) {
+                    if (!match.desiredDate.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.CalendarMonth, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },
-                            text = match.scheduledAt.take(10),
+                            text = match.desiredDate.take(10),
                         )
                     }
-                    if (!match.regionDong.isNullOrBlank()) {
+                    if (!match.address.isNullOrBlank()) {
                         MetaChip(
                             icon = { Icon(Icons.Default.LocationOn, null, tint = Brown700H, modifier = Modifier.size(13.dp)) },
-                            text = match.regionDong,
+                            text = match.address,
                         )
                     }
                 }

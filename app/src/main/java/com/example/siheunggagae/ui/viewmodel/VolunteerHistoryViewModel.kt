@@ -1,9 +1,10 @@
 package com.example.siheunggagae.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.siheunggagae.data.model.MyMatchResponse
+import com.example.siheunggagae.data.model.MatchListItem
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
 import com.example.siheunggagae.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,7 @@ sealed class VolunteerHistoryUiState {
     object Loading : VolunteerHistoryUiState()
     data class Success(
         val stats: VolunteerStatsResponse,
-        val matches: List<MyMatchResponse>,
+        val matches: List<MatchListItem>,
     ) : VolunteerHistoryUiState()
     data class Error(val message: String) : VolunteerHistoryUiState()
 }
@@ -29,19 +30,25 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
     fun load() {
         viewModelScope.launch {
             _uiState.value = VolunteerHistoryUiState.Loading
-            val stats = runCatching { repository.getVolunteerStats() }
-                .getOrNull()
-                ?.takeIf { it.isSuccessful }
-                ?.body()
-                ?: VolunteerStatsResponse(totalCount = 0, totalHours = null, avgRating = null)
+            // /activity-stats 가 정확한 봉사 완료 카운트를 줌 (volunteer-stats는 0 반환 버그)
+            val activityStats = runCatching { repository.getActivityStats() }
+                .getOrNull()?.takeIf { it.isSuccessful }?.body()
+            val volunteerStats = runCatching { repository.getVolunteerStats() }
+                .getOrNull()?.takeIf { it.isSuccessful }?.body()
+            val stats = VolunteerStatsResponse(
+                totalCount = activityStats?.volunteerCompletedCount ?: volunteerStats?.totalCount ?: 0,
+                totalHours = null,
+                avgRating = volunteerStats?.avgRating,
+            )
 
             runCatching {
                 val resp = repository.getVolunteerHistory()
-                val matches = if (resp.isSuccessful)
-                    resp.body()?.content.orEmpty().filter { it.status == "DONE" }
-                else emptyList()
+                val items = resp.body()?.items.orEmpty()
+                Log.d("VolHist", "HTTP ${resp.code()} | items=${items.size} | statuses=${items.map { it.status }}")
+                val matches = items.filter { it.status == "DONE" }
                 _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
-            }.onFailure {
+            }.onFailure { e ->
+                Log.e("VolHist", "exception: ${e.message}", e)
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")
             }
         }
