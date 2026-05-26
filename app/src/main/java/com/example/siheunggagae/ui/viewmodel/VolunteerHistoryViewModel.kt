@@ -37,7 +37,9 @@ class VolunteerHistoryViewModel(private val repository: UserRepository) : ViewMo
 
             runCatching {
                 val resp = repository.getVolunteerHistory()
-                val matches = if (resp.isSuccessful) resp.body()?.content.orEmpty() else emptyList()
+                val matches = if (resp.isSuccessful)
+                    resp.body()?.content.orEmpty().filter { it.status == "DONE" }
+                else emptyList()
                 _uiState.value = VolunteerHistoryUiState.Success(stats = stats, matches = matches)
             }.onFailure {
                 _uiState.value = VolunteerHistoryUiState.Error("네트워크 오류가 발생했어요")
