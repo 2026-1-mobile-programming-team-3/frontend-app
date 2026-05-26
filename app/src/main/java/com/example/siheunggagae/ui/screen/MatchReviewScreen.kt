@@ -153,7 +153,7 @@ fun MatchReviewScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             for (i in 1..5) {
                                 val isSelected = i <= rating
                                 val starScale by animateFloatAsState(
@@ -161,15 +161,21 @@ fun MatchReviewScreen(
                                     animationSpec = spring(stiffness = Spring.StiffnessHigh),
                                     label = "starScale_$i",
                                 )
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "$i 점",
-                                    tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8D3C2),
+                                Box(
+                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .scale(starScale)
-                                        .clickable(enabled = !isReadOnly) { rating = i }
-                                )
+                                        .size(48.dp)
+                                        .clickable(enabled = !isReadOnly) { rating = i },
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = "$i 점",
+                                        tint = if (isSelected) Color(0xFFFFB200) else Color(0xFFE8D3C2),
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .scale(starScale),
+                                    )
+                                }
                             }
                         }
                         AnimatedVisibility(
@@ -194,25 +200,39 @@ fun MatchReviewScreen(
                         text = if (!canEdit) "후기 상세 내용" else if (isReadOnly) "작성했던 후기 내용" else "정성스러운 후기를 남겨주세요",
                         fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextBlackC
                     )
-                    BasicTextField(
-                        value = reviewText,
-                        onValueChange = { reviewText = it },
-                        enabled = !isReadOnly,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if (isReadOnly) Color(0xFFF4F4F4) else InputBgC)
-                            .border(1.dp, Gray300C, RoundedCornerShape(12.dp))
-                            .padding(16.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC),
-                        decorationBox = { innerTextField ->
-                            if (reviewText.isEmpty()) {
-                                Text("작성된 후기 내용이 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = PlaceholderC)
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        BasicTextField(
+                            value = reviewText,
+                            onValueChange = { if (it.length <= 500) reviewText = it },
+                            enabled = !isReadOnly,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isReadOnly) Color(0xFFF4F4F4) else InputBgC)
+                                .border(1.dp, Gray300C, RoundedCornerShape(12.dp))
+                                .padding(16.dp)
+                                .padding(bottom = 16.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC),
+                            decorationBox = { innerTextField ->
+                                if (reviewText.isEmpty()) {
+                                    Text("작성된 후기 내용이 없습니다.", fontFamily = PretendardFamily, fontSize = 14.sp, color = PlaceholderC)
+                                }
+                                innerTextField()
                             }
-                            innerTextField()
+                        )
+                        if (!isReadOnly) {
+                            Text(
+                                text = "${reviewText.length} / 500",
+                                fontFamily = PretendardFamily,
+                                fontSize = 12.sp,
+                                color = Brown700C,
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 12.dp, bottom = 6.dp),
+                            )
                         }
-                    )
+                    }
                 }
 
                 if (!isReadOnly) {

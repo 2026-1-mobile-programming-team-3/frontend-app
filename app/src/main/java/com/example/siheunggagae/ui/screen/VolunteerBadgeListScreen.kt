@@ -300,8 +300,13 @@ private fun BadgeTierCard(tier: VolunteerBadgeTier, badge: VolunteerBadgeInfo?) 
             // 미달성 시 진행 바
             if (!achieved) {
                 Spacer(Modifier.height(8.dp))
+                val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = progress.coerceIn(0f, 1f),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    label = "badgeProgress",
+                )
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)

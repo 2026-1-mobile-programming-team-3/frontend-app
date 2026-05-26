@@ -79,6 +79,8 @@ import com.example.siheunggagae.R
 import com.example.siheunggagae.data.local.CurrentUserStore
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.PetResponse
+import androidx.activity.compose.BackHandler
+import com.example.siheunggagae.ui.component.SiheungAlertDialog
 import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.viewmodel.RequestUiState
@@ -157,6 +159,9 @@ fun RequestFlowScreen(
     var lngInput by remember { mutableStateOf(viewModel.longitude) }
     val searchSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    var isSubmitting by remember { mutableStateOf(false) }
+    var showExitConfirm by remember { mutableStateOf(false) }
+
     LaunchedEffect(matchId) {
         if (matchId != 0) {
             viewModel.loadMatchDetail(matchId)
@@ -185,12 +190,30 @@ fun RequestFlowScreen(
         if (uiState is RequestUiState.Success) {
             coroutineScope.launch { snackbarHostState.showSnackbar("요청 처리가 완료되었습니다.") }
             viewModel.resetState()
+            isSubmitting = false
             onComplete()
         } else if (uiState is RequestUiState.Error) {
             coroutineScope.launch { snackbarHostState.showSnackbar((uiState as RequestUiState.Error).message) }
             viewModel.resetState()
+            isSubmitting = false
         }
     }
+
+    val isDirty = matchId == 0 && (
+        selectedPetIds.isNotEmpty() || selectedCategory != null ||
+        selectedDay != null || hourInput.isNotBlank() || minuteInput.isNotBlank() ||
+        titleInput.isNotBlank() || destination.isNotBlank() || memo.isNotBlank()
+    )
+
+    val handleBack: () -> Unit = {
+        when {
+            currentStep > 1 -> currentStep--
+            isDirty -> showExitConfirm = true
+            else -> onBack()
+        }
+    }
+
+    BackHandler(enabled = true) { handleBack() }
 
     val buttonText = when (currentStep) {
         1    -> "→ 일정 선택"
@@ -218,14 +241,14 @@ fun RequestFlowScreen(
         topBar = {
             RequestFlowTopBar(
                 step = currentStep,
-                onBack = { if (currentStep > 1) currentStep-- else onBack() }
+                onBack = handleBack
             )
         },
         bottomBar = {
             FlowBottomButton(
                 text = buttonText,
-                enabled = isNextEnabled,
-                isLoading = uiState is RequestUiState.Loading && currentStep == 3
+                enabled = isNextEnabled && !isSubmitting,
+                isLoading = (uiState is RequestUiState.Loading && currentStep == 3) || isSubmitting
             ) {
                 if (currentStep < 3) {
                     viewModel.selectedPetIds = selectedPetIds.toList()
@@ -240,6 +263,9 @@ fun RequestFlowScreen(
                     }
                     currentStep++
                 } else {
+                    if (isSubmitting) return@FlowBottomButton
+                    isSubmitting = true
+
                     viewModel.title = titleInput
                     viewModel.address = destination
                     viewModel.content = memo
@@ -317,6 +343,22 @@ fun RequestFlowScreen(
                 latInput = place.lat.toFloat()
                 lngInput = place.lng.toFloat()
             }
+        )
+    }
+
+    if (showExitConfirm) {
+        SiheungAlertDialog(
+            onDismissRequest = { showExitConfirm = false },
+            title = "작성을 그만두시겠어요?",
+            text = "지금까지 입력한 내용이 사라져요.",
+            confirmText = "나가기",
+            confirmColor = Color(0xFFEE6A46),
+            onConfirm = {
+                showExitConfirm = false
+                onBack()
+            },
+            dismissText = "계속 작성",
+            onDismiss = { showExitConfirm = false }
         )
     }
 }

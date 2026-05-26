@@ -226,9 +226,14 @@ fun MapPinPickerScreen(
                     }
                 }
                 Spacer(Modifier.height(14.dp))
+                val isCoordValid = state.lat != 0.0 && state.lng != 0.0 && !state.resolving
                 Button(
-                    onClick = { onConfirm(state.lat, state.lng, state.address) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Brown900M),
+                    onClick = { if (isCoordValid) onConfirm(state.lat, state.lng, state.address) },
+                    enabled = isCoordValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Brown900M,
+                        disabledContainerColor = Brown900M.copy(alpha = 0.4f),
+                    ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()

@@ -188,6 +188,7 @@ class MatchingViewModel(
     private fun fetch(reset: Boolean, isRefresh: Boolean = false) {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
+            try {
             if (reset && !isRefresh) {
                 val current = _state.value as? MatchingUi.Success
                 if (current == null) {
@@ -243,6 +244,15 @@ class MatchingViewModel(
                 recompute(hasMore = newItems.size >= 20)
             }.onFailure { err ->
                 _state.value = MatchingUi.Error(err.message ?: "매칭을 불러오지 못했어요")
+            }
+            } finally {
+                // 새로고침 중 코루틴이 취소돼도 스피너가 무한히 돌지 않도록 안전망
+                if (isRefresh) {
+                    val cur = _state.value as? MatchingUi.Success
+                    if (cur != null && cur.isRefreshing) {
+                        _state.value = cur.copy(isRefreshing = false)
+                    }
+                }
             }
         }
     }

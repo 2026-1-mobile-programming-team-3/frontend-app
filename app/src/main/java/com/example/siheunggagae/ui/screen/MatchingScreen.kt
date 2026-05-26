@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -147,6 +150,13 @@ fun MatchingScreen(
     val searchQuery = (state as? MatchingUi.Success)?.searchQuery ?: ""
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    var searchInput by remember { mutableStateOf(searchQuery) }
+    LaunchedEffect(isSearchMode) { if (!isSearchMode) searchInput = "" }
+    LaunchedEffect(searchInput) {
+        kotlinx.coroutines.delay(300)
+        if (searchInput != searchQuery) viewModel.updateSearch(searchInput)
+    }
+
     BackHandler(enabled = isSearchMode) {
         keyboardController?.hide()
         viewModel.exitSearch()
@@ -197,8 +207,8 @@ fun MatchingScreen(
                         exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut(),
                     ) {
                         MatchSearchBar(
-                            query = searchQuery,
-                            onQueryChange = { viewModel.updateSearch(it) },
+                            query = searchInput,
+                            onQueryChange = { searchInput = it },
                         )
                     }
                     val success = state as? MatchingUi.Success
@@ -257,10 +267,11 @@ fun MatchingScreen(
                                     onCreate = onRequestFlowClick,
                                 )
                             } else {
+                                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                                 LazyColumn(
                                     state = listState,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(bottom = 96.dp),
+                                    contentPadding = PaddingValues(bottom = 96.dp + navBottom),
                                 ) {
                                     itemsIndexed(s.items, key = { idx, item -> item.matchId ?: idx }) { _, item ->
                                         val isMine = when {

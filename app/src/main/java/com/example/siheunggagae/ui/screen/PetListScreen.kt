@@ -65,6 +65,7 @@ private val Brown900PL = Color(0xFF614B3A)
 private val Brown700PL = Color(0xFF8A6E58)
 private val Orange500PL = Color(0xFFF7A35B)
 private val Pink500PL = Color(0xFFF04268)
+private val DestructivePL = Color(0xFFEE6A46) // CLAUDE.md OrangeRed — 파괴적 액션 강조용
 private val Gray300PL = Color(0xFFE8E8E8)
 private val OrangeSandPL = Color(0xFFFFEDD4)
 private val PinkSurfacePL = Color(0xFFFEE7EC)
@@ -182,9 +183,10 @@ fun PetListScreen(
                     Spacer(Modifier.height(10.dp))
 
                     if (pets.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
-                            contentAlignment = Alignment.Center,
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text(
                                 text = "등록된 반려동물이 없어요",
@@ -192,6 +194,22 @@ fun PetListScreen(
                                 fontSize = 14.sp,
                                 color = Brown700PL,
                             )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .background(Brown900PL)
+                                    .clickable { onAddPet() }
+                                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    text = "반려동물 추가하기",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     } else {
                         Card(
@@ -237,7 +255,7 @@ fun PetListScreen(
             },
             dismissText = "취소",
             onDismiss = { deleteTarget = null },
-            confirmColor = Pink500PL,
+            confirmColor = DestructivePL,
             dismissColor = Brown700PL,
         )
     }

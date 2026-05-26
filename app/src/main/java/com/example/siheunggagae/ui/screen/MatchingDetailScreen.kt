@@ -95,6 +95,8 @@ fun MatchingDetailScreen(
     var showCancelDialog by remember { mutableStateOf(false) }
     var appIdToCancel by remember { mutableStateOf(-1) }
     var acceptingAppId by remember { mutableStateOf(-1) }
+    var pendingAcceptAppId by remember { mutableStateOf(-1) }
+    var pendingRejectAppId by remember { mutableStateOf(-1) }
 
     LaunchedEffect(requestId) { viewModel.fetchDetail(requestId) }
     val requestData = (uiState as? MatchDetailUiState.Success)?.detail
@@ -134,6 +136,46 @@ fun MatchingDetailScreen(
             onDismiss = { showDeleteDialog = false },
             confirmColor = Pink500D,
             dismissColor = TextBlackD,
+        )
+    }
+
+    if (pendingAcceptAppId != -1) {
+        val appId = pendingAcceptAppId
+        SiheungAlertDialog(
+            onDismissRequest = { pendingAcceptAppId = -1 },
+            title = "이 봉사자를 수락하시겠어요?",
+            text = "수락 후에는 다른 지원자를 선택할 수 없으며 채팅이 열려요.",
+            confirmText = "수락",
+            confirmColor = Pink500D,
+            onConfirm = {
+                pendingAcceptAppId = -1
+                acceptingAppId = appId
+                viewModel.acceptApplication(requestId, appId) {
+                    acceptingAppId = -1
+                    scope.launch {
+                        snackbarHostState.showSnackbar("수락했어요. 채팅을 시작해 보세요.")
+                    }
+                }
+            },
+            dismissText = "취소",
+            onDismiss = { pendingAcceptAppId = -1 },
+        )
+    }
+
+    if (pendingRejectAppId != -1) {
+        val appId = pendingRejectAppId
+        SiheungAlertDialog(
+            onDismissRequest = { pendingRejectAppId = -1 },
+            title = "이 신청을 거절하시겠어요?",
+            text = "거절하면 해당 봉사자의 신청이 목록에서 사라져요.",
+            confirmText = "거절",
+            confirmColor = Pink500D,
+            onConfirm = {
+                pendingRejectAppId = -1
+                viewModel.rejectApplication(requestId, appId)
+            },
+            dismissText = "취소",
+            onDismiss = { pendingRejectAppId = -1 },
         )
     }
 
@@ -470,13 +512,7 @@ fun MatchingDetailScreen(
                                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(
                                                         if (isAccepting) Pink500D.copy(alpha = 0.6f) else Pink500D
                                                     ).clickable(enabled = !isAccepting) {
-                                                        acceptingAppId = appId
-                                                        viewModel.acceptApplication(requestId, appId) {
-                                                            acceptingAppId = -1
-                                                            scope.launch {
-                                                                snackbarHostState.showSnackbar("수락했어요. 채팅을 시작해 보세요.")
-                                                            }
-                                                        }
+                                                        pendingAcceptAppId = appId
                                                     }.padding(horizontal = 10.dp, vertical = 6.dp)
                                                 ) {
                                                     if (isAccepting) {
@@ -493,8 +529,7 @@ fun MatchingDetailScreen(
                                                 Box(
                                                     contentAlignment = Alignment.Center,
                                                     modifier = Modifier.clip(RoundedCornerShape(8.dp)).border(1.dp, Gray300D, RoundedCornerShape(8.dp)).background(Color.White).clickable {
-                                                        val appId = appItem.applicationId ?: 0
-                                                        viewModel.rejectApplication(requestId, appId)
+                                                        pendingRejectAppId = appItem.applicationId ?: 0
                                                     }.padding(horizontal = 10.dp, vertical = 6.dp)
                                                 ) {
                                                     Text("거절", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700D)

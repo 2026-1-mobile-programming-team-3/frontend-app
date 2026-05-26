@@ -29,6 +29,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -150,8 +153,14 @@ fun SignUpScreen(
     val hasSpecial   = password.any { !it.isLetterOrDigit() }
     val passwordsMatch = password == passwordConfirm
 
+    // 전화번호는 선택값이지만 입력했다면 010-XXXX-XXXX 또는 숫자 11자리만 허용
+    val phoneRegex = remember { Regex("""^(01\d-\d{3,4}-\d{4}|01\d{9})$""") }
+    val isPhoneValid = phone.isBlank() || phoneRegex.matches(phone)
+
     val canSubmit = termsAccepted && email.isNotBlank() && nickname.isNotBlank() &&
-                    password.isNotBlank() && passwordsMatch && !isLoading
+                    password.isNotBlank() && passwordsMatch && isPhoneValid && !isLoading
+    val focusManager = LocalFocusManager.current
+    val moveNext: () -> Unit = { focusManager.moveFocus(FocusDirection.Down) }
 
     fun clearFieldErrors() {
         if (uiState is AuthUiState.FieldErrors) viewModel?.resetState()
@@ -555,6 +564,12 @@ fun SignUpScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Orange500Reg,
                         unfocusedBorderColor = BorderBeigeReg,
+                        disabledBorderColor = BorderBeigeReg.copy(alpha = 0.5f),
+                        errorBorderColor = Pink500Reg,
+                        disabledTextColor = TextBlackReg.copy(alpha = 0.5f),
+                        errorTextColor = TextBlackReg,
+                        cursorColor = Orange500Reg,
+                        errorCursorColor = Pink500Reg,
                     ),
                 )
                 Text(
@@ -722,12 +737,20 @@ private fun RegTextField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: (() -> Unit)? = null,
 ) {
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
+        keyboardActions = if (onImeAction != null) KeyboardActions(
+            onNext = { onImeAction() },
+            onDone = { onImeAction() },
+            onGo = { onImeAction() },
+            onSend = { onImeAction() },
+        ) else KeyboardActions.Default,
         textStyle = TextStyle(
             fontFamily = PretendardFamily,
             fontSize = 16.sp,
@@ -763,6 +786,8 @@ private fun RegPasswordTextField(
     visible: Boolean,
     onToggleVisibility: () -> Unit,
     placeholder: String = "비밀번호 입력",
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -777,7 +802,13 @@ private fun RegPasswordTextField(
             onValueChange = onValueChange,
             singleLine = true,
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
+            keyboardActions = if (onImeAction != null) KeyboardActions(
+                onNext = { onImeAction() },
+                onDone = { onImeAction() },
+                onGo = { onImeAction() },
+                onSend = { onImeAction() },
+            ) else KeyboardActions.Default,
             textStyle = TextStyle(
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,

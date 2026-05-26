@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +53,8 @@ private val Orange500Pv = Color(0xFFF7A35B)
 fun PrivacyPolicyScreen(onBack: () -> Unit = {}) {
     var isLoading by remember { mutableStateOf(true) }
     var hasError  by remember { mutableStateOf(false) }
+    var retryToken by remember { mutableStateOf(0) }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     Scaffold(
         containerColor = Color.White,
@@ -62,10 +65,11 @@ fun PrivacyPolicyScreen(onBack: () -> Unit = {}) {
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            val context = LocalContext.current
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
-                factory = { context ->
-                    WebView(context).apply {
+                factory = { ctx ->
+                    WebView(ctx).apply {
                         settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
@@ -74,17 +78,35 @@ fun PrivacyPolicyScreen(onBack: () -> Unit = {}) {
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, url: String?) {
-                                isLoading = false
+                                if (!hasError) isLoading = false
                             }
                             override fun onReceivedError(
                                 view: WebView?,
                                 request: WebResourceRequest?,
                                 error: WebResourceError?,
                             ) {
-                                if (request?.isForMainFrame == true) hasError = true
+                                if (request?.isForMainFrame == true) {
+                                    hasError = true
+                                    isLoading = false
+                                }
+                            }
+                            // 외부 링크는 외부 브라우저로 위임해 WebView 내 갇힘 방지
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                            ): Boolean {
+                                val target = request?.url?.toString() ?: return false
+                                if (target.startsWith(PRIVACY_URL)) return false
+                                runCatching {
+                                    context.startActivity(
+                                        android.content.Intent(android.content.Intent.ACTION_VIEW, request.url)
+                                    )
+                                }
+                                return true
                             }
                         }
                         loadUrl(PRIVACY_URL)
+                        webViewRef = this
                     }
                 },
             )
@@ -120,6 +142,28 @@ fun PrivacyPolicyScreen(onBack: () -> Unit = {}) {
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp),
                     )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(Orange500Pv)
+                            .clickable {
+                                hasError = false
+                                isLoading = true
+                                retryToken += 1
+                                webViewRef?.reload() ?: webViewRef?.loadUrl(PRIVACY_URL)
+                            }
+                            .padding(horizontal = 24.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            text = "다시 시도",
+                            fontFamily = PretendardFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = androidx.compose.ui.graphics.Color.White,
+                        )
+                    }
                 }
             }
         }

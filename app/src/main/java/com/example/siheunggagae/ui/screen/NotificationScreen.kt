@@ -112,8 +112,19 @@ private fun formatRelativeTime(createdAt: String): String {
         diffMin < 1    -> "방금 전"
         diffMin < 60   -> "${diffMin}분 전"
         diffMin < 1440 -> "${diffMin / 60}시간 전"
-        diffMin < 43200 -> "${diffMin / 1440}일 전"
-        else           -> "${diffMin / 43200}개월 전"
+        diffMin < 10080 -> "${diffMin / 1440}일 전" // 7일 미만은 상대 시간
+        else -> {
+            // 7일 이상은 절대 날짜로 표시 (M월 d일 또는 yyyy년 M월 d일)
+            val cal = java.util.Calendar.getInstance().apply { time = date }
+            val nowCal = java.util.Calendar.getInstance()
+            val month = cal.get(java.util.Calendar.MONTH) + 1
+            val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            if (cal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR)) {
+                "${month}월 ${day}일"
+            } else {
+                "${cal.get(java.util.Calendar.YEAR)}년 ${month}월 ${day}일"
+            }
+        }
     }
 }
 
@@ -482,15 +493,31 @@ private fun NotificationItemContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Text(
-                    text = item.title,
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (!item.isRead) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Pink500N),
+                        )
+                    }
+                    Text(
+                        text = item.title,
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = if (!item.isRead) FontWeight.ExtraBold else FontWeight.Medium,
+                        lineHeight = 24.sp,
+                        color = TextBlack,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = relativeTime,

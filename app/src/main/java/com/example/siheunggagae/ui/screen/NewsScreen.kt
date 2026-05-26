@@ -348,16 +348,20 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,
     ) {
+        val fallbackPainter = painterResource(newsFallbackDrawable(item.newsId))
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = item.imageUrl,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
+                error = fallbackPainter,
+                fallback = fallbackPainter,
+                placeholder = fallbackPainter,
             )
         } else {
             Image(
-                painter = painterResource(newsFallbackDrawable(item.newsId)),
+                painter = fallbackPainter,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -446,16 +450,20 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
                 .height(100.dp)
                 .background(categoryImageBg(item.category)),
         ) {
+            val listFallback = painterResource(newsFallbackDrawable(item.newsId))
             if (!item.imageUrl.isNullOrBlank()) {
                 AsyncImage(
                     model = item.imageUrl,
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
+                    error = listFallback,
+                    fallback = listFallback,
+                    placeholder = listFallback,
                 )
             } else {
                 Image(
-                    painter = painterResource(newsFallbackDrawable(item.newsId)),
+                    painter = listFallback,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),

@@ -198,11 +198,16 @@ fun PlaceDetailScreen(
     fun copyToClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("", text))
+        android.widget.Toast.makeText(context, "복사되었어요", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     fun dialPhone(phone: String) {
-        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-        context.startActivity(intent)
+        runCatching {
+            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
+            context.startActivity(intent)
+        }.onFailure {
+            android.widget.Toast.makeText(context, "전화를 걸 수 없어요", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun shareStore() {
@@ -210,12 +215,15 @@ fun PlaceDetailScreen(
             store?.name?.let { append(it).append("\n") }
             store?.address?.let { append(it) }
         }
-        if (text.isNotBlank()) {
+        if (text.isBlank()) return
+        runCatching {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
             }
             context.startActivity(Intent.createChooser(intent, "공유하기"))
+        }.onFailure {
+            android.widget.Toast.makeText(context, "공유할 수 있는 앱이 없어요", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1036,9 +1044,19 @@ private fun LocationCardPL(
             }
             // 정보 행
             if (!store.operatingHours.isNullOrEmpty()) {
+                val todayDow = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).dayOfWeek
+                val todayLabel = when (todayDow) {
+                    java.time.DayOfWeek.MONDAY -> "월"
+                    java.time.DayOfWeek.TUESDAY -> "화"
+                    java.time.DayOfWeek.WEDNESDAY -> "수"
+                    java.time.DayOfWeek.THURSDAY -> "목"
+                    java.time.DayOfWeek.FRIDAY -> "금"
+                    java.time.DayOfWeek.SATURDAY -> "토"
+                    java.time.DayOfWeek.SUNDAY -> "일"
+                }
                 PlaceInfoRowPL(
                     iconRes = R.drawable.ic_schedule,
-                    label = "영업 시간",
+                    label = "영업 시간 (오늘 · $todayLabel)",
                     content = store.operatingHours,
                 ) {
                     val isOpen = isOpenNow(store.operatingHours)
@@ -1551,14 +1569,19 @@ private fun ReviewWriteSheet(
 
 private fun isOpenNow(operatingHours: String?): Boolean? {
     if (operatingHours.isNullOrBlank()) return null
+    val normalized = operatingHours.replace("\\s+".toRegex(), " ")
+    // 특수 케이스: 휴무/연중무휴/24시간
+    if (normalized.contains("24시간") || normalized.contains("연중무휴")) return true
+    if (normalized.contains("휴무") && !normalized.contains(":")) return false
     val pattern = Regex("""(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})""")
-    val match = pattern.find(operatingHours) ?: return null
+    val match = pattern.find(normalized) ?: return null
     val (_, sh, sm, eh, em) = match.groupValues
     val cal = Calendar.getInstance()
     val now = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
     val start = sh.toInt() * 60 + sm.toInt()
     val end = eh.toInt() * 60 + em.toInt()
-    return now in start until end
+    // 24시 넘어가는 영업(예: 18:00-02:00)
+    return if (end >= start) now in start until end else (now >= start || now < end)
 }
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
