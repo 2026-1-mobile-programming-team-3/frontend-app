@@ -203,16 +203,34 @@ sealed class Screen(val route: String) {
         fun createRoute(matchId: Int, status: String, isViewOnly: Boolean = false, canEdit: Boolean = false) =
             "match_review?matchId=$matchId&status=$status&isViewOnly=$isViewOnly&canEdit=$canEdit"
     }
-    object PetHotelCompare : Screen("pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}") {
+    object PetHotelCompare : Screen(
+        "pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}" +
+            "&sw_lat={sw_lat}&sw_lng={sw_lng}&ne_lat={ne_lat}&ne_lng={ne_lng}",
+    ) {
         const val ARG_LAT = "lat"
         const val ARG_LNG = "lng"
         const val ARG_RADIUS = "radius"
+        const val ARG_SW_LAT = "sw_lat"
+        const val ARG_SW_LNG = "sw_lng"
+        const val ARG_NE_LAT = "ne_lat"
+        const val ARG_NE_LNG = "ne_lng"
 
-        fun createRoute(lat: Double? = null, lng: Double? = null, radius: Int? = null): String {
+        fun createRoute(
+            lat: Double? = null,
+            lng: Double? = null,
+            radius: Int? = null,
+            viewportBounds: DoubleArray? = null,
+        ): String {
             val parts = buildList {
                 lat?.let { add("lat=$it") }
                 lng?.let { add("lng=$it") }
                 radius?.let { add("radius=$it") }
+                viewportBounds?.takeIf { it.size >= 4 }?.let {
+                    add("sw_lat=${it[0]}")
+                    add("sw_lng=${it[1]}")
+                    add("ne_lat=${it[2]}")
+                    add("ne_lng=${it[3]}")
+                }
             }
             return if (parts.isEmpty()) "pet_hotel_compare"
             else "pet_hotel_compare?" + parts.joinToString("&")
@@ -983,6 +1001,18 @@ fun AppNavGraph(
                 navArgument(Screen.PetHotelCompare.ARG_RADIUS) {
                     type = NavType.IntType; defaultValue = 5000
                 },
+                navArgument(Screen.PetHotelCompare.ARG_SW_LAT) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelCompare.ARG_SW_LNG) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelCompare.ARG_NE_LAT) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
+                navArgument(Screen.PetHotelCompare.ARG_NE_LNG) {
+                    type = NavType.StringType; nullable = true; defaultValue = null
+                },
             ),
         ) { backStackEntry ->
             val lat = backStackEntry.arguments
@@ -995,6 +1025,17 @@ fun AppNavGraph(
                 ?.getInt(Screen.PetHotelCompare.ARG_RADIUS)
                 ?.takeIf { it > 0 }
                 ?: PetHotelCompareViewModel.RADIUS_DEFAULT_M
+            val swLat = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_SW_LAT)?.toDoubleOrNull()
+            val swLng = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_SW_LNG)?.toDoubleOrNull()
+            val neLat = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_NE_LAT)?.toDoubleOrNull()
+            val neLng = backStackEntry.arguments
+                ?.getString(Screen.PetHotelCompare.ARG_NE_LNG)?.toDoubleOrNull()
+            val viewportBounds = if (swLat != null && swLng != null && neLat != null && neLng != null) {
+                doubleArrayOf(swLat, swLng, neLat, neLng)
+            } else null
             val vm: PetHotelCompareViewModel = viewModel(
                 factory = PetHotelCompareViewModel.Factory(
                     PetHotelRepository(),
@@ -1002,6 +1043,7 @@ fun AppNavGraph(
                     lat,
                     lng,
                     radius,
+                    viewportBounds,
                 ),
             )
             PetHotelCompareScreen(
