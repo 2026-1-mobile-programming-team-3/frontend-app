@@ -13,6 +13,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.MoreVert
@@ -614,6 +618,15 @@ private fun ChatInputBar(inputText: String, onTextChange: (String) -> Unit, onSe
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             singleLine = true,
             textStyle = androidx.compose.ui.text.TextStyle(fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackC),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Send,
+            ),
+            keyboardActions = KeyboardActions(
+                onSend = {
+                    if (inputText.isNotBlank()) onSendClick()
+                },
+            ),
             decorationBox = { innerTextField ->
                 if (inputText.isEmpty()) {
                     Text(text = "메시지를 입력하세요...", fontFamily = PretendardFamily, fontSize = 14.sp, color = PlaceholderC)

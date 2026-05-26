@@ -104,6 +104,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.focus.FocusRequester
@@ -728,6 +732,7 @@ private fun MatchSearchBar(
     onQueryChange: (String) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -760,6 +765,8 @@ private fun MatchSearchBar(
                     color = TextBlackM,
                     fontFamily = PretendardFamily,
                 ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 decorationBox = { inner ->
                     Box {
                         if (query.isEmpty()) {

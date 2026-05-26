@@ -32,6 +32,10 @@ import com.example.siheunggagae.data.location.EffectiveCenter
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.BottomSheetScaffold
@@ -1400,6 +1404,7 @@ private fun MapSearchOverlay(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<StoreSearchResult>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(query) {
         if (query.isBlank()) {
@@ -1471,6 +1476,8 @@ private fun MapSearchOverlay(
                             fontSize = 15.sp,
                             color = TextBlack,
                         ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

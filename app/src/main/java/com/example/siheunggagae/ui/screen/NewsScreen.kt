@@ -50,6 +50,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.HorizontalDivider
@@ -559,6 +563,7 @@ private fun NewsSearchOverlay(
         else allNews.filter { (it.title ?: "").contains(query, ignoreCase = true) }
             .take(30)
     }
+    val focusManager = LocalFocusManager.current
 
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
@@ -610,6 +615,8 @@ private fun NewsSearchOverlay(
                             fontSize = 15.sp,
                             color = Color(0xFF1E120A),
                         ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
