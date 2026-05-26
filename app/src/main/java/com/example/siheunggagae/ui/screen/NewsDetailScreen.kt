@@ -292,7 +292,7 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
                 fontFamily = PretendardFamily,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 34.sp,
+                lineHeight = 32.sp,
                 color = TextBlackND,
             )
 

@@ -90,6 +90,7 @@ private val OrangeSandSt  = Color(0xFFFFEDD4)
 private val Pink500St     = Color(0xFFF04268)
 private val PinkSurfaceSt = Color(0xFFFEE7EC)
 private val Gray300St     = Color(0xFFE8E8E8)
+private val SwitchTrackOffSt = Color(0xFFD0C4BA) // 비활성 Switch 트랙 (베이지 톤)
 private val BrownBorderSt = Color(0xFFE8D3C2)
 private val BackgroundSt  = Color(0xFFFEFEFE)
 private val TextBlackSt   = Color(0xFF1E120A)
@@ -632,7 +633,7 @@ private fun SettingsSwitchItem(
             checked = checked, onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White, checkedTrackColor = Brown900St, checkedBorderColor = Brown900St,
-                uncheckedThumbColor = Color.White, uncheckedTrackColor = Color(0xFFD0C4BA), uncheckedBorderColor = Color(0xFFD0C4BA),
+                uncheckedThumbColor = Color.White, uncheckedTrackColor = SwitchTrackOffSt, uncheckedBorderColor = SwitchTrackOffSt,
             ),
         )
     }

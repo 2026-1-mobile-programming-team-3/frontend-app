@@ -124,16 +124,23 @@ fun VolunteerHistoryScreen(
 
                     if (state.matches.isEmpty()) {
                         item {
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                contentAlignment = Alignment.Center,
+                                    .padding(vertical = 36.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Text(
                                     text = "아직 완료된 봉사 활동이 없어요",
                                     fontFamily = PretendardFamily,
                                     fontSize = 14.sp,
+                                    color = Brown400H,
+                                )
+                                Text(
+                                    text = "진행 중인 매칭이 있는지 확인해 보세요.",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 12.sp,
                                     color = Brown400H,
                                 )
                             }

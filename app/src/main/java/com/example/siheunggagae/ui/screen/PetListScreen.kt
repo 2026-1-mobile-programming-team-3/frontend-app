@@ -183,9 +183,10 @@ fun PetListScreen(
                     Spacer(Modifier.height(10.dp))
 
                     if (pets.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
-                            contentAlignment = Alignment.Center,
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text(
                                 text = "등록된 반려동물이 없어요",
@@ -193,6 +194,22 @@ fun PetListScreen(
                                 fontSize = 14.sp,
                                 color = Brown700PL,
                             )
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .background(Brown900PL)
+                                    .clickable { onAddPet() }
+                                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    text = "반려동물 추가하기",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     } else {
                         Card(

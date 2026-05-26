@@ -1569,14 +1569,19 @@ private fun ReviewWriteSheet(
 
 private fun isOpenNow(operatingHours: String?): Boolean? {
     if (operatingHours.isNullOrBlank()) return null
+    val normalized = operatingHours.replace("\\s+".toRegex(), " ")
+    // 특수 케이스: 휴무/연중무휴/24시간
+    if (normalized.contains("24시간") || normalized.contains("연중무휴")) return true
+    if (normalized.contains("휴무") && !normalized.contains(":")) return false
     val pattern = Regex("""(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})""")
-    val match = pattern.find(operatingHours) ?: return null
+    val match = pattern.find(normalized) ?: return null
     val (_, sh, sm, eh, em) = match.groupValues
     val cal = Calendar.getInstance()
     val now = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
     val start = sh.toInt() * 60 + sm.toInt()
     val end = eh.toInt() * 60 + em.toInt()
-    return now in start until end
+    // 24시 넘어가는 영업(예: 18:00-02:00)
+    return if (end >= start) now in start until end else (now >= start || now < end)
 }
 
 // ─── Preview ───────────────────────────────────────────────────────────────────
