@@ -14,6 +14,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -199,6 +202,7 @@ fun HomeScreen(
     ) { innerPadding ->
         // Apple Large Title collapse — scroll 진행에 따라 "시흥가개" 26sp → 18sp 점진 축소.
         val scrollState = rememberScrollState()
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         val collapseProgress by remember { derivedStateOf { (scrollState.value / 200f).coerceIn(0f, 1f) } }
         Column(
             modifier = Modifier
@@ -246,7 +250,7 @@ fun HomeScreen(
                 onNewsClick = onNewsDetailClick,
                 onVolunteerApplyClick = { onNavigate(Screen.VolunteerApply.route) },
             )
-            Spacer(Modifier.height(96.dp))
+            Spacer(Modifier.height(96.dp + navBottom))
         }
     }
 
@@ -669,6 +673,28 @@ fun NearbyStoresSection(
             )
             if (idx < minOf(stores.size, 3) - 1) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
+            }
+        }
+        // 전체보기 진입 (매장이 3개 이상이거나 표시 가능한 항목이 있을 때)
+        if (stores.size > 3 || nearbyStoreCount > 3) {
+            Spacer(Modifier.height(8.dp))
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, BrownBorderH, RoundedCornerShape(12.dp))
+                    .clickable { onMapClick() }
+                    .padding(vertical = 12.dp),
+            ) {
+                Text(
+                    text = "주변 매장 전체보기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown900H,
+                )
             }
         }
     }

@@ -784,6 +784,10 @@ fun AppNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+            LaunchedEffect(requestId) {
+                if (requestId <= 0) navController.popBackStack()
+            }
+            if (requestId <= 0) return@composable
 
             //뷰모델 생성 부분 추가
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
@@ -804,6 +808,10 @@ fun AppNavGraph(
             arguments = listOf(navArgument("requestId") { type = NavType.IntType }),
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+            LaunchedEffect(requestId) {
+                if (requestId <= 0) navController.popBackStack()
+            }
+            if (requestId <= 0) return@composable
 
             // 1. 뷰모델 프로바이더 팩토리를 이용해 뷰모델 인스턴스를 생성합니다.
             val matchDetailViewModel: MatchDetailViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
@@ -1305,6 +1313,10 @@ fun AppNavGraph(
             arguments = listOf(navArgument("newsId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val newsId = backStackEntry.arguments?.getString("newsId") ?: ""
+            LaunchedEffect(newsId) {
+                if (newsId.isBlank()) navController.popBackStack()
+            }
+            if (newsId.isBlank()) return@composable
             NewsDetailScreen(
                 newsId = newsId,
                 onBack = { navController.popBackStack() },

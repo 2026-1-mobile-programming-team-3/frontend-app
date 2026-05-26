@@ -115,16 +115,24 @@ fun NewsDetailScreen(
     }
 
     fun shareNews() {
+        val current = detail ?: return
         val text = buildString {
-            detail?.title?.let { append(it).append("\n") }
-            detail?.officialLink?.let { append(it) }
+            current.title?.let { append(it).append("\n") }
+            current.officialLink?.let { append(it) }
         }
-        if (text.isNotBlank()) {
+        if (text.isBlank()) return
+        runCatching {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
             }
             context.startActivity(Intent.createChooser(intent, "공유하기"))
+        }.onFailure {
+            android.widget.Toast.makeText(
+                context,
+                "공유할 수 있는 앱이 없어요",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 

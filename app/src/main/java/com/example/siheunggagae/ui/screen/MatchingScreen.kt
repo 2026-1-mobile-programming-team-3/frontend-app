@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -264,10 +267,11 @@ fun MatchingScreen(
                                     onCreate = onRequestFlowClick,
                                 )
                             } else {
+                                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                                 LazyColumn(
                                     state = listState,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(bottom = 96.dp),
+                                    contentPadding = PaddingValues(bottom = 96.dp + navBottom),
                                 ) {
                                     itemsIndexed(s.items, key = { idx, item -> item.matchId ?: idx }) { _, item ->
                                         val isMine = when {
