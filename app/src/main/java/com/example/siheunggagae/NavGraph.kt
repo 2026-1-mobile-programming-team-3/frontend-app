@@ -1237,7 +1237,6 @@ fun AppNavGraph(
                 onMatchClick = { matchId ->
                     navController.navigate(Screen.MatchingPublicDetail.createRoute(matchId))
                 },
-                onVolunteerApplyClick = { navController.navigate(Screen.VolunteerApply.route) },
             )
         }
 

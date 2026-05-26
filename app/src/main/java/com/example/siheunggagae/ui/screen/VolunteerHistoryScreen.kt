@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -78,10 +77,9 @@ fun VolunteerHistoryScreen(
     viewModel: VolunteerHistoryViewModel? = null,
     onBack: () -> Unit = {},
     onMatchClick: (matchId: Int) -> Unit = {},
-    onVolunteerApplyClick: () -> Unit = {},
 ) {
     val uiState by remember(viewModel) {
-        viewModel?.uiState ?: MutableStateFlow(VolunteerHistoryUiState.NotVolunteer)
+        viewModel?.uiState ?: MutableStateFlow(VolunteerHistoryUiState.Loading)
     }.collectAsState()
 
     Scaffold(
@@ -96,15 +94,6 @@ fun VolunteerHistoryScreen(
                 ) {
                     CircularProgressIndicator(color = Orange500H)
                 }
-            }
-
-            is VolunteerHistoryUiState.NotVolunteer -> {
-                NotVolunteerEmptyState(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    onApplyClick = onVolunteerApplyClick,
-                )
             }
 
             is VolunteerHistoryUiState.Error -> {
@@ -203,72 +192,6 @@ private fun HistoryTopBar(onBack: () -> Unit) {
             color = TextBlackH,
             modifier = Modifier.align(Alignment.Center),
         )
-    }
-}
-
-// ─── 봉사자 아님 빈 상태 ────────────────────────────────────────────────────────
-
-@Composable
-private fun NotVolunteerEmptyState(
-    modifier: Modifier = Modifier,
-    onApplyClick: () -> Unit = {},
-) {
-    Column(
-        modifier = modifier.padding(horizontal = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFF0FDF4)),
-        ) {
-            Icon(
-                imageVector = Icons.Default.VolunteerActivism,
-                contentDescription = null,
-                tint = Green500H,
-                modifier = Modifier.size(40.dp),
-            )
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = "봉사자 자격을 먼저 신청해주세요",
-            fontFamily = PretendardFamily,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 27.sp,
-            color = TextBlackH,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "봉사자 자격을 취득하면\n봉사 활동 이력을 확인할 수 있어요",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            lineHeight = 20.sp,
-            color = Brown700H,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(28.dp))
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Green500H)
-                .clickable { onApplyClick() }
-                .padding(horizontal = 28.dp, vertical = 14.dp),
-        ) {
-            Text(
-                text = "봉사자 자격 신청하기",
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-            )
-        }
     }
 }
 
