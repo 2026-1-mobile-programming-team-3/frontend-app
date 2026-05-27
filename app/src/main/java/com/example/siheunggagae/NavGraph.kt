@@ -1598,7 +1598,7 @@ private fun handleNotificationDeeplink(
     return when (category) {
         NotificationCategory.MATCH     -> { navController.navigate(Screen.Matching.route); true }
         NotificationCategory.VOLUNTEER -> { navController.navigate(Screen.Matching.route); true }
-        NotificationCategory.REVIEW    -> { navController.navigate(Screen.My.route); true }
+        NotificationCategory.REVIEW    -> { navController.navigate(Screen.VolunteerHistory.route); true }
         NotificationCategory.NEWS      -> { navController.navigate(Screen.News.route); true }
         NotificationCategory.POLICY    -> { navController.navigate(Screen.Privacy.route); true }
         NotificationCategory.SYSTEM    -> { navController.navigate(Screen.PetList.route); true }

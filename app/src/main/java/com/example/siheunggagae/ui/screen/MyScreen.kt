@@ -540,7 +540,7 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = pet.name,
+                            text = pet.name.orEmpty(),
                             fontFamily = PretendardFamily,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -726,9 +726,8 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                 )
             }
             Spacer(Modifier.height(8.dp))
-            val progressFraction = progressPct / 100f
             LinearProgressIndicator(
-                progress = { progressFraction },
+                progress = { progressPct / 100f },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(10.dp)

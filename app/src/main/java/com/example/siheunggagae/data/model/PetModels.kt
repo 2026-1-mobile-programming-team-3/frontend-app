@@ -20,7 +20,7 @@ data class PetCreate(
 
 data class PetResponse(
     val id: Int,
-    val name: String,
+    val name: String?,
     val species: PetSpecies,
     val breed: String?,
     val age: Int?,
@@ -29,8 +29,8 @@ data class PetResponse(
     val gender: PetGender?,
     @SerializedName("photo_url") val photoUrl: String?,
     val note: String?,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("updated_at") val updatedAt: String,
+    @SerializedName("created_at") val createdAt: String?,
+    @SerializedName("updated_at") val updatedAt: String?,
 )
 
 data class PetUpdate(
