@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -277,6 +279,7 @@ private fun PublicStatusBanner(statusText: String) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PublicRequestInfoCard(request: MatchDetailResponse) {
     Column(
@@ -306,10 +309,26 @@ private fun PublicRequestInfoCard(request: MatchDetailResponse) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "반려동물", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
                 Spacer(Modifier.height(4.dp))
-                Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(OrangeSandP).padding(horizontal = 12.dp, vertical = 3.dp)) {
-                    val petName = request.pet?.name ?: "이름 없음"
-                    val petSpecies = request.pet?.species ?: "종 미정"
-                    Text(text = "$petName · $petSpecies", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
+                // 백엔드 하이브리드 스펙: 다중 펫 요청은 pets 배열로, 레거시 단일 펫은 pet 필드로 내려옴.
+                // 둘 중 채워진 쪽을 우선 사용해야 '이름 없음 / 종 미정' fallback 오작동을 막을 수 있다.
+                val petList = request.pets?.takeIf { it.isNotEmpty() } ?: listOfNotNull(request.pet)
+                if (petList.isEmpty()) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(OrangeSandP).padding(horizontal = 12.dp, vertical = 3.dp)) {
+                        Text(text = "정보 없음", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
+                    }
+                } else {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        petList.forEach { pet ->
+                            val petName = pet.name?.takeIf { it.isNotBlank() } ?: "이름 미상"
+                            val petSpecies = pet.species?.takeIf { it.isNotBlank() } ?: "종 미정"
+                            Box(modifier = Modifier.clip(RoundedCornerShape(50.dp)).background(OrangeSandP).padding(horizontal = 12.dp, vertical = 3.dp)) {
+                                Text(text = "$petName · $petSpecies", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Brown700P)
+                            }
+                        }
+                    }
                 }
             }
         }
