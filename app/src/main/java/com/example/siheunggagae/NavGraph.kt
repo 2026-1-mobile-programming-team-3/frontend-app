@@ -378,7 +378,9 @@ fun AppBottomBar(currentRoute: String, onNavigate: (String) -> Unit = {}) {
                     .clip(RoundedCornerShape(50.dp))
                     // 살짝 frosted — Material3 가 native blur 를 ModalBottomSheet 외엔 노출하지 않으므로 alpha + 강화된 elevation 으로 iOS Liquid Glass 톤 흉내.
                     .background(Color.White.copy(alpha = 0.92f))
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    // CLAUDE.md 사양 복원: pill vertical padding 10dp.
+                    // 8dp일 때 dock이 “납작해” 보였던 문제 해소.
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
@@ -437,7 +439,8 @@ private fun BottomNavItem(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = hPadding, vertical = 8.dp),
+            // pill 내부 item vertical padding 9dp — 외부 pill v=10dp와 합쳐 dock 내부 높이 ~60dp.
+            .padding(horizontal = hPadding, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
