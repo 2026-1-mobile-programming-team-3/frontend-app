@@ -561,7 +561,7 @@ private fun CategorySelector(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CategoryFormChip(MatchCategory.WALK, "산책동행", R.drawable.ic_paw, selected == MatchCategory.WALK, enabled = true) { onSelect(MatchCategory.WALK) }
+            CategoryFormChip(MatchCategory.WALK, "산책동행", R.drawable.ic_pets, selected == MatchCategory.WALK, enabled = true) { onSelect(MatchCategory.WALK) }
             CategoryFormChip(MatchCategory.VET, "병원동행", R.drawable.ic_stethoscope, selected == MatchCategory.VET, enabled = true) { onSelect(MatchCategory.VET) }
             CategoryFormChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING, enabled = true) { onSelect(MatchCategory.SHOPPING) }
             CategoryFormChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE, enabled = true) { onSelect(MatchCategory.MOVE) }

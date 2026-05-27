@@ -362,14 +362,14 @@ private fun ProfileCard(
             )
             .padding(16.dp),
     ) {
-        // 발바닥 워터마크
+        // 발바닥 워터마크 — ic_paw 가 일부 디바이스에서 깨져서 ic_pets 로 통일.
         Icon(
-            painter = painterResource(R.drawable.ic_paw),
+            painter = painterResource(R.drawable.ic_pets),
             contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.06f),
+            tint = Color.Black.copy(alpha = 0.08f),
             modifier = Modifier
-                .size(120.dp)
-                .align(Alignment.BottomEnd),
+                .size(72.dp)
+                .align(Alignment.CenterEnd),
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -715,14 +715,14 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                 )
                 Text(
                     text = if (nextTier != null && nextThreshold != null)
-                        "${nextTier.label}까지 ${nextThreshold - count}건"
+                        "${progressPct}% · ${nextTier.label}까지 ${nextThreshold - count}건"
                     else
-                        "최고 등급 달성!",
+                        "${progressPct}% · 최고 등급 달성!",
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
-                    color = Brown400My
+                    color = Brown700My
                 )
             }
             Spacer(Modifier.height(8.dp))
