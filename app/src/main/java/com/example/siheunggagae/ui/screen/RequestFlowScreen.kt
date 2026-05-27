@@ -79,7 +79,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.platform.LocalContext
 import com.example.siheunggagae.R
-import com.example.siheunggagae.data.local.CurrentUserStore
 import com.example.siheunggagae.data.model.MatchCategory
 import com.example.siheunggagae.data.model.PetResponse
 import androidx.activity.compose.BackHandler
@@ -132,9 +131,6 @@ fun RequestFlowScreen(
     onComplete: () -> Unit = {},
     onAddPet: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val isVolunteer = remember { CurrentUserStore(context).isVolunteer() }
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -317,7 +313,6 @@ fun RequestFlowScreen(
                     },
                     onAddPet = onAddPet,
                     selectedCategory = selectedCategory,
-                    isVolunteer = isVolunteer,
                     onSelectCategory = {
                         selectedCategory = it
                         viewModel.setCategory(it)
@@ -490,7 +485,6 @@ private fun Step1Content(
     onTogglePet: (Int) -> Unit,
     onAddPet: () -> Unit = {},
     selectedCategory: MatchCategory?,
-    isVolunteer: Boolean,
     onSelectCategory: (MatchCategory) -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -543,7 +537,6 @@ private fun Step1Content(
         Spacer(Modifier.height(28.dp))
         CategorySelector(
             selected = selectedCategory,
-            isVolunteer = isVolunteer,
             onSelect = onSelectCategory,
         )
     }
@@ -553,7 +546,6 @@ private fun Step1Content(
 @Composable
 private fun CategorySelector(
     selected: MatchCategory?,
-    isVolunteer: Boolean,
     onSelect: (MatchCategory) -> Unit,
 ) {
     Column {
@@ -576,21 +568,19 @@ private fun CategorySelector(
             CategoryFormChip(MatchCategory.OTHER, "기타", R.drawable.ic_users, selected == MatchCategory.OTHER, enabled = true) { onSelect(MatchCategory.OTHER) }
             CategoryFormChip(
                 cat = MatchCategory.VOLUNTEER,
-                label = "봉사 (자격 필요)",
+                label = "봉사",
                 iconRes = R.drawable.ic_award,
                 selected = selected == MatchCategory.VOLUNTEER,
-                enabled = isVolunteer,
-            ) { if (isVolunteer) onSelect(MatchCategory.VOLUNTEER) }
+                enabled = true,
+            ) { onSelect(MatchCategory.VOLUNTEER) }
         }
-        if (!isVolunteer) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "봉사 카테고리는 봉사자 자격 보유자만 사용할 수 있어요",
-                fontFamily = PretendardFamily,
-                color = Brown700F,
-                fontSize = 11.sp,
-            )
-        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "봉사 카테고리는 봉사자 자격 보유자만 지원할 수 있어요",
+            fontFamily = PretendardFamily,
+            color = Brown700F,
+            fontSize = 11.sp,
+        )
     }
 }
 
