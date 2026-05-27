@@ -601,7 +601,7 @@ private fun CardThumbnail(category: MatchCategory?, thumbnailUrl: String? = null
         null -> Brush.linearGradient(listOf(Color(0xFFF4F4F4), Color(0xFFE0E0E0)))
     }
     val iconRes = when (category) {
-        MatchCategory.WALK -> R.drawable.ic_paw
+        MatchCategory.WALK -> R.drawable.ic_pets
         MatchCategory.VET -> R.drawable.ic_stethoscope
         MatchCategory.SHOPPING -> R.drawable.ic_shopping_cart
         MatchCategory.MOVE -> R.drawable.ic_car
@@ -1035,7 +1035,7 @@ internal fun CategoryChipsRow(
         modifier = Modifier.padding(bottom = 14.dp),
     ) {
         item { CategoryChip(null, "전체", null, selected == null) { onSelect(null) } }
-        item { CategoryChip(MatchCategory.WALK, "산책동행", R.drawable.ic_paw, selected == MatchCategory.WALK) { onSelect(MatchCategory.WALK) } }
+        item { CategoryChip(MatchCategory.WALK, "산책동행", R.drawable.ic_pets, selected == MatchCategory.WALK) { onSelect(MatchCategory.WALK) } }
         item { CategoryChip(MatchCategory.VET, "병원동행", R.drawable.ic_stethoscope, selected == MatchCategory.VET) { onSelect(MatchCategory.VET) } }
         item { CategoryChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING) { onSelect(MatchCategory.SHOPPING) } }
         item { CategoryChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE) { onSelect(MatchCategory.MOVE) } }
@@ -1116,7 +1116,7 @@ private fun EmptyState(onExpandDistance: () -> Unit, onCreate: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_paw),
+                    painter = painterResource(R.drawable.ic_pets),
                     contentDescription = null,
                     tint = Color(0xFFF7A35B),
                     modifier = Modifier.size(40.dp),

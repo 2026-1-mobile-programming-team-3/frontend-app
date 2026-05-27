@@ -551,7 +551,7 @@ private fun DateDivider(label: String) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReceivedMessageItem(msg: ChatMessageItem, name: String, onLongClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.Bottom) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start, verticalAlignment = Alignment.Top) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(32.dp).clip(CircleShape).background(MintLightC)) {
             Text(text = name.firstOrNull()?.toString() ?: "", fontFamily = PretendardFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Green500C)
         }

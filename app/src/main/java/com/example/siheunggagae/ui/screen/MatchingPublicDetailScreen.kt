@@ -437,7 +437,8 @@ fun PublicMapCard(
                         lng = lng,
                         markerColor = 0xFFF04268.toInt(),
                         category = "HOSPITAL",
-                        name = placeName ?: "목적지"
+                        name = placeName ?: "목적지",
+                        radius = 32f,
                     )
                 }
             }

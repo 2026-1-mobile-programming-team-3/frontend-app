@@ -362,14 +362,14 @@ private fun ProfileCard(
             )
             .padding(16.dp),
     ) {
-        // 발바닥 워터마크
+        // 발바닥 워터마크 — ic_paw 가 일부 디바이스에서 깨져서 ic_pets 로 통일.
         Icon(
-            painter = painterResource(R.drawable.ic_paw),
+            painter = painterResource(R.drawable.ic_pets),
             contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.06f),
+            tint = Color.Black.copy(alpha = 0.08f),
             modifier = Modifier
-                .size(120.dp)
-                .align(Alignment.BottomEnd),
+                .size(72.dp)
+                .align(Alignment.CenterEnd),
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -715,43 +715,28 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                 )
                 Text(
                     text = if (nextTier != null && nextThreshold != null)
-                        "${nextTier.label}까지 ${nextThreshold - count}건"
+                        "${progressPct}% · ${nextTier.label}까지 ${nextThreshold - count}건"
                     else
-                        "최고 등급 달성!",
+                        "${progressPct}% · 최고 등급 달성!",
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
-                    color = Brown400My
+                    color = Brown700My
                 )
             }
             Spacer(Modifier.height(8.dp))
             val progressFraction = progressPct / 100f
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { progressFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                    color = Brown900My,
-                    trackColor = Color(0xFFE8D3C2),
-                    strokeCap = StrokeCap.Round,
-                )
-                // % 텍스트는 항상 오른쪽 끝에 표시됨. 채움이 우측 끝까지 닿으면 진한 배경 위
-                // 흰 글씨가 가독성 있고, 닿지 않으면 베이지 트랙 위 흰 글씨가 거의 안 보임.
-                // 채움 비율에 따라 색을 전환해 항상 대비를 확보.
-                Text(
-                    text = "${(progressFraction * 100).toInt()}%",
-                    fontFamily = PretendardFamily,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (progressFraction >= 0.85f) Color.White else Brown900My,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 8.dp),
-                )
-            }
+            LinearProgressIndicator(
+                progress = { progressFraction },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp)),
+                color = Brown900My,
+                trackColor = Color(0xFFE8D3C2),
+                strokeCap = StrokeCap.Round,
+            )
             Spacer(Modifier.height(20.dp))
 
             val tierItems = remember(currentTier, count) {

@@ -35,6 +35,7 @@ class MapViewWrapper(private val mapView: MapView) {
             val name: String,
             val color: Int,
             val selected: Boolean,
+            val radius: Float = 22f,
         ) : BitmapKey
         data class Cluster(
             val topCategories: List<String>,
@@ -110,14 +111,15 @@ class MapViewWrapper(private val mapView: MapView) {
         @ColorInt markerColor: Int? = null,
         category: String? = null,
         name: String? = null,
+        radius: Float = 22f,
         onTap: (() -> Unit)? = null,
     ) {
         val map = kakaoMap ?: return
         val layer = map.labelManager?.layer ?: return
 
         val style = if (markerColor != null) {
-            val key = BitmapKey.Single(category ?: "", name ?: "", markerColor, selected = false)
-            val bmp = bitmapCache.get(key) ?: createPinBitmap(markerColor, category, name).also {
+            val key = BitmapKey.Single(category ?: "", name ?: "", markerColor, selected = false, radius = radius)
+            val bmp = bitmapCache.get(key) ?: createPinBitmap(markerColor, category, name, radius).also {
                 bitmapCache.put(key, it)
             }
             LabelStyles.from(LabelStyle.from(bmp))
@@ -566,8 +568,13 @@ class MapViewWrapper(private val mapView: MapView) {
         return bitmap
     }
 
-    private fun createPinBitmap(@ColorInt color: Int, category: String? = null, name: String? = null): Bitmap {
-        val r  = 22f   // 원 반지름
+    private fun createPinBitmap(
+        @ColorInt color: Int,
+        category: String? = null,
+        name: String? = null,
+        radius: Float = 22f,
+    ): Bitmap {
+        val r  = radius   // 원 반지름
         val cx = r + 3f
         val cy = r + 3f
 

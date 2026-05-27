@@ -348,6 +348,7 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
             .height(180.dp)
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(24.dp), clip = false)
             .clip(RoundedCornerShape(24.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,

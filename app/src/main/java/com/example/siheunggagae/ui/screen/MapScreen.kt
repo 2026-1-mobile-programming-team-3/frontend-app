@@ -79,7 +79,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -473,11 +476,11 @@ fun MapScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어") {
+                    MapIconFab(R.drawable.ic_layers, "레이어", iconSize = 24.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showFilterSheet = true
                     }
-                    MapIconFab(R.drawable.ic_refresh, "새로고침") {
+                    MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 22.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.refresh()
                     }
@@ -846,7 +849,12 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
 // ─── 플로팅 버튼 ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> Unit = {}) {
+private fun MapIconFab(
+    iconRes: Int,
+    contentDescription: String,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp,
+    onClick: () -> Unit = {},
+) {
     val interaction = rememberAppleInteractionSource()
     Box(
         contentAlignment = Alignment.Center,
@@ -862,7 +870,7 @@ private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> 
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = Brown700Mp,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(iconSize),
         )
     }
 }
@@ -954,12 +962,14 @@ private fun MapBottomSheetContent(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "주변 매장 ${displayCount}개",
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(color = TextBlack)) { append("주변 매장 ") }
+                            withStyle(SpanStyle(color = Pink500Mp)) { append("${displayCount}개") }
+                        },
                         fontFamily = PretendardFamily,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 24.sp,
-                        color = TextBlack,
                     )
                     // 표시 한도 초과 시 영구 배지 — 스낵바 4 초 안내 대체.
                     if (truncated) {

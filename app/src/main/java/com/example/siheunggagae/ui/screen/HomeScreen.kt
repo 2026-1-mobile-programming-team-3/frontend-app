@@ -317,7 +317,7 @@ fun HomeTopBar(
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = Color(0xFF101828))) { append("시흥") }
-                    withStyle(SpanStyle(color = StarYellowH)) { append("가개") }
+                    withStyle(SpanStyle(color = Orange500H)) { append("가개") }
                 },
                 fontFamily = PretendardFamily,
                 fontSize = titleSize,
@@ -430,17 +430,18 @@ fun WalkIndexSection(
         Text(
             text = "오늘 산책지수",
             fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Brown700H,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 32.sp,
+            color = TextBlackH,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             if (walkScore == 0) {
                 Text(
                     text = "—",
                     fontFamily = PretendardFamily,
-                    fontSize = 52.sp,
+                    fontSize = 38.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = GrayTextH,
                 )
@@ -451,7 +452,7 @@ fun WalkIndexSection(
                     durationMs = 1200,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = PretendardFamily,
-                        fontSize = 52.sp,
+                        fontSize = 38.sp,
                         fontWeight = FontWeight.ExtraBold,
                     ),
                     color = scoreColor,
@@ -461,14 +462,15 @@ fun WalkIndexSection(
             Text(
                 text = "으로 $scoreComment",
                 fontFamily = PretendardFamily,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Normal,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 32.sp,
                 color = TextBlackH,
-                modifier = Modifier.padding(bottom = 8.dp),
+                modifier = Modifier.padding(bottom = 4.dp),
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text(text = weatherText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = GrayTextH)
+        Text(text = weatherText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = Brown700H)
 
         if (showPinkBanner || showMintBanner) {
             Spacer(Modifier.height(14.dp))
