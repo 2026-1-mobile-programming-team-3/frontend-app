@@ -797,10 +797,11 @@ internal fun MatchTopBar(
     // 메인 탭(매칭/소식/마이) TopBar 공통 spec — 화면마다 padding 이 18/24/20 으로 제각각,
     // top/bottom 비대칭에 background 도 일부 빠져있던 문제를 한 형태로 정합.
     //   horizontal=20dp, vertical=16dp, background=White, 타이틀 letterSpacing=-0.91sp / lineHeight=32sp.
+    // statusBarsPadding 은 외부(Scaffold padding(innerPadding)) 에서 이미 적용되므로 여기선 생략.
+    // 호출 측에서 statusBarsPadding 을 또 적용하면 status bar 영역 만큼 아래로 밀려 마이 화면과 위치가 어긋남.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
