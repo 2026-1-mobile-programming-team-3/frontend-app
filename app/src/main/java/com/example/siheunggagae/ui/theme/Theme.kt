@@ -1,6 +1,8 @@
 package com.example.siheunggagae.ui.theme
 
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -80,6 +82,15 @@ fun SiheungGagaeTheme(
     MaterialTheme(
         colorScheme = LightColorScheme,
         typography  = AppTypography,
-        content     = content,
-    )
+    ) {
+        // 전 화면 글로벌 Pretendard 강제:
+        // - MaterialTheme.typography 가 PretendardFamily 를 매핑해 일반 Text 는 자동 상속되나,
+        //   Button/TextField/SegmentedButton 등 LocalTextStyle 을 자체 override 하는 컴포넌트
+        //   안에서는 fontFamily 가 떨어질 위험이 있어 안전망으로 한 번 더 명시.
+        // - fontFamily 미명시 화면(Map/Pet/Store/StoreRequest 등) 도 한 곳에서 일괄 보강.
+        ProvideTextStyle(
+            value = LocalTextStyle.current.copy(fontFamily = PretendardFamily),
+            content = content,
+        )
+    }
 }
