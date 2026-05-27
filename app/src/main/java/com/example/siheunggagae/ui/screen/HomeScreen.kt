@@ -431,9 +431,9 @@ fun WalkIndexSection(
         Text(
             text = "오늘 산책지수",
             fontFamily = PretendardFamily,
-            fontSize = 24.sp,
+            fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
-            lineHeight = 32.sp,
+            lineHeight = 38.sp,
             color = TextBlackH,
         )
         Spacer(Modifier.height(2.dp))
@@ -442,7 +442,7 @@ fun WalkIndexSection(
                 Text(
                     text = "—",
                     fontFamily = PretendardFamily,
-                    fontSize = 38.sp,
+                    fontSize = 44.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = GrayTextH,
                 )
@@ -453,7 +453,7 @@ fun WalkIndexSection(
                     durationMs = 1200,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = PretendardFamily,
-                        fontSize = 38.sp,
+                        fontSize = 44.sp,
                         fontWeight = FontWeight.ExtraBold,
                     ),
                     color = scoreColor,
@@ -463,9 +463,9 @@ fun WalkIndexSection(
             Text(
                 text = "으로 $scoreComment",
                 fontFamily = PretendardFamily,
-                fontSize = 24.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 32.sp,
+                lineHeight = 38.sp,
                 color = TextBlackH,
                 modifier = Modifier.padding(bottom = 4.dp),
             )

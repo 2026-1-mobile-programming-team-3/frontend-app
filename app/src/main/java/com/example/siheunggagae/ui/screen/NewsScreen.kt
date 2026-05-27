@@ -445,6 +445,7 @@ private fun NewsGridRow(
 private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Column(
         modifier = modifier
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), clip = false)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .clickable { onClick() },
@@ -515,6 +516,7 @@ private fun NewsListRow(item: NewsItem, onClick: () -> Unit = {}) {
         modifier = Modifier
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), clip = false)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .clickable { onClick() }
