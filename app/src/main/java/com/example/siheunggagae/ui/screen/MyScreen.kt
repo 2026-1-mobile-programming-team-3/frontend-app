@@ -725,17 +725,37 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                     color = Brown700My
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progressPct / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
-                color = Brown900My,
-                trackColor = Color(0xFFE8D3C2),
-                strokeCap = StrokeCap.Round,
-            )
+            Spacer(Modifier.height(12.dp))
+            // progress=0 일 때 StrokeCap.Round 가 fill 의 끝 cap 을 트랙 우측에 둥글게 렌더해서
+            // "100% 달성된 듯한" 착시가 나는 문제를 분기로 회피. 0% 면 Butt + 시작점 도트로만 표기.
+            if (progressPct <= 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color(0xFFE8D3C2)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Brown900My)
+                            .align(Alignment.CenterStart),
+                    )
+                }
+            } else {
+                LinearProgressIndicator(
+                    progress = { progressPct / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = Brown900My,
+                    trackColor = Color(0xFFE8D3C2),
+                    strokeCap = StrokeCap.Round,
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             val tierItems = remember(currentTier, count) {
