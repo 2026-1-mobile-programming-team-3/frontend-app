@@ -194,6 +194,14 @@ fun MatchingScreen(
         containerColor = Color(0xFFFEFEFE),
         snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
     ) { padding ->
+        // 화면 전체에 Pretendard 를 기본 폰트로 강제.
+        // 개별 Text 가 fontFamily 를 명시하지 않아도 LocalTextStyle 을 통해 Pretendard 상속됨.
+        // (감사 보고서: 본 화면 Text 29개 중 fontFamily 미명시 26곳 — 한방에 보강).
+        androidx.compose.material3.ProvideTextStyle(
+            value = androidx.compose.material3.LocalTextStyle.current.copy(
+                fontFamily = PretendardFamily,
+            )
+        ) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             PullToRefreshBox(
                 isRefreshing = (state as? MatchingUi.Success)?.isRefreshing == true,
@@ -331,6 +339,7 @@ fun MatchingScreen(
                 Icon(painter = painterResource(R.drawable.ic_add), contentDescription = "요청 작성")
             }
         }
+        } // end ProvideTextStyle
     }
 
     if (showSortSheet) {
