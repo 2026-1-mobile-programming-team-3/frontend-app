@@ -230,7 +230,7 @@ fun PetAddScreen(
     LaunchedEffect(initialPet) {
         if (!formInitialized && initialPet != null) {
             val p = initialPet!!
-            nameInput       = p.name
+            nameInput       = p.name ?: ""
             selectedSpecies = p.species.toLabel()
             breedInput      = p.breed ?: ""
             age             = p.age ?: 1
@@ -797,9 +797,10 @@ private fun PetSelectChip(label: String, selected: Boolean, enabled: Boolean = t
         else                 -> Color.White
     }
     val textColor = when {
-        !enabled -> Brown400PA
-        selected -> Color.White
-        else     -> Brown700PA
+        !enabled && selected -> Color.White
+        !enabled             -> Brown400PA
+        selected             -> Color.White
+        else                 -> Brown700PA
     }
     Box(
         contentAlignment = Alignment.Center,

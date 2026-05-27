@@ -660,7 +660,7 @@ private fun PetCard(pet: PetResponse, isSelected: Boolean, onClick: () -> Unit) 
                 Icon(painter = painterResource(R.drawable.ic_pets), contentDescription = null, tint = if (isDog) Orange500F else Pink500F, modifier = Modifier.size(34.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text(pet.name, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlack)
+            Text(pet.name.orEmpty(), fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextBlack)
             Spacer(Modifier.height(2.dp))
             Text(
                 text = "${if (isDog) "강아지" else "고양이"} · ${pet.age ?: "?"}세",

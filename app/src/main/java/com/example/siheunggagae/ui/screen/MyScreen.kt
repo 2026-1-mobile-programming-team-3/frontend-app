@@ -540,7 +540,7 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = pet.name,
+                            text = pet.name.orEmpty(),
                             fontFamily = PretendardFamily,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -726,32 +726,16 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
                 )
             }
             Spacer(Modifier.height(8.dp))
-            val progressFraction = progressPct / 100f
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { progressFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(RoundedCornerShape(5.dp)),
-                    color = Brown900My,
-                    trackColor = Color(0xFFE8D3C2),
-                    strokeCap = StrokeCap.Round,
-                )
-                // % 텍스트는 항상 오른쪽 끝에 표시됨. 채움이 우측 끝까지 닿으면 진한 배경 위
-                // 흰 글씨가 가독성 있고, 닿지 않으면 베이지 트랙 위 흰 글씨가 거의 안 보임.
-                // 채움 비율에 따라 색을 전환해 항상 대비를 확보.
-                Text(
-                    text = "${(progressFraction * 100).toInt()}%",
-                    fontFamily = PretendardFamily,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (progressFraction >= 0.85f) Color.White else Brown900My,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 8.dp),
-                )
-            }
+            LinearProgressIndicator(
+                progress = { progressPct / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(5.dp)),
+                color = Brown900My,
+                trackColor = Color(0xFFE8D3C2),
+                strokeCap = StrokeCap.Round,
+            )
             Spacer(Modifier.height(20.dp))
 
             val tierItems = remember(currentTier, count) {
