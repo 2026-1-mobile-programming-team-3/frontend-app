@@ -1514,14 +1514,22 @@ fun AppNavGraph(
 }
 
 private fun NavHostController.navigateTab(route: String) {
-    if (isTopLevelTabRoute(route)) {
-        navigate(route) {
-            launchSingleTop = true
-            restoreState = true
-            popUpTo(Screen.Home.route) { saveState = true }
-        }
-    } else {
+    if (!isTopLevelTabRoute(route)) {
         navigate(route)
+        return
+    }
+    // Home 은 popUpTo anchor — popUpTo(Home, saveState=true) 가 pop 한 엔트리 상태를
+    // Home dest id 에 묶어 저장한다. 같은 호출의 navigate(Home, restoreState=true) 는
+    // 그 키를 다시 발견해 방금 pop 한 엔트리를 그대로 복원, round-trip 으로 no-op 이 된다.
+    // (알림 → 매칭/소식/마이 진입 후 홈 탭이 매칭으로 가던 원인.) anchor 로 이동할 땐 pop 만.
+    if (route == Screen.Home.route) {
+        popBackStack(Screen.Home.route, inclusive = false)
+        return
+    }
+    navigate(route) {
+        launchSingleTop = true
+        restoreState = true
+        popUpTo(Screen.Home.route) { saveState = true }
     }
 }
 
