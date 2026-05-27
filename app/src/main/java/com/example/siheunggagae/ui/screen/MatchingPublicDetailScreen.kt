@@ -482,7 +482,7 @@ private fun RequesterCard(authorNickname: String, onChat: () -> Unit) {
             Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(11.dp), tint = StarYellowP)
-                Text(text = "4.9 · 시흥개개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
+                Text(text = "4.9 · 시흥가개 신뢰 회원", fontFamily = PretendardFamily, fontSize = 12.sp, color = Brown700P)
             }
         }
         Row(
