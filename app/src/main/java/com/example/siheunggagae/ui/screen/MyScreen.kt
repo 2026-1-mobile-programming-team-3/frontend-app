@@ -56,7 +56,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -138,6 +141,7 @@ fun MyScreen(
     viewModel: MyViewModel? = null,
     localImageUri: String? = null,
     onNavigate: (String) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onPetListClick: () -> Unit = {},
     onBadgeListClick: () -> Unit = {},
@@ -159,7 +163,7 @@ fun MyScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
+        topBar = { MyTopBar(onNotificationClick = onNotificationClick, onSettingsClick = onSettingsClick) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         // targetState를 상태 종류(Loading/Error/Success)로 한정 — Success 내 데이터 변경 시
@@ -302,7 +306,10 @@ fun MyScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
+private fun MyTopBar(
+    onNotificationClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -318,23 +325,37 @@ private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
+            letterSpacing = (-0.91).sp,
             color = TextBlack,
         )
+        // T1: 우측에 알림 + 설정 2 버튼으로 균형. 단일 설정 버튼만 있을 때 휑한 공간이 매우 컸음.
         // design.md §17: 메인탭 우측 보조 아이콘 = 40×40dp 카드 (Home/Matching 과 정합).
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = Color.White,
-            shadowElevation = 2.dp,
-            modifier = Modifier.size(40.dp).clickable { onSettingsClick() },
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_settings),
-                    contentDescription = "설정",
-                    tint = Brown700My,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MyTopBarIcon(iconRes = R.drawable.ic_notifications, contentDescription = "알림", onClick = onNotificationClick)
+            MyTopBarIcon(iconRes = R.drawable.ic_settings,     contentDescription = "설정", onClick = onSettingsClick)
+        }
+    }
+}
+
+@Composable
+private fun MyTopBarIcon(
+    @DrawableRes iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        modifier = Modifier.size(40.dp).clickable { onClick() },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = contentDescription,
+                tint = Brown700My,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
@@ -363,13 +384,15 @@ private fun ProfileCard(
             .padding(16.dp),
     ) {
         // 발바닥 워터마크 — ic_paw 가 일부 디바이스에서 깨져서 ic_pets 로 통일.
+        // Y4: 카드 우측 "편집" 버튼 시각 위계 보강을 위해 워터마크 사이즈 72→56dp, alpha 0.08→0.05 로 축소.
         Icon(
             painter = painterResource(R.drawable.ic_pets),
             contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.08f),
+            tint = Color.Black.copy(alpha = 0.05f),
             modifier = Modifier
-                .size(72.dp)
-                .align(Alignment.CenterEnd),
+                .size(56.dp)
+                .align(Alignment.CenterEnd)
+                .padding(end = 60.dp),
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -642,22 +665,27 @@ private fun StatCard(
                 )
             }
             Spacer(Modifier.height(8.dp))
+            // 숫자는 Brown900 단일톤으로 통일 — 의미적 색은 아이콘에만 부여해서 카드 간 균형 잡음.
+            // Pink/Green/Orange 가 동시에 노출되며 산만하던 문제 해소.
             CountUpText(
                 value = intValue,
                 durationMs = 900,
                 style = androidx.compose.ui.text.TextStyle(
                     fontFamily = PretendardFamily,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.84).sp,
                 ),
-                color = valueColor,
+                color = TextBlack,
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = label,
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
                 lineHeight = 16.sp,
+                letterSpacing = (-0.12).sp,
                 color = Brown700My,
             )
         }
@@ -700,42 +728,80 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
             val nextTier     = badge?.nextTier
             val nextThreshold = badge?.nextThreshold
 
+            // 숫자만 ExtraBold 로 강조 — 사용자가 자기 진척도(건수·퍼센트)를 즉시 인식하도록.
+            val numberSpan = SpanStyle(
+                fontWeight = FontWeight.ExtraBold,
+                color = TextBlack,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${currentTier.label} 등급 · 누적 ${count}건",
+                    text = buildAnnotatedString {
+                        append("${currentTier.label} 등급 · 누적 ")
+                        withStyle(numberSpan) { append("$count") }
+                        append("건")
+                    },
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
+                    letterSpacing = (-0.12).sp,
                     color = Brown700My
                 )
                 Text(
-                    text = if (nextTier != null && nextThreshold != null)
-                        "${progressPct}% · ${nextTier.label}까지 ${nextThreshold - count}건"
-                    else
-                        "${progressPct}% · 최고 등급 달성!",
+                    text = buildAnnotatedString {
+                        withStyle(numberSpan) { append("$progressPct") }
+                        append("%")
+                        if (nextTier != null && nextThreshold != null) {
+                            append(" · ${nextTier.label}까지 ")
+                            withStyle(numberSpan) { append("${nextThreshold - count}") }
+                            append("건")
+                        } else {
+                            append(" · 최고 등급 달성!")
+                        }
+                    },
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
+                    letterSpacing = (-0.12).sp,
                     color = Brown700My
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progressPct / 100f },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(5.dp)),
-                color = Brown900My,
-                trackColor = Color(0xFFE8D3C2),
-                strokeCap = StrokeCap.Round,
-            )
+            Spacer(Modifier.height(12.dp))
+            // progress=0 일 때 StrokeCap.Round 가 fill 의 끝 cap 을 트랙 우측에 둥글게 렌더해서
+            // "100% 달성된 듯한" 착시가 나는 문제를 분기로 회피. 0% 면 Butt + 시작점 도트로만 표기.
+            if (progressPct <= 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(Color(0xFFE8D3C2)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Brown900My)
+                            .align(Alignment.CenterStart),
+                    )
+                }
+            } else {
+                LinearProgressIndicator(
+                    progress = { progressPct / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = Brown900My,
+                    trackColor = Color(0xFFE8D3C2),
+                    strokeCap = StrokeCap.Round,
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             val tierItems = remember(currentTier, count) {

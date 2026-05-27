@@ -428,50 +428,77 @@ fun WalkIndexSection(
     Column(
         modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
+        // 산책지수 위계 분리 (S4):
+        //   라벨 "오늘 산책지수"        → 20sp Bold Brown700 (부가 라벨)
+        //   점수 숫자 + "점"            → 52sp / 28sp ExtraBold (점수만 컬러 강조)
+        //   서술 "으로 좋아요"          → 18sp Medium Brown700 (부가 서술)
         Text(
             text = "오늘 산책지수",
             fontFamily = PretendardFamily,
-            fontSize = 30.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 38.sp,
-            color = TextBlackH,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 26.sp,
+            letterSpacing = (-0.4).sp,
+            color = Brown700H,
         )
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             if (walkScore == 0) {
                 Text(
                     text = "—",
                     fontFamily = PretendardFamily,
-                    fontSize = 44.sp,
+                    fontSize = 52.sp,
                     fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 56.sp,
+                    letterSpacing = (-1.56).sp,
                     color = GrayTextH,
                 )
             } else {
                 CountUpText(
                     value = walkScore,
-                    suffix = "점",
                     durationMs = 1200,
                     style = androidx.compose.ui.text.TextStyle(
                         fontFamily = PretendardFamily,
-                        fontSize = 44.sp,
+                        fontSize = 52.sp,
                         fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 56.sp,
+                        letterSpacing = (-1.56).sp,
                     ),
                     color = scoreColor,
                 )
+                Text(
+                    text = "점",
+                    fontFamily = PretendardFamily,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 32.sp,
+                    letterSpacing = (-0.56).sp,
+                    color = TextBlackH,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
             }
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(8.dp))
             Text(
                 text = "으로 $scoreComment",
                 fontFamily = PretendardFamily,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 38.sp,
-                color = TextBlackH,
-                modifier = Modifier.padding(bottom = 4.dp),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 24.sp,
+                letterSpacing = (-0.36).sp,
+                color = Brown700H,
+                modifier = Modifier.padding(bottom = 6.dp),
             )
         }
-        Spacer(Modifier.height(4.dp))
-        Text(text = weatherText, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp, color = Brown700H)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = weatherText,
+            fontFamily = PretendardFamily,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 20.sp,
+            letterSpacing = (-0.21).sp,
+            color = Brown700H,
+        )
 
         if (showPinkBanner || showMintBanner) {
             Spacer(Modifier.height(14.dp))
@@ -493,9 +520,17 @@ fun WalkIndexSection(
                         Text(
                             text = buildAnnotatedString {
                                 if (nearestDDay != null) {
-                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.Bold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
                                 }
-                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Bold, fontSize = 12.sp)) { append("내 요청 ${pendingMatchCount}건 검토중") }
+                                // H1: pendingMatchCount=0 + nearestDDay!=null 이면 “0건 검토중” 이 모순 — 표현 분리.
+                                // 숫자는 ExtraBold 로 강조 (S5).
+                                if (pendingMatchCount > 0) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("내 요청 ") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$pendingMatchCount") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 검토중") }
+                                } else if (nearestDDay != null) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("가장 가까운 요청 마감") }
+                                }
                             },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -516,11 +551,11 @@ fun WalkIndexSection(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = "봉사활동 ${volunteerMatchCount}건 진행중",
-                            fontFamily = PretendardFamily,
-                            color = Color(0xFF006622),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("봉사활동 ") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$volunteerMatchCount") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 진행중") }
+                            },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

@@ -860,8 +860,9 @@ private fun MapIconFab(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .appleTapScale(interaction)
-            .size(40.dp)
-            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .size(42.dp)
+            // P3: 지도 표면 위 분리감 강화 — 4dp → 8dp.
+            .shadow(8.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
             .clickable(interactionSource = interaction, indication = null) { onClick() },
@@ -962,14 +963,20 @@ private fun MapBottomSheetContent(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
+                        // P2: 단순 카운트에 Pink500(강조/태그용) 사용 → Brown900 으로 변경.
+                        // 숫자 부분만 ExtraBold + 자간 -0.4sp 로 강조 (S5).
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(color = TextBlack)) { append("주변 매장 ") }
-                            withStyle(SpanStyle(color = Pink500Mp)) { append("${displayCount}개") }
+                            withStyle(SpanStyle(color = Brown900Mp, fontWeight = FontWeight.ExtraBold)) {
+                                append("$displayCount")
+                            }
+                            withStyle(SpanStyle(color = TextBlack)) { append("개") }
                         },
                         fontFamily = PretendardFamily,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         lineHeight = 24.sp,
+                        letterSpacing = (-0.4).sp,
                     )
                     // 표시 한도 초과 시 영구 배지 — 스낵바 4 초 안내 대체.
                     if (truncated) {
