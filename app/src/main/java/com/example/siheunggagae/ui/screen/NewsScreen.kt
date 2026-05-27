@@ -250,10 +250,10 @@ fun NewsScreen(
 private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
     Row(
         // 메인 탭 TopBar 공통 spec — horizontal=20dp, vertical=16dp.
-        // 다른 메인 탭(매칭/마이) 과 padding 정합.
+        // statusBarsPadding 은 외부(Scaffold padding(innerPadding)) 에서 이미 처리되므로 여기서 추가하면
+        // status bar 높이만큼 한 번 더 밀려나 마이 화면과 위치가 어긋남.
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
