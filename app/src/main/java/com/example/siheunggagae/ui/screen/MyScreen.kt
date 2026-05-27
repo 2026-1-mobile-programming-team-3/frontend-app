@@ -56,7 +56,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -642,22 +645,27 @@ private fun StatCard(
                 )
             }
             Spacer(Modifier.height(8.dp))
+            // 숫자는 Brown900 단일톤으로 통일 — 의미적 색은 아이콘에만 부여해서 카드 간 균형 잡음.
+            // Pink/Green/Orange 가 동시에 노출되며 산만하던 문제 해소.
             CountUpText(
                 value = intValue,
                 durationMs = 900,
                 style = androidx.compose.ui.text.TextStyle(
                     fontFamily = PretendardFamily,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.84).sp,
                 ),
-                color = valueColor,
+                color = TextBlack,
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = label,
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
                 lineHeight = 16.sp,
+                letterSpacing = (-0.12).sp,
                 color = Brown700My,
             )
         }
@@ -700,28 +708,46 @@ private fun VolunteerBadgeCard(badge: VolunteerBadgeInfo?, onAllBadgesClick: () 
             val nextTier     = badge?.nextTier
             val nextThreshold = badge?.nextThreshold
 
+            // 숫자만 ExtraBold 로 강조 — 사용자가 자기 진척도(건수·퍼센트)를 즉시 인식하도록.
+            val numberSpan = SpanStyle(
+                fontWeight = FontWeight.ExtraBold,
+                color = TextBlack,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${currentTier.label} 등급 · 누적 ${count}건",
+                    text = buildAnnotatedString {
+                        append("${currentTier.label} 등급 · 누적 ")
+                        withStyle(numberSpan) { append("$count") }
+                        append("건")
+                    },
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
+                    letterSpacing = (-0.12).sp,
                     color = Brown700My
                 )
                 Text(
-                    text = if (nextTier != null && nextThreshold != null)
-                        "${progressPct}% · ${nextTier.label}까지 ${nextThreshold - count}건"
-                    else
-                        "${progressPct}% · 최고 등급 달성!",
+                    text = buildAnnotatedString {
+                        withStyle(numberSpan) { append("$progressPct") }
+                        append("%")
+                        if (nextTier != null && nextThreshold != null) {
+                            append(" · ${nextTier.label}까지 ")
+                            withStyle(numberSpan) { append("${nextThreshold - count}") }
+                            append("건")
+                        } else {
+                            append(" · 최고 등급 달성!")
+                        }
+                    },
                     fontFamily = PretendardFamily,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 16.sp,
+                    letterSpacing = (-0.12).sp,
                     color = Brown700My
                 )
             }

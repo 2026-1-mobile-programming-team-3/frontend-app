@@ -108,7 +108,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.focus.FocusRequester
@@ -452,6 +456,35 @@ private fun buildMatchDistanceLabel(item: MatchListItem): String {
     } else addressShort.ifBlank { "위치 미상" }
 }
 
+// 거리/시간 숫자만 ExtraBold 처리한 AnnotatedString — 카드에서 한 눈에 비교되도록.
+@Composable
+private fun rememberMatchDistanceAnnotated(item: MatchListItem): AnnotatedString {
+    val addressShort = shortAddressForMatch(item.address.orEmpty())
+    val dist = item.distanceM
+    return remember(addressShort, dist) {
+        val numberSpan = SpanStyle(
+            fontWeight = FontWeight.ExtraBold,
+            color = TextBlackM,
+        )
+        buildAnnotatedString {
+            if (dist != null) {
+                if (addressShort.isNotBlank()) append("$addressShort · ")
+                if (dist < 1000) {
+                    append("도보 ")
+                    withStyle(numberSpan) { append("${walkingMinutes(dist)}") }
+                    append("분")
+                } else {
+                    val km = "%.1f".format(dist / 1000)
+                    withStyle(numberSpan) { append(km) }
+                    append("km")
+                }
+            } else {
+                append(addressShort.ifBlank { "위치 미상" })
+            }
+        }
+    }
+}
+
 private fun shortAddressForMatch(address: String): String {
     val parts = address.split(" ").filter { it.isNotBlank() }
     if (parts.size <= 1) return address
@@ -524,7 +557,13 @@ internal fun MatchCardR(
                             modifier = Modifier.size(11.dp),
                         )
                         Spacer(Modifier.width(3.dp))
-                        Text(distanceLabel, color = Brown700M, fontSize = 11.sp, maxLines = 1)
+                        // 거리/시간 숫자만 ExtraBold 로 강조 (S2).
+                        Text(
+                            text = rememberMatchDistanceAnnotated(item),
+                            color = Brown700M,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                        )
                         if (isMine) {
                             Spacer(Modifier.width(6.dp))
                             Text("·", color = PlaceholderM, fontSize = 11.sp)
@@ -867,8 +906,29 @@ private fun PillTab(label: String, on: Boolean, count: Int?, onClick: () -> Unit
             .clickable(interactionSource = interaction, indication = null) { onClick() }
             .padding(horizontal = 16.dp, vertical = 7.dp),
     ) {
-        val text = if (count != null && count > 0) "$label $count" else label
-        Text(text, color = fg, fontSize = 13.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium)
+        // 카운트 숫자만 ExtraBold 로 강조 — 라벨과 동일 weight 였던 문제 해소 (S3).
+        if (count != null && count > 0) {
+            Text(
+                text = buildAnnotatedString {
+                    append("$label ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) { append("$count") }
+                },
+                color = fg,
+                fontSize = 13.sp,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                fontFamily = PretendardFamily,
+                letterSpacing = (-0.2).sp,
+            )
+        } else {
+            Text(
+                text = label,
+                color = fg,
+                fontSize = 13.sp,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                fontFamily = PretendardFamily,
+                letterSpacing = (-0.2).sp,
+            )
+        }
     }
 }
 
