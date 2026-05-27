@@ -115,6 +115,7 @@ fun NewsScreen(
     onNewsDetailClick: (String) -> Unit = {},
     onPlaceDetailClick: (Int) -> Unit = {},
     onNavigate: (String) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -141,7 +142,7 @@ fun NewsScreen(
         Scaffold(containerColor = BackgroundNs) { innerPadding ->
             // TopBar 를 Column 본문 안에 직접 그려 Home/Matching/My 와 패턴 통일 (design.md §17).
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                NewsTopBar()
+                NewsTopBar(onNotificationClick = onNotificationClick)
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = { refreshKey++ },
@@ -246,7 +247,7 @@ fun NewsScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsTopBar() {
+private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -254,6 +255,7 @@ private fun NewsTopBar() {
             .background(Color.White)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
             text = "소식",
@@ -261,8 +263,25 @@ private fun NewsTopBar() {
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
+            letterSpacing = (-0.91).sp,
             color = TextBlackNs,
         )
+        // T2: 우측 알림 액션 — Home/Matching/My 와 정합. 휑하던 우측 공간 해소.
+        androidx.compose.material3.Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            modifier = Modifier.size(40.dp).clickable { onNotificationClick() },
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_notifications),
+                    contentDescription = "알림",
+                    tint = Brown700Ns,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
     }
 }
 

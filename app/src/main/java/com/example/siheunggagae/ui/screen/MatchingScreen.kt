@@ -608,13 +608,16 @@ internal fun MatchCardR(
                     }
                 }
             }
-            // top-right ⋮ — 본인 글일 때만 노출
+            // top-right ⋮ — 본인 글일 때만 노출 (M6).
+            // 카드 클릭과 분리되도록 클릭 영역을 작게 + 살짝 안쪽으로 (4dp inset) 배치.
+            // 상태 칩과의 충돌을 피하기 위해 카드 우상단 4dp 패딩을 둠.
             if (onMoreClick != null) {
                 IconButton(
                     onClick = onMoreClick,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .size(36.dp),
+                        .padding(4.dp)
+                        .size(32.dp),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_more_vert),
@@ -901,16 +904,31 @@ internal fun StatusTabRow(
     counts: Map<String?, Int>,
     onSelect: (String?) -> Unit,
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 12.dp),
-    ) {
-        item { PillTab("전체", selected == null, count = null) { onSelect(null) } }
-        item { PillTab("모집중", selected == "WAITING", count = counts["WAITING"]) { onSelect("WAITING") } }
-        item { PillTab("검토중", selected == "MATCHING", count = counts["MATCHING"]) { onSelect("MATCHING") } }
-        item { PillTab("진행중", selected == "PROGRESS", count = counts["PROGRESS"]) { onSelect("PROGRESS") } }
-        item { PillTab("완료", selected == "DONE", count = null) { onSelect("DONE") } }
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item { PillTab("전체", selected == null, count = null) { onSelect(null) } }
+            item { PillTab("모집중", selected == "WAITING", count = counts["WAITING"]) { onSelect("WAITING") } }
+            item { PillTab("검토중", selected == "MATCHING", count = counts["MATCHING"]) { onSelect("MATCHING") } }
+            item { PillTab("진행중", selected == "PROGRESS", count = counts["PROGRESS"]) { onSelect("PROGRESS") } }
+            item { PillTab("완료", selected == "DONE", count = null) { onSelect("DONE") } }
+        }
+        // M4: 우측 fade edge — 가로 스크롤 가능함을 시각화. clickable 없어 hit-test 는 칩에 그대로 전달.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.92f to Color.Transparent,
+                            1f to Color(0xFFFEFEFE),
+                        ),
+                    ),
+                ),
+        )
     }
 }
 
@@ -972,7 +990,8 @@ internal fun SortDistanceRow(
     onDistanceClick: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.padding(horizontal = 18.dp).padding(bottom = 10.dp),
+        // M1: 필터 행 3 단 vs 카드 거리 압축 — bottom padding 10→6dp 로 시각적 압축감.
+        modifier = Modifier.padding(horizontal = 18.dp).padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         SortDistancePill(label = sort.label(), onClick = onSortClick, active = true, enabled = true)
@@ -1120,18 +1139,33 @@ internal fun CategoryChipsRow(
     selected: MatchCategory?,
     onSelect: (MatchCategory?) -> Unit,
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 18.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(bottom = 14.dp),
-    ) {
-        item { CategoryChip(null, "전체", null, selected == null) { onSelect(null) } }
-        item { CategoryChip(MatchCategory.WALK, "산책동행", R.drawable.ic_pets, selected == MatchCategory.WALK) { onSelect(MatchCategory.WALK) } }
-        item { CategoryChip(MatchCategory.VET, "병원동행", R.drawable.ic_stethoscope, selected == MatchCategory.VET) { onSelect(MatchCategory.VET) } }
-        item { CategoryChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING) { onSelect(MatchCategory.SHOPPING) } }
-        item { CategoryChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE) { onSelect(MatchCategory.MOVE) } }
-        item { CategoryChip(MatchCategory.VOLUNTEER, "봉사", R.drawable.ic_award, selected == MatchCategory.VOLUNTEER) { onSelect(MatchCategory.VOLUNTEER) } }
-        item { CategoryChip(MatchCategory.OTHER, "기타", R.drawable.ic_users, selected == MatchCategory.OTHER) { onSelect(MatchCategory.OTHER) } }
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            item { CategoryChip(null, "전체", null, selected == null) { onSelect(null) } }
+            item { CategoryChip(MatchCategory.WALK, "산책동행", R.drawable.ic_pets, selected == MatchCategory.WALK) { onSelect(MatchCategory.WALK) } }
+            item { CategoryChip(MatchCategory.VET, "병원동행", R.drawable.ic_stethoscope, selected == MatchCategory.VET) { onSelect(MatchCategory.VET) } }
+            item { CategoryChip(MatchCategory.SHOPPING, "장보기", R.drawable.ic_shopping_cart, selected == MatchCategory.SHOPPING) { onSelect(MatchCategory.SHOPPING) } }
+            item { CategoryChip(MatchCategory.MOVE, "이동", R.drawable.ic_car, selected == MatchCategory.MOVE) { onSelect(MatchCategory.MOVE) } }
+            item { CategoryChip(MatchCategory.VOLUNTEER, "봉사", R.drawable.ic_award, selected == MatchCategory.VOLUNTEER) { onSelect(MatchCategory.VOLUNTEER) } }
+            item { CategoryChip(MatchCategory.OTHER, "기타", R.drawable.ic_users, selected == MatchCategory.OTHER) { onSelect(MatchCategory.OTHER) } }
+        }
+        // M4: 우측 fade edge
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.92f to Color.Transparent,
+                            1f to Color(0xFFFEFEFE),
+                        ),
+                    ),
+                ),
+        )
     }
 }
 

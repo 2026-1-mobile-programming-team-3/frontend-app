@@ -442,7 +442,9 @@ fun WalkIndexSection(
             color = Brown700H,
         )
         Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
+        // 다른 폰트 사이즈끼리 같은 baseline 에 놓이도록 alignByBaseline() 사용.
+        // verticalAlignment=Bottom 으로 정렬하면 큰 글자가 위로 떠 보였음.
+        Row {
             if (walkScore == 0) {
                 Text(
                     text = "—",
@@ -452,6 +454,7 @@ fun WalkIndexSection(
                     lineHeight = 56.sp,
                     letterSpacing = (-1.56).sp,
                     color = GrayTextH,
+                    modifier = Modifier.alignByBaseline(),
                 )
             } else {
                 CountUpText(
@@ -465,6 +468,7 @@ fun WalkIndexSection(
                         letterSpacing = (-1.56).sp,
                     ),
                     color = scoreColor,
+                    modifier = Modifier.alignByBaseline(),
                 )
                 Text(
                     text = "점",
@@ -474,7 +478,7 @@ fun WalkIndexSection(
                     lineHeight = 32.sp,
                     letterSpacing = (-0.56).sp,
                     color = TextBlackH,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -486,7 +490,7 @@ fun WalkIndexSection(
                 lineHeight = 24.sp,
                 letterSpacing = (-0.36).sp,
                 color = Brown700H,
-                modifier = Modifier.padding(bottom = 6.dp),
+                modifier = Modifier.alignByBaseline(),
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -597,9 +601,21 @@ fun NearbyStoresSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("주변 매장", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackH)
+                Text("주변 매장", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.4).sp, color = TextBlackH)
                 if (nearbyStoreCount > 0) {
-                    Text("${nearbyStoreCount}곳", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = Pink500H)
+                    // 카운트 색을 Pink → Brown900 으로 (Pink 는 강조/태그용), 숫자만 ExtraBold (S5).
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) { append("$nearbyStoreCount") }
+                            append("곳")
+                        },
+                        fontFamily = PretendardFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        letterSpacing = (-0.4).sp,
+                        color = Brown900H,
+                    )
                 }
             }
             Row(
@@ -652,26 +668,8 @@ fun NearbyStoresSection(
                         onMapClick()
                     }
             )
-
-            // 우상단 CTA pill
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-                    .shadow(2.dp, RoundedCornerShape(50.dp))
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(Color.White.copy(alpha = 0.92f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "전체 지도 →",
-                    fontFamily = PretendardFamily,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Brown900H,
-                )
-            }
+            // H3: 미니맵 우상단 "전체 지도 →" CTA pill 제거.
+            // 헤더 우측 "지도 보기" 액션과 기능 중복 + 지도 마커 위에 떠 있어 가독성 저하 문제 해소.
         }
 
         Spacer(Modifier.height(12.dp))
