@@ -8,20 +8,21 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 private val LightColorScheme = lightColorScheme(
-    // Primary — Brown
-    primary            = Brown40,
+    // Primary / Secondary / Tertiary 는 CLAUDE.md 단일 진실 토큰으로 정합.
+    // 화면들이 raw hex 로 인라인 사용 중이라 시각적 차이는 미미하나,
+    // MaterialTheme.colorScheme.* 직접 참조하는 컴포넌트(Switch/Slider/IconButton 등) 가
+    // 올바른 디자인 시스템 컬러를 받도록 함.
+    primary            = Brown900,
     onPrimary          = White,
     primaryContainer   = Brown90,
     onPrimaryContainer = Brown10,
 
-    // Secondary — Pink
-    secondary            = Pink40,
+    secondary            = Pink500,
     onSecondary          = White,
     secondaryContainer   = Pink90,
     onSecondaryContainer = Pink10,
 
-    // Tertiary — Orange
-    tertiary            = Orange40,
+    tertiary            = Orange500,
     onTertiary          = White,
     tertiaryContainer   = Orange90,
     onTertiaryContainer = Orange10,

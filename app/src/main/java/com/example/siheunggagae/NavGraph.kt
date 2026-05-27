@@ -1152,6 +1152,7 @@ fun AppNavGraph(
                 viewModel = myViewModel,
                 localImageUri = localImageUri,
                 onNavigate = { route -> navController.navigateTab(route) },
+                onNotificationClick = { navController.navigate(Screen.Notification.route) },
                 onSettingsClick = { navController.navigate(Screen.Settings.route) },
                 onPetListClick = { navController.navigate(Screen.PetList.route) },
                 onBadgeListClick = { navController.navigate(Screen.VolunteerBadgeList.route) },

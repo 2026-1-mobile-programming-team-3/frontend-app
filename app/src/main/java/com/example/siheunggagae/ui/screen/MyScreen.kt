@@ -141,6 +141,7 @@ fun MyScreen(
     viewModel: MyViewModel? = null,
     localImageUri: String? = null,
     onNavigate: (String) -> Unit = {},
+    onNotificationClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onPetListClick: () -> Unit = {},
     onBadgeListClick: () -> Unit = {},
@@ -162,7 +163,7 @@ fun MyScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { MyTopBar(onSettingsClick = onSettingsClick) },
+        topBar = { MyTopBar(onNotificationClick = onNotificationClick, onSettingsClick = onSettingsClick) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         // targetState를 상태 종류(Loading/Error/Success)로 한정 — Success 내 데이터 변경 시
@@ -305,7 +306,10 @@ fun MyScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
+private fun MyTopBar(
+    onNotificationClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -321,23 +325,37 @@ private fun MyTopBar(onSettingsClick: () -> Unit = {}) {
             fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             lineHeight = 32.sp,
+            letterSpacing = (-0.91).sp,
             color = TextBlack,
         )
+        // T1: 우측에 알림 + 설정 2 버튼으로 균형. 단일 설정 버튼만 있을 때 휑한 공간이 매우 컸음.
         // design.md §17: 메인탭 우측 보조 아이콘 = 40×40dp 카드 (Home/Matching 과 정합).
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = Color.White,
-            shadowElevation = 2.dp,
-            modifier = Modifier.size(40.dp).clickable { onSettingsClick() },
-        ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_settings),
-                    contentDescription = "설정",
-                    tint = Brown700My,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MyTopBarIcon(iconRes = R.drawable.ic_notifications, contentDescription = "알림", onClick = onNotificationClick)
+            MyTopBarIcon(iconRes = R.drawable.ic_settings,     contentDescription = "설정", onClick = onSettingsClick)
+        }
+    }
+}
+
+@Composable
+private fun MyTopBarIcon(
+    @DrawableRes iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        modifier = Modifier.size(40.dp).clickable { onClick() },
+    ) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = contentDescription,
+                tint = Brown700My,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }
@@ -366,13 +384,15 @@ private fun ProfileCard(
             .padding(16.dp),
     ) {
         // 발바닥 워터마크 — ic_paw 가 일부 디바이스에서 깨져서 ic_pets 로 통일.
+        // Y4: 카드 우측 "편집" 버튼 시각 위계 보강을 위해 워터마크 사이즈 72→56dp, alpha 0.08→0.05 로 축소.
         Icon(
             painter = painterResource(R.drawable.ic_pets),
             contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.08f),
+            tint = Color.Black.copy(alpha = 0.05f),
             modifier = Modifier
-                .size(72.dp)
-                .align(Alignment.CenterEnd),
+                .size(56.dp)
+                .align(Alignment.CenterEnd)
+                .padding(end = 60.dp),
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
