@@ -520,9 +520,17 @@ fun WalkIndexSection(
                         Text(
                             text = buildAnnotatedString {
                                 if (nearestDDay != null) {
-                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.Bold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
                                 }
-                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Bold, fontSize = 12.sp)) { append("내 요청 ${pendingMatchCount}건 검토중") }
+                                // H1: pendingMatchCount=0 + nearestDDay!=null 이면 “0건 검토중” 이 모순 — 표현 분리.
+                                // 숫자는 ExtraBold 로 강조 (S5).
+                                if (pendingMatchCount > 0) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("내 요청 ") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$pendingMatchCount") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 검토중") }
+                                } else if (nearestDDay != null) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("가장 가까운 요청 마감") }
+                                }
                             },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -543,11 +551,11 @@ fun WalkIndexSection(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = "봉사활동 ${volunteerMatchCount}건 진행중",
-                            fontFamily = PretendardFamily,
-                            color = Color(0xFF006622),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("봉사활동 ") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$volunteerMatchCount") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 진행중") }
+                            },
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

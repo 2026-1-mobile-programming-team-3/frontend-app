@@ -348,7 +348,8 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
             .height(180.dp)
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(24.dp), clip = false)
+            // N2: 메인 카드 그림자 강화 — 2dp → 4dp 로 분리감 보강.
+            .shadow(elevation = 4.dp, shape = RoundedCornerShape(24.dp), clip = false)
             .clip(RoundedCornerShape(24.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.BottomStart,
@@ -372,14 +373,18 @@ private fun FeaturedNewsCard(item: NewsItem, onClick: () -> Unit = {}) {
                 modifier = Modifier.matchParentSize(),
             )
         }
-        // 텍스트 가독성을 위한 어두운 그라디언트 오버레이
+        // N1: 텍스트 가독성을 위한 어두운 그라디언트 오버레이 강화.
+        // 카드 상단 40% 까지는 투명, 하단으로 갈수록 0.85 까지 어두워짐.
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
-                        startY = 60f,
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            0.4f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.85f),
+                        ),
                     ),
                 ),
         )
@@ -445,7 +450,8 @@ private fun NewsGridRow(
 private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Column(
         modifier = modifier
-            .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp), clip = false)
+            // N2: 2열 카드 그림자 강화 — 2dp → 4dp, 배경과 분리되도록.
+            .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp), clip = false)
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .clickable { onClick() },
@@ -477,22 +483,34 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
             }
         }
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = categoryToKorean(item.category),
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = categoryColor(item.category),
-            )
+            // N3: 카테고리 텍스트 → 컬러 칩 (배경 + 라운드) 으로 변환.
+            // 회색 단일에서 의미적 컬러 분리: 정책=Blue, 행사=Green, 봉사=Pink, 지원=Orange.
+            val catColor = categoryColor(item.category)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(catColor.copy(alpha = 0.14f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Text(
+                    text = categoryToKorean(item.category),
+                    fontFamily = PretendardFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.11).sp,
+                    color = catColor,
+                )
+            }
             Text(
                 text = item.title ?: "",
                 fontFamily = PretendardFamily,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 20.sp,
+                letterSpacing = (-0.28).sp,
                 color = TextBlackNs,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -501,7 +519,8 @@ private fun NewsGridCard(item: NewsItem, modifier: Modifier = Modifier, onClick:
                 text = item.publishedDate ?: "",
                 fontFamily = PretendardFamily,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = (-0.12).sp,
                 color = Brown700Ns,
             )
         }
