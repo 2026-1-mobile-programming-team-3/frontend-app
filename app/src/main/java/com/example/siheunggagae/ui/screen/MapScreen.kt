@@ -476,11 +476,11 @@ fun MapScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어", iconSize = 24.dp) {
+                    MapIconFab(R.drawable.ic_layers, "레이어", iconSize = 26.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showFilterSheet = true
                     }
-                    MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 22.dp) {
+                    MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 20.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.refresh()
                     }
