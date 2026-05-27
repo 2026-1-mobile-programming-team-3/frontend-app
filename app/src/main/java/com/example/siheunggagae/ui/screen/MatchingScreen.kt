@@ -794,20 +794,35 @@ internal fun MatchTopBar(
     onSearchToggle: () -> Unit,
     onMyRequestsClick: () -> Unit,
 ) {
+    // 메인 탭(매칭/소식/마이) TopBar 공통 spec — 화면마다 padding 이 18/24/20 으로 제각각,
+    // top/bottom 비대칭에 background 도 일부 빠져있던 문제를 한 형태로 정합.
+    //   horizontal=20dp, vertical=16dp, background=White, 타이틀 letterSpacing=-0.91sp / lineHeight=32sp.
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding()
-            .padding(horizontal = 18.dp).padding(top = 4.dp, bottom = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .background(Color.White)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("매칭", color = TextBlackM, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
-        Spacer(Modifier.weight(1f))
-        MatchTopBarIcon(
-            iconRes = R.drawable.ic_search,
-            tint = if (isSearchMode) Brown900M else Brown700M,
-            onClick = onSearchToggle,
+        Text(
+            text = "매칭",
+            color = TextBlackM,
+            fontFamily = PretendardFamily,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 32.sp,
+            letterSpacing = (-0.91).sp,
         )
-        Spacer(Modifier.width(8.dp))
-        MatchTopBarIcon(R.drawable.ic_assignment) { onMyRequestsClick() }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MatchTopBarIcon(
+                iconRes = R.drawable.ic_search,
+                tint = if (isSearchMode) Brown900M else Brown700M,
+                onClick = onSearchToggle,
+            )
+            MatchTopBarIcon(R.drawable.ic_assignment) { onMyRequestsClick() }
+        }
     }
 }
 

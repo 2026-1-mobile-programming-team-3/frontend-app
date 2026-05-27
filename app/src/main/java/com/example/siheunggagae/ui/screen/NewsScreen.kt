@@ -249,11 +249,13 @@ fun NewsScreen(
 @Composable
 private fun NewsTopBar(onNotificationClick: () -> Unit = {}) {
     Row(
+        // 메인 탭 TopBar 공통 spec — horizontal=20dp, vertical=16dp.
+        // 다른 메인 탭(매칭/마이) 과 padding 정합.
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
             .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
