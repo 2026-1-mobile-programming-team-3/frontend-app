@@ -797,9 +797,10 @@ private fun PetSelectChip(label: String, selected: Boolean, enabled: Boolean = t
         else                 -> Color.White
     }
     val textColor = when {
-        !enabled -> Brown400PA
-        selected -> Color.White
-        else     -> Brown700PA
+        !enabled && selected -> Color.White
+        !enabled             -> Brown400PA
+        selected             -> Color.White
+        else                 -> Brown700PA
     }
     Box(
         contentAlignment = Alignment.Center,
