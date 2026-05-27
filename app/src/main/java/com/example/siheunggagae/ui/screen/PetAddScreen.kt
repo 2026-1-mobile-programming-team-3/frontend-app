@@ -230,7 +230,7 @@ fun PetAddScreen(
     LaunchedEffect(initialPet) {
         if (!formInitialized && initialPet != null) {
             val p = initialPet!!
-            nameInput       = p.name
+            nameInput       = p.name ?: ""
             selectedSpecies = p.species.toLabel()
             breedInput      = p.breed ?: ""
             age             = p.age ?: 1

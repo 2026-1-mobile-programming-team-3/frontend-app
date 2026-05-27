@@ -258,7 +258,7 @@ fun PetListScreen(
         SiheungAlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = "반려동물 삭제",
-            text = "${pet.name}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
+            text = "${pet.name ?: "이 반려동물"}을(를) 삭제할까요?\n삭제하면 되돌릴 수 없어요.",
             confirmText = "삭제",
             onConfirm = {
                 viewModel?.deletePet(pet.id)
@@ -328,7 +328,7 @@ private fun PetRow(
         if (!pet.photoUrl.isNullOrBlank()) {
             AppAsyncImage(
                 model = pet.photoUrl,
-                contentDescription = "${pet.name} 사진",
+                contentDescription = "${pet.name.orEmpty()} 사진",
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape),
@@ -351,7 +351,7 @@ private fun PetRow(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = pet.name,
+                text = pet.name.orEmpty(),
                 fontFamily = PretendardFamily,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,

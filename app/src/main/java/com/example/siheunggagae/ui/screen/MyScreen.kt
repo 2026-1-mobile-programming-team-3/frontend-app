@@ -540,7 +540,7 @@ private fun MyPetSection(pet: PetResponse?, onPetListClick: () -> Unit = {}) {
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = pet.name,
+                            text = pet.name.orEmpty(),
                             fontFamily = PretendardFamily,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
