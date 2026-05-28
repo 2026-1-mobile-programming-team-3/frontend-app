@@ -108,6 +108,7 @@ import com.example.siheunggagae.data.model.toStoreResponse
 import com.example.siheunggagae.map.MarkerSpec
 import com.example.siheunggagae.map.computeMarkerSpecs
 import com.example.siheunggagae.ui.component.EmptyStateView
+import com.example.siheunggagae.ui.component.SiheungSnackbarHost
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -394,7 +395,7 @@ fun MapScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SiheungSnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
     ) { navPadding ->
         BottomSheetScaffold(
@@ -518,7 +519,9 @@ fun MapScreen(
                         iconSize = 22.dp,
                     ) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val msg = if (uiState.petFriendlyOnly) "전체 매장 보기" else "반려동물 출입 가능 매장만 보기"
                         viewModel.togglePetFriendlyFilter()
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
                     MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 20.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
