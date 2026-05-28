@@ -278,7 +278,7 @@ fun MapScreen(
         val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
         val byId = filtered.associateBy { it.storeId }
         val specs = computeMarkerSpecs(filtered, projector, uiState.currentZoom, uiState.selectedStore?.resolvedId)
-            .map { spec ->
+            .mapNotNull { spec ->
                 when (spec) {
                     is MarkerSpec.Single -> {
                         val storeIdInt = spec.id.removePrefix("store_").toIntOrNull()
@@ -297,6 +297,7 @@ fun MapScreen(
                             mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
                         }
                     })
+                    is MarkerSpec.DongBubble -> null /* implemented in Task 5 */
                 }
             }
         mapWrapper.syncMarkers("store", specs)
@@ -321,10 +322,10 @@ fun MapScreen(
             )
         }
         val specs = computeMarkerSpecs(asItems, projector, uiState.currentZoom, selectedId = null)
-            .map { spec ->
+            .mapNotNull { spec ->
                 when (spec) {
                     is MarkerSpec.Single -> {
-                        val volId = spec.id.removePrefix("store_").toIntOrNull() ?: return@map spec
+                        val volId = spec.id.removePrefix("store_").toIntOrNull() ?: return@mapNotNull spec
                         spec.copy(
                             id = "vol_$volId",
                             color = volunteerMarkerColor,
@@ -335,6 +336,7 @@ fun MapScreen(
                         id = "volcluster_" + spec.id.removePrefix("cluster_"),
                         onTap = { mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120) },
                     )
+                    is MarkerSpec.DongBubble -> null /* implemented in Task 5 */
                 }
             }
         mapWrapper.syncMarkers("vol", specs)

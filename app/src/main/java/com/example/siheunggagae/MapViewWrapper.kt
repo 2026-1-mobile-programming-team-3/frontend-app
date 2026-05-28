@@ -177,8 +177,9 @@ class MapViewWrapper(private val mapView: MapView) {
     }
 
     private fun MarkerSpec.onTapOrNull(): (() -> Unit)? = when (this) {
-        is MarkerSpec.Single  -> onTap
-        is MarkerSpec.Cluster -> onTap
+        is MarkerSpec.Single     -> onTap
+        is MarkerSpec.Cluster    -> onTap
+        is MarkerSpec.DongBubble -> onTap
     }
 
     private fun addSpecInternal(spec: MarkerSpec) {
@@ -213,6 +214,7 @@ class MapViewWrapper(private val mapView: MapView) {
                 markers[spec.id] = label
                 spec.onTap?.let { markerCallbacks[spec.id] = it }
             }
+            is MarkerSpec.DongBubble -> { /* implemented in Task 5 */ }
         }
     }
 
