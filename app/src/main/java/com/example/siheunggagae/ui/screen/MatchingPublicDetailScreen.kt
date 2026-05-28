@@ -128,8 +128,7 @@ fun MatchingPublicDetailScreen(
         viewModel?.fetchDetail(requestId)
     }
 
-    // 채팅/후기 진입 가드 — BottomBar와 RequesterCard에서 동일 로직을 공유.
-    // ACCEPTED 일 때만 실제 채팅 진입. PENDING은 수락 대기 안내, 미신청은 신청 유도, DONE은 후기로.
+
     val handleChatClick: () -> Unit = {
         val state = uiState as? MatchDetailUiState.Success
         val currentStatus = state?.detail?.status?.trim()?.uppercase() ?: ""

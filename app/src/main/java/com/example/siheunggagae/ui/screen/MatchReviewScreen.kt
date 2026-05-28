@@ -83,8 +83,6 @@ fun MatchReviewScreen(
     val isViewOnlyOther = isViewOnly && !canEdit
 
     var isReadOnly by remember { mutableStateOf(isViewOnly) }
-    // 데이터 로드 전 “별 5개 + 훌륭했어요!” 더미가 보이던 문제를 막기 위해 0 부터 시작.
-    // 별 라벨은 rating > 0 일 때만 노출되므로 0 이면 자연스럽게 숨겨짐.
     var rating by remember { mutableStateOf(0) }
     var reviewText by remember { mutableStateOf("") }
     var selectedImageUris by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -117,17 +115,14 @@ fun MatchReviewScreen(
                     rating = state.review.rating ?: 5
                     reviewText = state.review.content ?: ""
                 } else if (!isViewOnly) {
-                    // 제출/수정 성공 케이스: review == null 은 작성 완료 알림 → 스낵바 + 닫기
                     snackbarHostState.showSnackbar("후기가 성공적으로 반영되었습니다!")
                     viewModel.resetState()
                     onBack()
                 }
-                // isViewOnly && review == null 인 경우(아직 작성 안 된 후기 조회)는
-                // 화면을 유지하고 본문 영역에서 빈 상태로 노출 (자동 onBack 호출 제거).
+
             }
             is ReviewUiState.Error -> {
-                // 자동 onBack() 호출 제거: 사용자가 작성 중이던 내용 보존 + 인라인 에러 안내.
-                // view 모드에서는 “다시 시도” 동선을 추후 추가 가능.
+
                 snackbarHostState.showSnackbar(state.message)
                 viewModel.resetState()
             }
@@ -139,11 +134,12 @@ fun MatchReviewScreen(
         containerColor = BgC,
         snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // CLAUDE.md TopBar 사양: 카드형 뒤로가기 40×40 r=12 e=2 + 가운데 정렬 타이틀 18sp Bold.
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = if (!canEdit) "요청자가 남긴 후기" else if (isReadOnly) "작성한 후기 보기" else "후기 수정하기",
+                        text = if (!canEdit) "요청자가 남긴 후기"
+                        else if (isReadOnly) "작성한 후기 보기"
+                        else "후기",
                         fontFamily = PretendardFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextBlackC,
                         letterSpacing = (-0.36).sp,
                     )

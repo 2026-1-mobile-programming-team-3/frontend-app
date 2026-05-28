@@ -293,7 +293,6 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB200), modifier = Modifier.size(16.dp))
-                        // [동적 연동] 하드코딩 "5.0" 대신 서버에서 내려온 후기 별점 데이터(receivedRating) 연동
                         val displayRating = request.receivedRating?.toDouble() ?: 5.0
                         Text(text = displayRating.toString(), fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                     }
@@ -310,10 +309,6 @@ private fun MyRequestCard(request: MatchListItem, onCardClick: () -> Unit) {
     }
 }
 
-/**
- * ISO 시각("2026-05-23T12:34:56Z" 등)을 사용자에게 친숙한 한국어 표현으로 변환한다.
- * 오늘/어제는 텍스트로, 그 외는 "M월 d일"로 표시한다.
- */
 private fun formatCreatedAtKr(iso: String): String {
     return runCatching {
         val instant = java.time.Instant.parse(iso)

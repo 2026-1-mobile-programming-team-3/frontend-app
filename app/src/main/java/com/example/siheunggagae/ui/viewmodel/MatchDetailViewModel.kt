@@ -29,7 +29,7 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
     var isAccepted by mutableStateOf(false)
     var myApplicationId by mutableStateOf<Int?>(null)
     var currentUserId by mutableStateOf<Int?>(null)
-    var isReviewWritten by mutableStateOf(false) // 👈 하단 바 후기 분기용 변수
+    var isReviewWritten by mutableStateOf(false)
     var myApplicationStatus by mutableStateOf<String?>(null)
 
     // 글 작성자가 화면 하단에서 볼 수 있는 전체 지원자 명단 상태 변수
@@ -49,7 +49,6 @@ class MatchDetailViewModel(private val api: AuthApiService) : ViewModel() {
                 val detail = response.body()
                 if (response.isSuccessful && detail != null) {
 
-                    // ─── 🌟 [신규 매핑 완료] 백엔드가 추가해 준 후기 작성 여부 값을 프론트 상태 변수에 동기화 ───
                     isReviewWritten = detail.isReviewed ?: false
 
                     val meResponse = api.getMe()
