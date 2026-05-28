@@ -11,7 +11,9 @@ import com.example.siheunggagae.data.local.SiheungRegions
 import com.example.siheunggagae.data.location.EffectiveCenter
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.location.resolveEffectiveCenter
+import com.example.siheunggagae.data.model.DongPriceBucket
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
+import com.example.siheunggagae.data.model.PetHotelResponse
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
@@ -19,6 +21,7 @@ import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.network.api.AuthApiService
+import com.example.siheunggagae.map.DongAggregator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +52,8 @@ data class MapUiState(
     val viewportStores: List<StoreViewportItem> = emptyList(),
     val currentZoom: Int = 15,
     val truncated: Boolean = false,
+    val petHotels: List<PetHotelResponse> = emptyList(),
+    val dongBuckets: List<DongPriceBucket> = emptyList(),
     /** GPS 가 시흥 밖이라 fallback 좌표를 쓰고 있는 상태. UI 배너 노출 트리거. */
     val centerFallback: EffectiveCenter? = null,
 )
@@ -166,6 +171,9 @@ class MapViewModel(
         if (bbox != null && zoom >= 11) {
             enqueueViewportLoad(bbox[0], bbox[1], bbox[2], bbox[3])
         }
+        if (category == StoreCategory.PET_HOTEL && _uiState.value.petHotels.isEmpty()) {
+            viewModelScope.launch { loadPetHotels() }
+        }
     }
 
     fun selectStore(store: StoreResponse?) {
@@ -236,6 +244,9 @@ class MapViewModel(
         }
         if (bbox != null && _uiState.value.currentZoom >= 11) {
             enqueueViewportLoad(bbox[0], bbox[1], bbox[2], bbox[3])
+        }
+        if (_uiState.value.selectedCategory == StoreCategory.PET_HOTEL) {
+            viewModelScope.launch { loadPetHotels() }
         }
     }
 
@@ -322,6 +333,23 @@ class MapViewModel(
             api.getVolunteerMarkers().body() ?: emptyList()
         }.getOrDefault(emptyList())
         _uiState.update { it.copy(volunteerMarkers = markers) }
+    }
+
+    /**
+     * 시흥시청 중심 15km 반경 펫호텔 1회 fetch + DongAggregator 로 동별 집계.
+     * 실패 시 silent — 기존 캐시 유지 (없으면 emptyList 유지).
+     */
+    private suspend fun loadPetHotels() {
+        val (cityLat, cityLng) = SiheungRegions.CITY_HALL
+        val hotels = runCatching {
+            api.getPetHotels(cityLat, cityLng, radius = 15_000).body()?.petHotels.orEmpty()
+        }.getOrDefault(emptyList())
+        if (hotels.isEmpty() && _uiState.value.petHotels.isNotEmpty()) {
+            // 네트워크 실패 등으로 빈 응답 — 기존 캐시 유지
+            return
+        }
+        val buckets = DongAggregator.aggregate(hotels, SiheungRegions.dongCoordinates)
+        _uiState.update { it.copy(petHotels = hotels, dongBuckets = buckets) }
     }
 
     class Factory(

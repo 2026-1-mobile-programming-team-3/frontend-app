@@ -46,4 +46,22 @@ sealed interface MarkerSpec {
             val topCategories: List<String>, val count: Int,
         )
     }
+
+    data class DongBubble(
+        override val id: String,
+        override val lat: Double,
+        override val lng: Double,
+        val dongName: String,
+        val count: Int,
+        val minKrw: Int,
+        val maxKrw: Int,
+        val avgKrw: Int,
+        val onTap: (() -> Unit)? = null,
+    ) : MarkerSpec {
+        override val visualKey: Any = DongBubbleVisual(id, lat, lng, dongName, count, minKrw, maxKrw, avgKrw)
+        data class DongBubbleVisual(
+            val id: String, val lat: Double, val lng: Double,
+            val dongName: String, val count: Int, val minKrw: Int, val maxKrw: Int, val avgKrw: Int,
+        )
+    }
 }

@@ -42,6 +42,13 @@ class MapViewWrapper(private val mapView: MapView) {
             val count: Int,
         ) : BitmapKey
         data object MyLocation : BitmapKey
+        data class DongBubble(
+            val dongName: String,
+            val count: Int,
+            val minKrw: Int,
+            val maxKrw: Int,
+            val avgKrw: Int,
+        ) : BitmapKey
     }
 
     // 지도가 파괴됐을 때 composable에서 감지할 수 있도록 노출
@@ -177,8 +184,9 @@ class MapViewWrapper(private val mapView: MapView) {
     }
 
     private fun MarkerSpec.onTapOrNull(): (() -> Unit)? = when (this) {
-        is MarkerSpec.Single  -> onTap
-        is MarkerSpec.Cluster -> onTap
+        is MarkerSpec.Single     -> onTap
+        is MarkerSpec.Cluster    -> onTap
+        is MarkerSpec.DongBubble -> onTap
     }
 
     private fun addSpecInternal(spec: MarkerSpec) {
@@ -203,6 +211,20 @@ class MapViewWrapper(private val mapView: MapView) {
                 val key = BitmapKey.Cluster(spec.topCategories, spec.count)
                 val bmp = bitmapCache.get(key)
                     ?: createIconStackClusterBitmap(spec.topCategories, spec.count)
+                        .also { bitmapCache.put(key, it) }
+                val style = LabelStyles.from(LabelStyle.from(bmp))
+                val label = layer.addLabel(
+                    LabelOptions.from(LatLng.from(spec.lat, spec.lng)).setStyles(style)
+                )
+                label.tag = spec.id
+                label.setClickable(spec.onTap != null)
+                markers[spec.id] = label
+                spec.onTap?.let { markerCallbacks[spec.id] = it }
+            }
+            is MarkerSpec.DongBubble -> {
+                val key = BitmapKey.DongBubble(spec.dongName, spec.count, spec.minKrw, spec.maxKrw, spec.avgKrw)
+                val bmp = bitmapCache.get(key)
+                    ?: createDongBubbleBitmap(spec.dongName, spec.count, spec.minKrw, spec.avgKrw)
                         .also { bitmapCache.put(key, it) }
                 val style = LabelStyles.from(LabelStyle.from(bmp))
                 val label = layer.addLabel(
@@ -428,6 +450,122 @@ class MapViewWrapper(private val mapView: MapView) {
             color = 0xFF2196F3.toInt()
         })
         return bm
+    }
+
+    /**
+     * 동 가격 버블 비트맵 — 3줄 레이아웃.
+     * Row1: 동명(11sp Bold) + N곳(9sp SemiBold)
+     * Row2: 평균 X만 (10sp Normal, Brown700) — 작게
+     * Row3: X만~ (13sp ExtraBold, Brown900) — 최솟값
+     */
+    private fun createDongBubbleBitmap(
+        dongName: String, count: Int, minKrw: Int, avgKrw: Int,
+    ): Bitmap {
+        val density = 3f
+        val cornerR = 12f * density
+        val borderW = 1.5f * density
+        val padH = 10f * density
+        val padV = 6f * density
+        val tailH = 6f * density
+        val tailHalfW = 6f * density
+        val rowGap = 2f * density
+        val shadowR = 12f
+        val shadowDy = 4f
+
+        val dongPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF1E120A.toInt()
+            textSize = 11f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.LEFT
+        }
+        val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF8A6E58.toInt()
+            textSize = 9f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.RIGHT
+        }
+        val avgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF8A6E58.toInt()
+            textSize = 10f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            textAlign = Paint.Align.LEFT
+        }
+        val minPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF614B3A.toInt()
+            textSize = 13f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.LEFT
+            letterSpacing = -0.4f / 13f
+        }
+
+        val countText = "${count}곳"
+        val avgText = "평균 ${krwToManwon(avgKrw)}만"
+        val minText = "${krwToManwon(minKrw)}만~"
+
+        val topGap = 6f * density
+        val topWidth = dongPaint.measureText(dongName) + topGap + countPaint.measureText(countText)
+        val contentW = maxOf(topWidth, avgPaint.measureText(avgText), minPaint.measureText(minText))
+        val minCanvasW = 80f * density
+        val cardW = maxOf(contentW + padH * 2, minCanvasW)
+
+        val dongH = dongPaint.descent() - dongPaint.ascent()
+        val avgH = avgPaint.descent() - avgPaint.ascent()
+        val minH = minPaint.descent() - minPaint.ascent()
+        val cardH = padV + dongH + rowGap + avgH + rowGap + minH + padV
+        val totalH = cardH + tailH
+
+        val shadowPad = shadowR + shadowDy
+        val bitmap = Bitmap.createBitmap(
+            (cardW + shadowPad * 2).toInt(),
+            (totalH + shadowPad * 2).toInt(),
+            Bitmap.Config.ARGB_8888,
+        )
+        val canvas = Canvas(bitmap)
+        canvas.translate(shadowPad, shadowPad)
+
+        val bodyPath = Path().apply {
+            addRoundRect(RectF(0f, 0f, cardW, cardH), cornerR, cornerR, Path.Direction.CW)
+            val tipX = cardW / 2f
+            moveTo(tipX - tailHalfW, cardH - 0.5f)
+            lineTo(tipX, cardH + tailH)
+            lineTo(tipX + tailHalfW, cardH - 0.5f)
+            close()
+        }
+
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            setShadowLayer(shadowR, 0f, shadowDy, 0x33614B3A)
+        }
+        canvas.drawPath(bodyPath, fillPaint)
+
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFE8D3C2.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = borderW
+        }
+        canvas.drawRoundRect(
+            RectF(borderW / 2, borderW / 2, cardW - borderW / 2, cardH - borderW / 2),
+            cornerR, cornerR, borderPaint,
+        )
+
+        val dongY = padV - dongPaint.ascent()
+        canvas.drawText(dongName, padH, dongY, dongPaint)
+        canvas.drawText(countText, cardW - padH, dongY, countPaint)
+
+        val avgY = padV + dongH + rowGap - avgPaint.ascent()
+        canvas.drawText(avgText, padH, avgY, avgPaint)
+
+        val minY = padV + dongH + rowGap + avgH + rowGap - minPaint.ascent()
+        canvas.drawText(minText, padH, minY, minPaint)
+
+        return bitmap
+    }
+
+    private fun krwToManwon(krw: Int): String {
+        val tenths = (krw + 500) / 1_000
+        val whole = tenths / 10
+        val frac = tenths % 10
+        return if (frac == 0) whole.toString() else "$whole.$frac"
     }
 
     /** computeMarkerSpecs 에 넘길 projector. 호출 시점의 KakaoMap 좌표 변환을 캡처. */
