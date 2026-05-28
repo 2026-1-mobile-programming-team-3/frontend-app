@@ -351,7 +351,9 @@ fun PlaceDetailScreen(
                                     }
                                 }
                             }
-                            HorizontalDivider(color = DividerPL, thickness = 1.dp)
+                            if (!s.address.isNullOrEmpty() || !s.phone.isNullOrEmpty() || s.isPetAllowed != null) {
+                                HorizontalDivider(color = DividerPL, thickness = 1.dp)
+                            }
                         }
                         if (!s.address.isNullOrEmpty()) {
                             PlaceInfoRowPL(
@@ -361,7 +363,9 @@ fun PlaceDetailScreen(
                             ) {
                                 CopyButtonPL { copyToClipboard(s.address) }
                             }
-                            HorizontalDivider(color = DividerPL, thickness = 1.dp)
+                            if (!s.phone.isNullOrEmpty() || s.isPetAllowed != null) {
+                                HorizontalDivider(color = DividerPL, thickness = 1.dp)
+                            }
                         }
                         if (!s.phone.isNullOrEmpty()) {
                             PlaceInfoRowPL(
@@ -395,6 +399,31 @@ fun PlaceDetailScreen(
                                     fontWeight = FontWeight.Medium,
                                     color = Brown700PL,
                                 )
+                            }
+                            if (s.isPetAllowed != null) {
+                                HorizontalDivider(color = DividerPL, thickness = 1.dp)
+                            }
+                        }
+                        if (s.isPetAllowed != null) {
+                            PlaceInfoRowPL(
+                                iconRes = R.drawable.ic_pets,
+                                label = "반려동물 동반",
+                                content = if (s.isPetAllowed) "가능" else "불가",
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50.dp))
+                                        .background(if (s.isPetAllowed) GreenBgPL else Color(0xFFFFE4E6))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                ) {
+                                    Text(
+                                        text = if (s.isPetAllowed) "동반 가능" else "동반 불가",
+                                        fontFamily = PretendardFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (s.isPetAllowed) Green500PL else Pink500PL,
+                                    )
+                                }
                             }
                         }
                     }
