@@ -428,18 +428,14 @@ fun WalkIndexSection(
     Column(
         modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
-        // 산책지수 위계 분리 (S4):
-        //   라벨 "오늘 산책지수"        → 20sp Bold Brown700 (부가 라벨)
-        //   점수 숫자 + "점"            → 52sp / 28sp ExtraBold (점수만 컬러 강조)
-        //   서술 "으로 좋아요"          → 18sp Medium Brown700 (부가 서술)
         Text(
             text = "오늘 산책지수",
             fontFamily = PretendardFamily,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 26.sp,
-            letterSpacing = (-0.4).sp,
-            color = Brown700H,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 30.sp,
+            letterSpacing = (-0.48).sp,
+            color = TextBlackH,
         )
         Spacer(Modifier.height(6.dp))
         // 다른 폰트 사이즈끼리 같은 baseline 에 놓이도록 alignByBaseline() 사용.
@@ -485,11 +481,11 @@ fun WalkIndexSection(
             Text(
                 text = "으로 $scoreComment",
                 fontFamily = PretendardFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 24.sp,
-                letterSpacing = (-0.36).sp,
-                color = Brown700H,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 32.sp,
+                letterSpacing = (-0.56).sp,
+                color = TextBlackH,
                 modifier = Modifier.alignByBaseline(),
             )
         }
