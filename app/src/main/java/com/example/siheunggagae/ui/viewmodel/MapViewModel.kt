@@ -56,6 +56,7 @@ data class MapUiState(
     val dongBuckets: List<DongPriceBucket> = emptyList(),
     /** GPS 가 시흥 밖이라 fallback 좌표를 쓰고 있는 상태. UI 배너 노출 트리거. */
     val centerFallback: EffectiveCenter? = null,
+    val petFriendlyOnly: Boolean = false,
 )
 
 class MapViewModel(
@@ -287,6 +288,10 @@ class MapViewModel(
 
     fun applyFilter(visibleApiCategories: Set<String>) {
         viewModelScope.launch { filterStore.saveCategories(visibleApiCategories) }
+    }
+
+    fun togglePetFriendlyFilter() {
+        _uiState.update { it.copy(petFriendlyOnly = !it.petFriendlyOnly) }
     }
 
     fun toggleVolunteerMode() {

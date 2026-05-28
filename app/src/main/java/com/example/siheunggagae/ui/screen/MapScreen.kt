@@ -38,6 +38,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -134,6 +136,7 @@ private val Brown700Mp   = Color(0xFF8A6E58)
 private val Brown400Mp   = Color(0xFFC4A882)
 private val BrownBorderP = Color(0xFFE8D3C2)
 private val Orange500Mp  = Color(0xFFF7A35B)
+private val OrangeSandMp = Color(0xFFFFEDD4)
 private val Pink500Mp    = Color(0xFFF04268)
 private val TextBlack    = Color(0xFF1E120A)
 private val StarYellow   = Color(0xFFFDC700)
@@ -175,7 +178,6 @@ fun MapScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     var showDongPicker by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
@@ -273,13 +275,15 @@ fun MapScreen(
         uiState.currentZoom,
         uiState.selectedCategory,
         uiState.selectedStore?.resolvedId,
+        uiState.petFriendlyOnly,
     ) {
         if (!mapReady) return@LaunchedEffect
         val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
         val hideHotelMarkers = uiState.selectedCategory == StoreCategory.PET_HOTEL && uiState.currentZoom <= 13
         val filtered = uiState.viewportStores.filter {
             it.category in uiState.visibleCategories &&
-                !(hideHotelMarkers && it.category == "PET_HOTEL")
+                !(hideHotelMarkers && it.category == "PET_HOTEL") &&
+                (!uiState.petFriendlyOnly || it.isPetAllowed)
         }
         val byId = filtered.associateBy { it.storeId }
         val specs = computeMarkerSpecs(filtered, projector, uiState.currentZoom, uiState.selectedStore?.resolvedId)
@@ -419,7 +423,7 @@ fun MapScreen(
                     )
                 } else {
                     MapBottomSheetContent(
-                        stores = uiState.stores,
+                        stores = if (uiState.petFriendlyOnly) uiState.stores.filter { it.isPetAllowed == true } else uiState.stores,
                         totalCount = uiState.totalCount,
                         truncated = uiState.truncated,
                         onStoreClick = { store -> viewModel.selectStore(store) },
@@ -507,9 +511,14 @@ fun MapScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어", iconSize = 26.dp) {
+                    MapIconFab(
+                        icon = Icons.Default.Pets,
+                        contentDescription = if (uiState.petFriendlyOnly) "전체 보기" else "반려동물 출입 가능만",
+                        active = uiState.petFriendlyOnly,
+                        iconSize = 22.dp,
+                    ) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showFilterSheet = true
+                        viewModel.togglePetFriendlyFilter()
                     }
                     MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 20.dp) {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -547,20 +556,6 @@ fun MapScreen(
         )
     }
 
-    if (showFilterSheet) {
-        MapFilterBottomSheet(
-            initialCategories = uiState.visibleCategories,
-            onDismiss = { showFilterSheet = false },
-            onApply = { entries ->
-                val apiCategories = entries
-                    .filter { it.isSelected }
-                    .mapNotNull { MapFilterStore.NAME_TO_API[it.name] }
-                    .toSet()
-                viewModel.applyFilter(apiCategories)
-                showFilterSheet = false
-            },
-        )
-    }
 
     if (showSearch) {
         MapSearchOverlay(
@@ -892,7 +887,6 @@ private fun MapIconFab(
         modifier = Modifier
             .appleTapScale(interaction)
             .size(42.dp)
-            // P3: 지도 표면 위 분리감 강화 — 4dp → 8dp.
             .shadow(8.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
@@ -902,6 +896,40 @@ private fun MapIconFab(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = Brown700Mp,
+            modifier = Modifier.size(iconSize),
+        )
+    }
+}
+
+@Composable
+private fun MapIconFab(
+    icon: ImageVector,
+    contentDescription: String,
+    active: Boolean = false,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp,
+    onClick: () -> Unit = {},
+) {
+    val interaction = rememberAppleInteractionSource()
+    val bg by animateColorAsState(
+        if (active) OrangeSandMp else Color.White, label = "fabBg",
+    )
+    val tint by animateColorAsState(
+        if (active) Orange500Mp else Brown700Mp, label = "fabTint",
+    )
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .appleTapScale(interaction)
+            .size(42.dp)
+            .shadow(8.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .clickable(interactionSource = interaction, indication = null) { onClick() },
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
             modifier = Modifier.size(iconSize),
         )
     }
