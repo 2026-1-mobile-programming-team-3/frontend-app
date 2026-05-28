@@ -47,6 +47,7 @@ class MapViewWrapper(private val mapView: MapView) {
             val count: Int,
             val minKrw: Int,
             val maxKrw: Int,
+            val avgKrw: Int,
         ) : BitmapKey
     }
 
@@ -221,9 +222,9 @@ class MapViewWrapper(private val mapView: MapView) {
                 spec.onTap?.let { markerCallbacks[spec.id] = it }
             }
             is MarkerSpec.DongBubble -> {
-                val key = BitmapKey.DongBubble(spec.dongName, spec.count, spec.minKrw, spec.maxKrw)
+                val key = BitmapKey.DongBubble(spec.dongName, spec.count, spec.minKrw, spec.maxKrw, spec.avgKrw)
                 val bmp = bitmapCache.get(key)
-                    ?: createDongBubbleBitmap(spec.dongName, spec.count, spec.minKrw, spec.maxKrw)
+                    ?: createDongBubbleBitmap(spec.dongName, spec.count, spec.minKrw, spec.avgKrw)
                         .also { bitmapCache.put(key, it) }
                 val style = LabelStyles.from(LabelStyle.from(bmp))
                 val label = layer.addLabel(
@@ -452,67 +453,67 @@ class MapViewWrapper(private val mapView: MapView) {
     }
 
     /**
-     * 동 가격 버블 비트맵 — Brown 카드 디자인.
-     * - White bg, 14dp radius, 1.5dp 베이지(#E8D3C2) border
-     * - 그림자: Paint.setShadowLayer(14f, 0, 4f, 0x33614B3A)
-     * - 상단: 동명(12sp Bold #1E120A) + "${count}곳"(10sp SemiBold #8A6E58)
-     * - 하단: "${min}~${max}만" or "${val}만" (14sp ExtraBold #614B3A, letter-spacing -0.4)
-     * - 하단 중앙 7px 화살표 tail
-     * - min canvas width 96px
+     * 동 가격 버블 비트맵 — 3줄 레이아웃.
+     * Row1: 동명(11sp Bold) + N곳(9sp SemiBold)
+     * Row2: 평균 X만 (10sp Normal, Brown700) — 작게
+     * Row3: X만~ (13sp ExtraBold, Brown900) — 최솟값
      */
     private fun createDongBubbleBitmap(
-        dongName: String, count: Int, minKrw: Int, maxKrw: Int,
+        dongName: String, count: Int, minKrw: Int, avgKrw: Int,
     ): Bitmap {
-        val density = 3f  // ~ xxhdpi 기준 1dp=3px. 캔버스 단위는 px.
-        val cornerR = 14f * density
+        val density = 3f
+        val cornerR = 12f * density
         val borderW = 1.5f * density
-        val padH = 12f * density
-        val padV = 7f * density
-        val tailH = 7f * density
-        val tailHalfW = 7f * density
-        val rowGap = 1f * density
-        val shadowR = 14f
+        val padH = 10f * density
+        val padV = 6f * density
+        val tailH = 6f * density
+        val tailHalfW = 6f * density
+        val rowGap = 2f * density
+        val shadowR = 12f
         val shadowDy = 4f
 
-        // 텍스트 페인트
         val dongPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFF1E120A.toInt()
-            textSize = 12f * density
+            textSize = 11f * density
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.LEFT
         }
         val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFF8A6E58.toInt()
-            textSize = 10f * density
+            textSize = 9f * density
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
-        val pricePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val avgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF8A6E58.toInt()
+            textSize = 10f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            textAlign = Paint.Align.LEFT
+        }
+        val minPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFF614B3A.toInt()
-            textSize = 14f * density
+            textSize = 13f * density
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.LEFT
-            letterSpacing = -0.4f / 14f
+            letterSpacing = -0.4f / 13f
         }
 
         val countText = "${count}곳"
-        val priceText = formatPriceRange(minKrw, maxKrw)
+        val avgText = "평균 ${krwToManwon(avgKrw)}만"
+        val minText = "${krwToManwon(minKrw)}만~"
 
-        // 가로폭: max( 동명+gap+개수, 가격 ) + padH*2
         val topGap = 6f * density
         val topWidth = dongPaint.measureText(dongName) + topGap + countPaint.measureText(countText)
-        val priceWidth = pricePaint.measureText(priceText)
-        val contentW = maxOf(topWidth, priceWidth)
-        val minCanvasW = 96f * density
+        val contentW = maxOf(topWidth, avgPaint.measureText(avgText), minPaint.measureText(minText))
+        val minCanvasW = 80f * density
         val cardW = maxOf(contentW + padH * 2, minCanvasW)
 
         val dongH = dongPaint.descent() - dongPaint.ascent()
-        val priceH = pricePaint.descent() - pricePaint.ascent()
-        val cardH = padV + dongH + rowGap + priceH + padV
-
+        val avgH = avgPaint.descent() - avgPaint.ascent()
+        val minH = minPaint.descent() - minPaint.ascent()
+        val cardH = padV + dongH + rowGap + avgH + rowGap + minH + padV
         val totalH = cardH + tailH
 
-        // 그림자를 위한 여유 공간 (canvas는 shadow를 잘라먹지 않음 - bitmap 사이즈만 넉넉히)
         val shadowPad = shadowR + shadowDy
         val bitmap = Bitmap.createBitmap(
             (cardW + shadowPad * 2).toInt(),
@@ -522,11 +523,8 @@ class MapViewWrapper(private val mapView: MapView) {
         val canvas = Canvas(bitmap)
         canvas.translate(shadowPad, shadowPad)
 
-        // 카드 body path = 라운드 사각 + 아래 화살표
         val bodyPath = Path().apply {
-            // 라운드 사각
             addRoundRect(RectF(0f, 0f, cardW, cardH), cornerR, cornerR, Path.Direction.CW)
-            // 화살표 (아래쪽으로 삼각형, 카드 하단 중앙)
             val tipX = cardW / 2f
             moveTo(tipX - tailHalfW, cardH - 0.5f)
             lineTo(tipX, cardH + tailH)
@@ -534,14 +532,12 @@ class MapViewWrapper(private val mapView: MapView) {
             close()
         }
 
-        // 그림자 + 흰 채움
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
             setShadowLayer(shadowR, 0f, shadowDy, 0x33614B3A)
         }
         canvas.drawPath(bodyPath, fillPaint)
 
-        // 보더 (라운드 사각만, 화살표 포함하면 라인이 겹쳐 보임)
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFE8D3C2.toInt()
             style = Paint.Style.STROKE
@@ -552,22 +548,17 @@ class MapViewWrapper(private val mapView: MapView) {
             cornerR, cornerR, borderPaint,
         )
 
-        // 텍스트
         val dongY = padV - dongPaint.ascent()
         canvas.drawText(dongName, padH, dongY, dongPaint)
         canvas.drawText(countText, cardW - padH, dongY, countPaint)
 
-        val priceY = padV + dongH + rowGap - pricePaint.ascent()
-        canvas.drawText(priceText, padH, priceY, pricePaint)
+        val avgY = padV + dongH + rowGap - avgPaint.ascent()
+        canvas.drawText(avgText, padH, avgY, avgPaint)
+
+        val minY = padV + dongH + rowGap + avgH + rowGap - minPaint.ascent()
+        canvas.drawText(minText, padH, minY, minPaint)
 
         return bitmap
-    }
-
-    /** "5.3~12만" or "5.3만" (min == max 일 때). */
-    private fun formatPriceRange(minKrw: Int, maxKrw: Int): String {
-        val minStr = krwToManwon(minKrw)
-        return if (minKrw == maxKrw) "${minStr}만"
-               else "${minStr}~${krwToManwon(maxKrw)}만"
     }
 
     private fun krwToManwon(krw: Int): String {

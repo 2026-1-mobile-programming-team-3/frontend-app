@@ -31,7 +31,7 @@ object DongAggregator {
     ): List<DongPriceBucket> {
         if (hotels.isEmpty() || dongCenters.isEmpty()) return emptyList()
 
-        data class Acc(var min: Int, var max: Int, var count: Int)
+        data class Acc(var min: Int, var max: Int, var sum: Long, var count: Int)
         val byDong = linkedMapOf<String, Acc>()
 
         for (h in hotels) {
@@ -40,16 +40,18 @@ object DongAggregator {
             val nearest = dongCenters.minByOrNull { (_, c) ->
                 haversineMeters(h.latitude, h.longitude, c.first, c.second)
             } ?: continue
-            val acc = byDong.getOrPut(nearest.key) { Acc(minPrice, maxPrice, 0) }
+            val acc = byDong.getOrPut(nearest.key) { Acc(minPrice, maxPrice, 0L, 0) }
             acc.min = minOf(acc.min, minPrice)
             acc.max = maxOf(acc.max, maxPrice)
+            acc.sum += minPrice
             acc.count += 1
         }
 
         return byDong.map { (dong, acc) ->
             val (lat, lng) = dongCenters.getValue(dong)
             DongPriceBucket(dong = dong, lat = lat, lng = lng,
-                count = acc.count, minKrw = acc.min, maxKrw = acc.max)
+                count = acc.count, minKrw = acc.min, maxKrw = acc.max,
+                avgKrw = (acc.sum / acc.count).toInt())
         }
     }
 

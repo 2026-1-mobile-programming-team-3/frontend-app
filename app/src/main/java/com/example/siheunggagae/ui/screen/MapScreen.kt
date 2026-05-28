@@ -325,6 +325,7 @@ fun MapScreen(
                 count = bucket.count,
                 minKrw = bucket.minKrw,
                 maxKrw = bucket.maxKrw,
+                avgKrw = bucket.avgKrw,
                 onTap = { mapWrapper.animateCamera(bucket.lat, bucket.lng, zoomLevel = 16) },
             )
         }

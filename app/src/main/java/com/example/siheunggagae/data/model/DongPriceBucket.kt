@@ -12,4 +12,5 @@ data class DongPriceBucket(
     val count: Int,
     val minKrw: Int,
     val maxKrw: Int,
+    val avgKrw: Int,
 )
