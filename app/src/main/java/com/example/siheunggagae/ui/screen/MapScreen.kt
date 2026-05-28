@@ -963,14 +963,11 @@ private fun MapBottomSheetContent(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        // P2: 단순 카운트에 Pink500(강조/태그용) 사용 → Brown900 으로 변경.
-                        // 숫자 부분만 ExtraBold + 자간 -0.4sp 로 강조 (S5).
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(color = TextBlack)) { append("주변 매장 ") }
-                            withStyle(SpanStyle(color = Brown900Mp, fontWeight = FontWeight.ExtraBold)) {
-                                append("$displayCount")
+                            withStyle(SpanStyle(color = Pink500Mp, fontWeight = FontWeight.ExtraBold)) {
+                                append("${displayCount}개")
                             }
-                            withStyle(SpanStyle(color = TextBlack)) { append("개") }
                         },
                         fontFamily = PretendardFamily,
                         fontSize = 20.sp,
