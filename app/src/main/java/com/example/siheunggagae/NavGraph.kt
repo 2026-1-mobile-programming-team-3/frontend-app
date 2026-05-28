@@ -201,9 +201,9 @@ sealed class Screen(val route: String) {
     object NewsDetail      : Screen("news_detail/{newsId}") {
         fun createRoute(newsId: String) = "news_detail/$newsId"
     }
-    object MatchReview : Screen("match_review?matchId={matchId}&status={status}&isViewOnly={isViewOnly}&canEdit={canEdit}") {
-        fun createRoute(matchId: Int, status: String, isViewOnly: Boolean = false, canEdit: Boolean = false) =
-            "match_review?matchId=$matchId&status=$status&isViewOnly=$isViewOnly&canEdit=$canEdit"
+    object MatchReview : Screen("match_review?matchId={matchId}&status={status}&isViewOnly={isViewOnly}&canEdit={canEdit}&reviewerUserId={reviewerUserId}") {
+        fun createRoute(matchId: Int, status: String, isViewOnly: Boolean = false, canEdit: Boolean = false, reviewerUserId: Int = -1) =
+            "match_review?matchId=$matchId&status=$status&isViewOnly=$isViewOnly&canEdit=$canEdit&reviewerUserId=$reviewerUserId"
     }
     object PetHotelCompare : Screen(
         "pet_hotel_compare?lat={lat}&lng={lng}&radius={radius}" +
@@ -928,13 +928,15 @@ fun AppNavGraph(
                 navArgument("matchId") { type = NavType.IntType; defaultValue = -1 },
                 navArgument("status") { type = NavType.StringType; defaultValue = "" },
                 navArgument("isViewOnly") { type = NavType.BoolType; defaultValue = false },
-                navArgument("canEdit") { type = NavType.BoolType; defaultValue = false }
+                navArgument("canEdit") { type = NavType.BoolType; defaultValue = false },
+                navArgument("reviewerUserId") { type = NavType.IntType; defaultValue = -1 },
             )
         ) { backStackEntry ->
             val matchId = backStackEntry.arguments?.getInt("matchId") ?: -1
             val status = backStackEntry.arguments?.getString("status") ?: ""
             val isViewOnly = backStackEntry.arguments?.getBoolean("isViewOnly") ?: false
             val canEdit = backStackEntry.arguments?.getBoolean("canEdit") ?: false
+            val reviewerUserId = backStackEntry.arguments?.getInt("reviewerUserId") ?: -1
             val api = com.example.siheunggagae.data.network.RetrofitClient.api
 
             val reviewViewModel: MatchReviewViewModel = viewModel(
@@ -946,6 +948,7 @@ fun AppNavGraph(
                 matchStatus = status,
                 isViewOnly = isViewOnly,
                 canEdit = canEdit,
+                reviewerUserId = reviewerUserId,
                 viewModel = reviewViewModel,
                 onBack = { navController.popBackStack() }
             )
