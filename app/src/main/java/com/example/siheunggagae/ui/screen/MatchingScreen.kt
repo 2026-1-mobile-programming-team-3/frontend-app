@@ -543,7 +543,6 @@ internal fun MatchCardR(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         StatusChip(status)
-                        // R5: 완료 상태 카드에 “후기 보기” 진입점 명시 — 사용자가 후기 동선을 찾도록.
                         if (status == "DONE") ReviewBadgeChip()
                         item.category?.let { cat ->
                             if (cat.requiresVolunteerRole()) VolunteerCatChip()
@@ -697,8 +696,6 @@ private fun StatusChip(status: String) {
 
 @Composable
 private fun ReviewBadgeChip() {
-    // 완료된 매칭 카드에서 후기 보기 진입점을 시각적으로 명시 (R5).
-    // 카드 자체 클릭이 후기 화면으로 라우팅하므로 별도 onClick 핸들러는 없음.
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))

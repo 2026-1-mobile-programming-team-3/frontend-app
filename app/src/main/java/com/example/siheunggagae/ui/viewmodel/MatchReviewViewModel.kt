@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 sealed class ReviewUiState {
     object Idle : ReviewUiState()
     object Loading : ReviewUiState()
-    // 🌟 [수정] 조회 모드 대응을 위해 성공 상태 시 후기 데이터를 담을 수 있도록 구조 확장
     data class Success(val review: MatchReviewResponse? = null) : ReviewUiState()
     data class Error(val message: String) : ReviewUiState()
 }
@@ -23,7 +22,6 @@ class MatchReviewViewModel(private val api: AuthApiService) : ViewModel() {
     private val _uiState = MutableStateFlow<ReviewUiState>(ReviewUiState.Idle)
     val uiState: StateFlow<ReviewUiState> = _uiState
 
-    // ── [태은-8.5] 후기 등록 POST API 호출 ──
     fun submitReview(matchId: Int, rating: Int, content: String, imageUris: List<String>, onComplete: () -> Unit) {
         if (content.isBlank()) return
 
@@ -50,14 +48,12 @@ class MatchReviewViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
-    // ── 🌟 [신규 추가] 작성된 후기 단건 조회 GET API 호출 ──
     fun loadReview(matchId: Int) {
         viewModelScope.launch {
             _uiState.value = ReviewUiState.Loading
             try {
                 val response = api.getMatchReview(matchId)
                 if (response.isSuccessful && response.body() != null) {
-                    // 성공 시 UI State에 후기 엔티티를 탑재하여 화면에 뿌려줌
                     _uiState.value = ReviewUiState.Success(response.body())
                 } else {
                     _uiState.value = ReviewUiState.Error("후기 정보를 불러오지 못했습니다.")
@@ -68,7 +64,6 @@ class MatchReviewViewModel(private val api: AuthApiService) : ViewModel() {
         }
     }
 
-    // ── 🌟 [신규 추가] 후기 내용 수정 PATCH API 호출 ──
     fun modifyReview(matchId: Int, rating: Int, content: String, onComplete: () -> Unit) {
         if (content.isBlank()) return
 
