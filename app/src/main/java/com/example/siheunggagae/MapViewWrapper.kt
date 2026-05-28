@@ -510,13 +510,12 @@ class MapViewWrapper(private val mapView: MapView) {
         val priceH = pricePaint.descent() - pricePaint.ascent()
         val cardH = padV + dongH + rowGap + priceH + padV
 
-        val totalW = cardW
         val totalH = cardH + tailH
 
         // 그림자를 위한 여유 공간 (canvas는 shadow를 잘라먹지 않음 - bitmap 사이즈만 넉넉히)
         val shadowPad = shadowR + shadowDy
         val bitmap = Bitmap.createBitmap(
-            (totalW + shadowPad * 2).toInt(),
+            (cardW + shadowPad * 2).toInt(),
             (totalH + shadowPad * 2).toInt(),
             Bitmap.Config.ARGB_8888,
         )

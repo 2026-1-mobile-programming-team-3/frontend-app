@@ -271,6 +271,7 @@ fun MapScreen(
         uiState.viewportStores,
         uiState.visibleCategories,
         uiState.currentZoom,
+        uiState.selectedCategory,
         uiState.selectedStore?.resolvedId,
     ) {
         if (!mapReady) return@LaunchedEffect
@@ -301,7 +302,7 @@ fun MapScreen(
                             mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
                         }
                     })
-                    is MarkerSpec.DongBubble -> null /* implemented in Task 5 */
+                    is MarkerSpec.DongBubble -> null // computeMarkerSpecs never emits DongBubble; handled separately by the dong sync LaunchedEffect
                 }
             }
         mapWrapper.syncMarkers("store", specs)
@@ -363,7 +364,7 @@ fun MapScreen(
                         id = "volcluster_" + spec.id.removePrefix("cluster_"),
                         onTap = { mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120) },
                     )
-                    is MarkerSpec.DongBubble -> null /* implemented in Task 5 */
+                    is MarkerSpec.DongBubble -> null // computeMarkerSpecs never emits DongBubble; handled separately by the dong sync LaunchedEffect
                 }
             }
         mapWrapper.syncMarkers("vol", specs)
