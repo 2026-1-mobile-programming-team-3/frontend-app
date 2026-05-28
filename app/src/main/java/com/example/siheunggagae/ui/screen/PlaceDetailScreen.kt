@@ -85,6 +85,7 @@ import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreReview
 import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
+import com.example.siheunggagae.ui.component.ReportBottomSheet
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -133,6 +134,7 @@ fun PlaceDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isFavorited by remember { mutableStateOf(false) }
     var showReviewSheet by remember { mutableStateOf(false) }
+    var reportingUserId by remember { mutableStateOf<Int?>(null) }
     var myNickname by remember { mutableStateOf<String?>(null) }
     var myUserId by remember { mutableStateOf<Int?>(null) }
     var displayCount by remember { mutableIntStateOf(3) }
@@ -654,6 +656,7 @@ fun PlaceDetailScreen(
                                 }
                             }
                         },
+                        onReport = { uid -> reportingUserId = uid },
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.White)
@@ -707,6 +710,14 @@ fun PlaceDetailScreen(
                     showReviewSheet = false
                 }
             },
+        )
+    }
+
+    val uid = reportingUserId
+    if (uid != null) {
+        ReportBottomSheet(
+            targetUserId = uid,
+            onDismiss = { reportingUserId = null },
         )
     }
 }
@@ -1322,8 +1333,10 @@ private fun PlaceReviewCardFromApi(
     review: StoreReview,
     isMyReview: Boolean = false,
     onDelete: () -> Unit = {},
+    onReport: (userId: Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val avatarBg = avatarColors[(review.nickname?.length ?: 0) % avatarColors.size].copy(alpha = 0.15f)
     val avatarFg = avatarColors[(review.nickname?.length ?: 0) % avatarColors.size]
     var showMenu by remember { mutableStateOf(false) }
@@ -1379,20 +1392,20 @@ private fun PlaceReviewCardFromApi(
                 lineHeight = 16.sp,
                 color = Brown400PL,
             )
-            if (isMyReview) {
-                Box {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "더보기",
-                        tint = Brown400PL,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable { showMenu = true },
-                    )
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                    ) {
+            Box {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "더보기",
+                    tint = Brown400PL,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showMenu = true },
+                )
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                ) {
+                    if (isMyReview) {
                         DropdownMenuItem(
                             text = {
                                 Text(
@@ -1405,6 +1418,26 @@ private fun PlaceReviewCardFromApi(
                             onClick = {
                                 showMenu = false
                                 onDelete()
+                            },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "신고",
+                                    fontFamily = PretendardFamily,
+                                    fontSize = 14.sp,
+                                    color = Pink500PL,
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                val uid = review.userId
+                                if (uid != null) {
+                                    onReport(uid)
+                                } else {
+                                    android.widget.Toast.makeText(context, "신고할 수 없어요", android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             },
                         )
                     }

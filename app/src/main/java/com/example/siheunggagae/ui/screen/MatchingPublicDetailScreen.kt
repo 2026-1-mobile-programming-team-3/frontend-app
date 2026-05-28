@@ -23,8 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +59,10 @@ import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.data.local.CurrentUserStore
 import com.example.siheunggagae.data.model.MatchCategory
+import com.example.siheunggagae.data.model.ReportCreateRequest
+import com.example.siheunggagae.data.network.RetrofitClient
+import com.example.siheunggagae.data.repository.UserRepository
+import com.example.siheunggagae.ui.component.ReportBottomSheet
 import com.example.siheunggagae.data.model.MatchDetailResponse
 import com.example.siheunggagae.data.model.requiresVolunteerRole
 import com.example.siheunggagae.ui.theme.PretendardFamily
@@ -102,10 +109,20 @@ fun MatchingPublicDetailScreen(
 
     var showApplyDialog by remember { mutableStateOf(false) }
     var applyMessage by remember { mutableStateOf("") }
+    var showReportSheet by remember { mutableStateOf(false) }
+    var showBlockDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val isVolunteer = remember { CurrentUserStore(context).isVolunteer() }
+
+    val authorUserId = (uiState as? MatchDetailUiState.Success)?.detail?.author?.userId
+    val myUserId = (uiState as? MatchDetailUiState.Success)?.detail?.author?.userId
+        ?.let { viewModel?.currentUserId }
+    val isMyRequest = run {
+        val aid = (uiState as? MatchDetailUiState.Success)?.detail?.author?.userId
+        aid != null && aid == viewModel?.currentUserId
+    }
 
     LaunchedEffect(requestId) {
         viewModel?.fetchDetail(requestId)
@@ -122,7 +139,7 @@ fun MatchingPublicDetailScreen(
                 onNavigate(Screen.Chat.createRoute(requestId, applicationId))
             }
             currentStatus == "DONE" -> {
-                onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true))
+                onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, reviewerUserId = authorUserId ?: -1))
             }
             viewModel?.isApplied == true -> {
                 scope.launch {
@@ -140,14 +157,18 @@ fun MatchingPublicDetailScreen(
     Scaffold(
         containerColor = BackgroundP,
         snackbarHost = { SiheungSnackbarHost(hostState = snackbarHostState) },
-        topBar = { PublicDetailTopBar(onBack = onBack) },
+        topBar = {
+            PublicDetailTopBar(
+                onBack = onBack,
+                showActions = authorUserId != null && !isMyRequest,
+                onReport = { showReportSheet = true },
+                onBlock = { showBlockDialog = true },
+            )
+        },
         bottomBar = {
             if (uiState is MatchDetailUiState.Success) {
                 val state = uiState as MatchDetailUiState.Success
                 val currentStatus = state.detail.status?.trim()?.uppercase() ?: ""
-                val authorId = state.detail.author?.userId
-                val myUserId = viewModel?.currentUserId
-                val isMyRequest = authorId != null && authorId == myUserId
 
                 PublicDetailBottomBar(
                     currentStatus = currentStatus,
@@ -246,11 +267,57 @@ fun MatchingPublicDetailScreen(
                 }
             )
         }
+
+        if (showBlockDialog) {
+            AlertDialog(
+                onDismissRequest = { showBlockDialog = false },
+                title = { Text("작성자 차단", fontFamily = PretendardFamily, fontWeight = FontWeight.Bold) },
+                text = { Text("이 사용자를 차단하면 게시글이 더 이상 보이지 않아요.\n계속하시겠어요?", fontFamily = PretendardFamily) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showBlockDialog = false
+                        val uid = authorUserId ?: return@TextButton
+                        scope.launch {
+                            val result = runCatching {
+                                UserRepository().createBlock(uid)
+                            }.getOrNull()
+                            val msg = if (result?.isSuccessful == true || result?.code() == 409) {
+                                "차단했어요"
+                            } else {
+                                "차단에 실패했어요"
+                            }
+                            snackbarHostState.showSnackbar(msg)
+                        }
+                    }) { Text("차단하기", fontFamily = PretendardFamily, color = Pink500P) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBlockDialog = false }) {
+                        Text("취소", fontFamily = PretendardFamily)
+                    }
+                }
+            )
+        }
+    }
+
+    if (showReportSheet) {
+        val uid = authorUserId
+        if (uid != null) {
+            ReportBottomSheet(
+                targetUserId = uid,
+                onDismiss = { showReportSheet = false },
+            )
+        }
     }
 }
 
 @Composable
-private fun PublicDetailTopBar(onBack: () -> Unit) {
+private fun PublicDetailTopBar(
+    onBack: () -> Unit,
+    showActions: Boolean = false,
+    onReport: () -> Unit = {},
+    onBlock: () -> Unit = {},
+) {
+    var showMenu by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier.fillMaxWidth().statusBarsPadding().background(Color.White).padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
@@ -265,6 +332,26 @@ private fun PublicDetailTopBar(onBack: () -> Unit) {
             fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 32.sp, color = TextBlackP,
             modifier = Modifier.align(Alignment.Center),
         )
+        if (showActions) {
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(40.dp).shadow(2.dp, RoundedCornerShape(12.dp)).clip(RoundedCornerShape(12.dp)).background(Color.White).clickable { showMenu = true },
+                ) {
+                    Icon(imageVector = Icons.Default.MoreVert, contentDescription = "더보기", tint = TextBlackP, modifier = Modifier.size(20.dp))
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("신고하기", fontFamily = PretendardFamily, fontSize = 14.sp, color = Pink500P) },
+                        onClick = { showMenu = false; onReport() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("차단하기", fontFamily = PretendardFamily, fontSize = 14.sp, color = TextBlackP) },
+                        onClick = { showMenu = false; onBlock() },
+                    )
+                }
+            }
+        }
     }
 }
 
