@@ -275,7 +275,11 @@ fun MapScreen(
     ) {
         if (!mapReady) return@LaunchedEffect
         val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
-        val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
+        val hideHotelMarkers = uiState.selectedCategory == StoreCategory.PET_HOTEL && uiState.currentZoom <= 13
+        val filtered = uiState.viewportStores.filter {
+            it.category in uiState.visibleCategories &&
+                !(hideHotelMarkers && it.category == "PET_HOTEL")
+        }
         val byId = filtered.associateBy { it.storeId }
         val specs = computeMarkerSpecs(filtered, projector, uiState.currentZoom, uiState.selectedStore?.resolvedId)
             .mapNotNull { spec ->
@@ -301,6 +305,29 @@ fun MapScreen(
                 }
             }
         mapWrapper.syncMarkers("store", specs)
+    }
+
+    // 동 가격 버블 sync — PET_HOTEL 카테고리 + 줌아웃(<=13) 일 때만 표시.
+    LaunchedEffect(mapReady, uiState.selectedCategory, uiState.currentZoom, uiState.dongBuckets) {
+        if (!mapReady) return@LaunchedEffect
+        val show = uiState.selectedCategory == StoreCategory.PET_HOTEL && uiState.currentZoom <= 13
+        if (!show) {
+            mapWrapper.syncMarkers("dong", emptyList())
+            return@LaunchedEffect
+        }
+        val specs = uiState.dongBuckets.map { bucket ->
+            MarkerSpec.DongBubble(
+                id = "dong_${bucket.dong}",
+                lat = bucket.lat,
+                lng = bucket.lng,
+                dongName = bucket.dong,
+                count = bucket.count,
+                minKrw = bucket.minKrw,
+                maxKrw = bucket.maxKrw,
+                onTap = { mapWrapper.animateCamera(bucket.lat, bucket.lng, zoomLevel = 16) },
+            )
+        }
+        mapWrapper.syncMarkers("dong", specs)
     }
 
     // 봉사요청 마커 동기화 (같은 픽셀 거리 클러스터링 사용)
@@ -438,7 +465,7 @@ fun MapScreen(
                         uiState.viewportStores.count { it.category == "PET_HOTEL" }
                     } else 0
                     AnimatedVisibility(
-                        visible = isPetHotelOnly && petHotelCount > 0,
+                        visible = isPetHotelOnly && petHotelCount > 0 && uiState.currentZoom >= 14,
                         enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
                         exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                     ) {
