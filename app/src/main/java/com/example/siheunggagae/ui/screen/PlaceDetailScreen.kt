@@ -1093,6 +1093,29 @@ private fun LocationCardPL(
                     content = store.phone,
                 ) { CopyButtonPL { onCopyPhone() } }
             }
+            if (store.isPetAllowed != null) {
+                PlaceInfoRowPL(
+                    iconRes = R.drawable.ic_pets,
+                    label = "반려동물 동반",
+                    content = if (store.isPetAllowed) "가능" else "불가",
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50.dp))
+                            .background(if (store.isPetAllowed) GreenBgPL else Color(0xFFFFE4E6))
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = if (store.isPetAllowed) "동반 가능" else "동반 불가",
+                            fontFamily = PretendardFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 16.sp,
+                            color = if (store.isPetAllowed) Green500PL else Pink500PL,
+                        )
+                    }
+                }
+            }
             // 액션 버튼 행
             // 1/3 폭에 글자가 줄바꿈되지 않도록 2글자 라벨로 통일 + maxLines=1 + contentPadding 축소
             // 접근성을 위해 Icon contentDescription 으로 의미 보존
