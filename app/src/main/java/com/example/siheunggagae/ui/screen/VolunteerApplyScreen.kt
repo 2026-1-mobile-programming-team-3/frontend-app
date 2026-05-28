@@ -48,7 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -115,7 +115,7 @@ fun VolunteerApplyScreen(
 
     val event by remember(viewModel) {
         viewModel?.event ?: MutableStateFlow(VolunteerApplyUiEvent.Idle)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val isSubmitting = event is VolunteerApplyUiEvent.Submitting
 
@@ -225,6 +225,13 @@ fun VolunteerApplyScreen(
                         onValueChange = { titleInput = it },
                         placeholder = "예: 봉사자 자격 요청드립니다.",
                         singleLine = true,
+                    )
+                    Text(
+                        text = "본인 확인용 메모입니다 (서버에 저장되지 않아요)",
+                        fontFamily = PretendardFamily,
+                        fontSize = 11.sp,
+                        color = Brown700VA,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
                     )
                 },
             )

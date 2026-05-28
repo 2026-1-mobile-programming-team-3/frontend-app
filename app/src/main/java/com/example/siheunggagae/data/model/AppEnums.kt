@@ -20,15 +20,16 @@ enum class ApplicationAction { ACCEPT, REJECT }
 
 /**
  * 매장/장소 카테고리.
- * apiValue == null 인 항목은 백엔드 미지원 (UI 필터 전용).
+ * apiValue == null 은 ALL(전체) 만 — 백엔드 필터 미사용을 의미.
  */
 enum class StoreCategory(val label: String, val apiValue: String?) {
     ALL("전체", null),
     CAFE("카페", "CAFE"),
     RESTAURANT("식당", "RESTAURANT"),
     PARK("공원", "PARK"),
-    HOSPITAL("동물병원", null),
-    GROOMING("미용", null),
+    HOSPITAL("동물병원", "HOSPITAL"),
+    GROOMING("미용", "GROOMING"),
+    PET_HOTEL("펫호텔", "PET_HOTEL"),
 }
 
 /** 봉사자 뱃지 등급 (API: VolunteerBadgeTier) — PDF 기준 달성 조건 */

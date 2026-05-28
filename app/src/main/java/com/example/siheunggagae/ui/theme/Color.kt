@@ -44,3 +44,26 @@ val MapDeep  = Color(0xFF80DEEA)
 // ── Basic ─────────────────────────────────────────────────────────────────────
 val White = Color(0xFFFFFFFF)
 val Black = Color(0xFF000000)
+
+// ── CLAUDE.md 단일 진실 토큰 (디자인 시스템 정합) ─────────────────────────────
+// 화면 인라인으로 흩어져 있던 raw hex를 토큰으로 추출해서 공통화.
+// 기존 Brown40/Pink40/Orange40 등은 호환을 위해 유지, 신규 코드는 아래 토큰 사용.
+val TextBlack        = Color(0xFF1E120A) // 본문 기본 검정
+val Brown700         = Color(0xFF8A6E58) // 서브텍스트(커피색)
+val Brown900         = Color(0xFF614B3A) // 버튼·강조(진한 커피색)
+val Background       = Color(0xFFFEFEFE) // 배경
+val OrangeSand       = Color(0xFFFFEDD4) // 강아지 아이콘 bg
+val Orange500        = Color(0xFFF7A35B) // 황토색 Accent
+val OrangeRed        = Color(0xFFEE6A46) // 산책지수 3단계
+val MintLight        = Color(0xFFD0FEE1) // 지도 bg
+val Green600         = Color(0xFF00A63E) // 산책지수 1단계, 봉사자 신청
+val PinkSurface      = Color(0xFFFEE7EC) // 카드 bg(연분홍)
+val Pink500          = Color(0xFFF04268) // 강조·태그(진분홍)
+val Blue500          = Color(0xFF388AF5) // 산책지수 2단계
+val Gray300          = Color(0xFFE8E8E8) // 구분선·미선택 하트
+val StarYellow       = Color(0xFFFDC700) // 별점
+val BorderBeige      = Color(0xFFE8D3C2) // 흰버튼 테두리, 날짜/시간 채우기
+val TagGray          = Color(0xFFF2F2F2) // 매칭 카드 태그 bg
+val FABBrown         = Color(0xFF9A7B5E) // 매칭 + FAB 전용
+val AddGray          = Color(0xFFF4F4F4) // 반려동물 추가 버튼 bg
+val PlaceholderColor = Color(0xFFC1AEA0) // 입력창 placeholder

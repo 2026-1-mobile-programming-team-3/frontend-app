@@ -1,6 +1,7 @@
 ﻿package com.example.siheunggagae.ui.screen
 
 import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.component.SheetHandle
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,6 +70,7 @@ fun MapFilterBottomSheet(
             MapFilterEntry("공원",     iconRes = R.drawable.ic_forest,       isSelected = "PARK"       in initialCategories),
             MapFilterEntry("동물병원", iconRes = R.drawable.ic_health_cross, isSelected = "HOSPITAL"   in initialCategories),
             MapFilterEntry("미용",     iconRes = R.drawable.ic_content_cut,  isSelected = "GROOMING"   in initialCategories),
+            MapFilterEntry("펫호텔",   iconRes = R.drawable.ic_hotel,        isSelected = "PET_HOTEL"  in initialCategories),
         )
     }
 
@@ -77,7 +79,7 @@ fun MapFilterBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         containerColor = Color.White,
-        dragHandle = null,
+        dragHandle = { SheetHandle() },
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
 

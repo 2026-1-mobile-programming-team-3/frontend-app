@@ -5,6 +5,7 @@ import android.location.Location
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.siheunggagae.data.local.SiheungRegions
 import com.example.siheunggagae.data.location.LocationProvider
 import com.example.siheunggagae.data.model.FavoriteStoreCreateRequest
 import com.example.siheunggagae.data.model.NewsItem
@@ -16,6 +17,7 @@ import com.example.siheunggagae.data.network.api.AuthApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -33,12 +35,14 @@ data class HomeUiState(
     val airQuality: String = "",
     val pendingMatchCount: Int = 0,
     val nearestDDay: Int? = null,
+    val volunteerMatchCount: Int = 0,
     val nearbyStoreCount: Int = 0,
     val allStores: List<StoreResponse> = emptyList(),
     val displayedStores: List<StoreResponse> = emptyList(),
     val news: List<NewsItem> = emptyList(),
     val selectedCategory: StoreCategory = StoreCategory.ALL,
     val location: Location? = null,
+    val isLocationInSiheung: Boolean = false,
     val mapCenter: Pair<Double, Double>? = null,
 )
 
@@ -50,38 +54,20 @@ class HomeViewModel(
 
     companion object {
         private const val KEY_MANUAL_DONG = "manual_dong"
-
-        val dongCoordinates: Map<String, Pair<Double, Double>> = mapOf(
-            "대야동"  to (37.3880 to 126.8030),
-            "신천동"  to (37.3730 to 126.7975),
-            "신현동"  to (37.3810 to 126.8110),
-            "은행동"  to (37.3740 to 126.8130),
-            "매화동"  to (37.3615 to 126.8025),
-            "도창동"  to (37.3555 to 126.7800),
-            "목감동"  to (37.3485 to 126.7890),
-            "조남동"  to (37.3335 to 126.7935),
-            "포동"    to (37.3665 to 126.7615),
-            "군자동"  to (37.3790 to 126.7615),
-            "정왕동"  to (37.3400 to 126.7435),
-            "능곡동"  to (37.4005 to 126.7940),
-            "월곶동"  to (37.4130 to 126.7835),
-            "배곧동"  to (37.3600 to 126.7215),
-            "장현동"  to (37.3940 to 126.8200),
-            "장곡동"  to (37.3765 to 126.8200),
-            "연성동"  to (37.3655 to 126.8200),
-            "과림동"  to (37.3430 to 126.7645),
-        )
     }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private var loadJob: Job? = null
 
     init {
         loadDashboard()
     }
 
     fun loadDashboard() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
             val location = locationProvider.getLocationOrNull()
@@ -95,12 +81,13 @@ class HomeViewModel(
                     api.reverseGeocode(location.latitude, location.longitude).body()
                 }.getOrNull()?.takeIf { it.isInSiheung }?.label
             } else null
+            _uiState.update { it.copy(isLocationInSiheung = gpsDong != null) }
 
             // 우선순위: 수동 선택(로컬 저장) > GPS > 서버 저장값 > 기본값
             val manualDong = prefs.getString(KEY_MANUAL_DONG, null)
 
             // 수동 선택 동이 있으면 그 동의 중심 좌표, 없으면 GPS 좌표 사용
-            val mapCenter = dongCoordinates[manualDong]
+            val mapCenter = SiheungRegions.coordinatesForDong(manualDong)
 
             // dashboard 없이 GPS/수동만 성공한 경우에도 동 반영
             if (dashboard == null) {
@@ -129,6 +116,8 @@ class HomeViewModel(
                     else -> dashboard.weather?.dustGrade ?: ""
                 }
                 val authorEntry = dashboard.myMatchSummary?.asAuthor
+                val applicantEntry = dashboard.myMatchSummary?.asApplicant
+
                 val dDay = authorEntry?.desiredDate?.let { dateStr ->
                     runCatching {
                         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -149,13 +138,14 @@ class HomeViewModel(
                         airQuality = dustStr,
                         pendingMatchCount = authorEntry?.applicationsCount ?: 0,
                         nearestDDay = dDay,
+                        volunteerMatchCount = if (applicantEntry != null) 1 else 0,
                         nearbyStoreCount = dashboard.nearbyStoreCount ?: 0,
                     )
                 }
             }
 
-            val lat = location?.latitude ?: 37.3795
-            val lng = location?.longitude ?: 126.8025
+            // GPS가 시흥 안일 때만 GPS 사용, 아니면 regionDong 좌표로 폴백
+            val (lat, lng) = resolveStoresAnchor(location, gpsDong)
             val stores = runCatching {
                 api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
             }.getOrDefault(emptyList())
@@ -173,23 +163,28 @@ class HomeViewModel(
     fun selectCategory(category: StoreCategory) {
         _uiState.update { it.copy(selectedCategory = category) }
         viewModelScope.launch {
-            if (category == StoreCategory.ALL || category.apiValue == null) {
-                if (_uiState.value.allStores.isNotEmpty()) {
-                    _uiState.update { it.copy(displayedStores = _uiState.value.allStores) }
+            // allStores 캐시가 비어있으면 위치 기반 nearby 한 번 받아온다.
+            // getFilteredStores 는 lat/lng 를 받지 않아 위치 무시 결과를 주므로 사용하지 않는다.
+            if (_uiState.value.allStores.isEmpty()) {
+                val loc = _uiState.value.location
+                val (lat, lng) = if (loc != null && _uiState.value.isLocationInSiheung) {
+                    loc.latitude to loc.longitude
                 } else {
-                    val lat = _uiState.value.location?.latitude ?: 37.3795
-                    val lng = _uiState.value.location?.longitude ?: 126.8025
-                    val stores = runCatching {
-                        api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
-                    }.getOrDefault(emptyList())
-                    _uiState.update { it.copy(allStores = stores, displayedStores = stores) }
+                    SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
+                        ?: SiheungRegions.CITY_HALL
                 }
-                return@launch
+                val stores = runCatching {
+                    api.getNearbyStores(lat, lng).body()?.stores ?: emptyList()
+                }.getOrDefault(emptyList())
+                _uiState.update { it.copy(allStores = stores) }
             }
-            val stores = runCatching {
-                api.getFilteredStores(category = category.apiValue).body()?.stores ?: emptyList()
-            }.getOrDefault(emptyList())
-            _uiState.update { it.copy(displayedStores = stores) }
+            val all = _uiState.value.allStores
+            val filtered = if (category == StoreCategory.ALL || category.apiValue == null) {
+                all
+            } else {
+                all.filter { it.category == category.apiValue }
+            }
+            _uiState.update { it.copy(displayedStores = filtered) }
         }
     }
 
@@ -210,6 +205,23 @@ class HomeViewModel(
                 )
             }
         }
+    }
+
+    /**
+     * 매장 조회 기준 좌표 결정.
+     * - GPS가 시흥 안(`gpsDong != null`)이면 GPS 좌표 사용
+     * - 아니면 현재 regionDong(이미 manualDong → gpsDong → serverDong → 기본값 폴백됨) 좌표
+     * - 알 수 없는 동이면 시청(CITY_HALL) 좌표
+     */
+    private fun resolveStoresAnchor(
+        location: Location?,
+        gpsDong: String?,
+    ): Pair<Double, Double> {
+        if (location != null && gpsDong != null) {
+            return location.latitude to location.longitude
+        }
+        return SiheungRegions.coordinatesForDong(_uiState.value.regionDong)
+            ?: SiheungRegions.CITY_HALL
     }
 
     fun resetToCurrentLocation() {

@@ -51,7 +51,17 @@ data class StoreDetailResponse(
     val isFavorited: Boolean? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-)
+    @SerializedName(value = "is_owner", alternate = ["isOwner"])
+    val isOwner: Boolean = false,
+    @SerializedName(value = "owner_user_id", alternate = ["ownerUserId"])
+    val ownerUserId: Int? = null,
+    @SerializedName("category")
+    val category: String? = null,
+    @SerializedName("plans")
+    private val _plans: List<PetHotelPlan>? = null,
+) {
+    val plans: List<PetHotelPlan> get() = _plans ?: emptyList()
+}
 
 data class StoreReview(
     @SerializedName(value = "review_id", alternate = ["reviewId", "id"])
@@ -103,13 +113,17 @@ data class StoreSearchResponse(
 // ── Viewport 매장 (bbox 기반) ──────────────────────────────────────────────────
 
 data class StoreViewportItem(
+    @SerializedName(value = "store_id", alternate = ["storeId", "id"])
     val storeId: Int = 0,
     val name: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val category: String = "",
+    @SerializedName(value = "is_pet_allowed", alternate = ["isPetAllowed"])
     val isPetAllowed: Boolean = false,
+    @SerializedName(value = "rating_avg", alternate = ["ratingAvg"])
     val ratingAvg: Double? = null,
+    @SerializedName(value = "rating_count", alternate = ["ratingCount"])
     val ratingCount: Int = 0,
 ) {
     val resolvedId: Int get() = storeId

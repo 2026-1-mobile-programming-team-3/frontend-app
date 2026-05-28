@@ -6,9 +6,15 @@ import com.example.siheunggagae.ui.viewmodel.NotiTab
 import com.example.siheunggagae.ui.viewmodel.NotificationState
 import com.example.siheunggagae.ui.viewmodel.NotificationViewModel
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,14 +34,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -44,15 +58,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.PriorityHigh
+import com.example.siheunggagae.R
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -72,6 +87,7 @@ private val Green500N    = Color(0xFF00A63E)
 private val PinkSurfaceN = Color(0xFFFEE7EC)
 private val Background95 = Color(0xFFFEFEFE)
 private val TextBlack    = Color(0xFF1E120A)
+private val SelectBgN    = Color(0xFFF5EDE8)  // 선택된 항목 배경
 
 private val NotificationCategory.iconColor
     get() = when (this) {
@@ -83,34 +99,67 @@ private val NotificationCategory.iconColor
         NotificationCategory.SYSTEM   -> Green500N
     }
 
-private fun formatRelativeTime(createdAt: String): String {
-    val formats = listOf(
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).also { it.timeZone = TimeZone.getTimeZone("UTC") },
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).also { it.timeZone = TimeZone.getTimeZone("UTC") },
+// Composable에서 main thread로만 호출되므로 SimpleDateFormat을 톱레벨에 캐싱해도 안전.
+private val Iso8601Parsers: List<SimpleDateFormat> by lazy {
+    val utc = TimeZone.getTimeZone("UTC")
+    listOf(
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply { timeZone = utc },
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = utc },
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
     )
-    val date = formats.firstNotNullOfOrNull { runCatching { it.parse(createdAt) }.getOrNull() }
+}
+
+private fun formatRelativeTime(createdAt: String): String {
+    val date = Iso8601Parsers.firstNotNullOfOrNull { runCatching { it.parse(createdAt) }.getOrNull() }
         ?: return createdAt
     val diffMin = (System.currentTimeMillis() - date.time) / 60_000
     return when {
         diffMin < 1    -> "방금 전"
         diffMin < 60   -> "${diffMin}분 전"
         diffMin < 1440 -> "${diffMin / 60}시간 전"
-        diffMin < 43200 -> "${diffMin / 1440}일 전"
-        else           -> "${diffMin / 43200}개월 전"
+        diffMin < 10080 -> "${diffMin / 1440}일 전" // 7일 미만은 상대 시간
+        else -> {
+            // 7일 이상은 절대 날짜로 표시 (M월 d일 또는 yyyy년 M월 d일)
+            val cal = java.util.Calendar.getInstance().apply { time = date }
+            val nowCal = java.util.Calendar.getInstance()
+            val month = cal.get(java.util.Calendar.MONTH) + 1
+            val day = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            if (cal.get(java.util.Calendar.YEAR) == nowCal.get(java.util.Calendar.YEAR)) {
+                "${month}월 ${day}일"
+            } else {
+                "${cal.get(java.util.Calendar.YEAR)}년 ${month}월 ${day}일"
+            }
+        }
     }
 }
 
 // ─── 화면 ──────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun NotificationScreen(
     viewModel: NotificationViewModel? = null,
     onBack: () -> Unit = {},
+    onItemClick: (NotificationItem) -> Unit = {},
 ) {
     val state by remember(viewModel) {
         viewModel?.state ?: MutableStateFlow(NotificationState())
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val haptic = LocalHapticFeedback.current
+
+    // 삭제 완료 snackbar
+    LaunchedEffect(state.deletedCount) {
+        val count = state.deletedCount ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar("${count}개의 알림이 삭제되었습니다!")
+        viewModel?.clearDeletedMessage()
+    }
+
+    // 하드웨어 뒤로가기 → 선택 모드 해제
+    BackHandler(enabled = state.isSelectMode) {
+        viewModel?.exitSelectMode()
+    }
 
     val displayItems = remember(state.items, state.selectedTab) {
         when (state.selectedTab) {
@@ -119,10 +168,6 @@ fun NotificationScreen(
                 it.category == NotificationCategory.VOLUNTEER ||
                 it.category == NotificationCategory.MATCH ||
                 it.category == NotificationCategory.REVIEW
-            }
-            NotiTab.NEWS     -> state.items.filter {
-                it.category == NotificationCategory.NEWS ||
-                it.category == NotificationCategory.POLICY
             }
             NotiTab.SYSTEM   -> state.items.filter { it.category == NotificationCategory.SYSTEM }
         }
@@ -142,54 +187,83 @@ fun NotificationScreen(
 
     Scaffold(
         containerColor = Background95,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             NotificationTopBar(
-                onBack = onBack,
+                isSelectMode = state.isSelectMode,
+                selectedCount = state.selectedIds.size,
+                onBack = {
+                    if (state.isSelectMode) viewModel?.exitSelectMode() else onBack()
+                },
                 onMarkAllRead = { viewModel?.markAllRead() },
+                onDelete = { viewModel?.deleteSelected() },
             )
         },
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            NotiTabRow(
-                selected = state.selectedTab,
-                onSelect = { viewModel?.selectTab(it) },
-            )
-            when {
-                state.isLoading -> Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = Orange500N)
-                }
-                state.error != null && state.items.isEmpty() -> NotiErrorState(
-                    message = state.error ?: "오류가 발생했습니다",
-                    onRetry = { viewModel?.refresh() },
+            AnimatedVisibility(visible = !state.isSelectMode, enter = fadeIn(), exit = fadeOut()) {
+                NotiTabRow(
+                    selected = state.selectedTab,
+                    onSelect = { viewModel?.selectTab(it) },
                 )
-                displayItems.isEmpty() -> EmptyNotification()
-                else -> {
-                    LazyColumn(
-                        state = listState,
+            }
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = { viewModel?.refresh() },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    state.isLoading -> Box(
                         modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        items(displayItems, key = { it.id }) { item ->
-                            NotificationItemRow(
-                                item = item,
-                                onClick = { if (!item.isRead) viewModel?.markRead(item.id) },
-                            )
-                        }
-                        if (state.isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = Orange500N,
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp,
-                                    )
+                        CircularProgressIndicator(color = Orange500N)
+                    }
+                    state.error != null && state.items.isEmpty() -> NotiErrorState(
+                        message = state.error ?: "오류가 발생했습니다",
+                        onRetry = { viewModel?.refresh() },
+                    )
+                    displayItems.isEmpty() -> EmptyNotification()
+                    else -> {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(displayItems, key = { it.id }) { item ->
+                                NotificationItemRow(
+                                    item = item,
+                                    isSelectMode = state.isSelectMode,
+                                    isSelected = item.id in state.selectedIds,
+                                    onClick = {
+                                        if (state.isSelectMode) {
+                                            viewModel?.toggleSelect(item.id)
+                                        } else {
+                                            if (!item.isRead) viewModel?.markRead(item.id)
+                                            onItemClick(item)
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!state.isSelectMode) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            viewModel?.enterSelectMode(item.id)
+                                        }
+                                    },
+                                )
+                            }
+                            if (state.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = Orange500N,
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -203,7 +277,13 @@ fun NotificationScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NotificationTopBar(onBack: () -> Unit, onMarkAllRead: () -> Unit) {
+private fun NotificationTopBar(
+    isSelectMode: Boolean,
+    selectedCount: Int,
+    onBack: () -> Unit,
+    onMarkAllRead: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -223,13 +303,14 @@ private fun NotificationTopBar(onBack: () -> Unit, onMarkAllRead: () -> Unit) {
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = "뒤로",
+                contentDescription = if (isSelectMode) "선택 취소" else "뒤로",
                 tint = TextBlack,
                 modifier = Modifier.size(22.dp),
             )
         }
+
         Text(
-            text = "알림",
+            text = if (isSelectMode) "${selectedCount}개 선택됨" else "알림",
             fontFamily = PretendardFamily,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -237,18 +318,34 @@ private fun NotificationTopBar(onBack: () -> Unit, onMarkAllRead: () -> Unit) {
             color = TextBlack,
             modifier = Modifier.align(Alignment.Center),
         )
-        Text(
-            text = "모두 읽음",
-            fontFamily = PretendardFamily,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            lineHeight = 20.sp,
-            color = Brown700N,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .clickable { onMarkAllRead() }
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-        )
+
+        if (isSelectMode) {
+            Text(
+                text = "삭제",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 20.sp,
+                color = if (selectedCount > 0) Pink500N else Brown400N,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .clickable(enabled = selectedCount > 0) { onDelete() }
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        } else {
+            Text(
+                text = "모두 읽음",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 20.sp,
+                color = Brown700N,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .clickable { onMarkAllRead() }
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+            )
+        }
     }
 }
 
@@ -269,7 +366,7 @@ private fun NotiTabRow(selected: NotiTab, onSelect: (NotiTab) -> Unit) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(if (isSel) Color(0xFF1A1A1A) else Color.White)
+                    .background(if (isSel) Brown900N else Color.White)
                     .then(
                         if (!isSel) Modifier.border(1.dp, BrownBorderN, RoundedCornerShape(50.dp))
                         else Modifier
@@ -292,33 +389,49 @@ private fun NotiTabRow(selected: NotiTab, onSelect: (NotiTab) -> Unit) {
 
 // ─── 알림 아이템 ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun NotificationItemRow(item: NotificationItem, onClick: () -> Unit) {
-    if (!item.isRead) {
+private fun NotificationItemRow(
+    item: NotificationItem,
+    isSelectMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val bg = when {
+        isSelected           -> SelectBgN
+        !item.isRead         -> PinkSurfaceN
+        else                 -> Color.White
+    }
+    val isRounded = isSelected || !item.isRead
+
+    if (isRounded) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(PinkSurfaceN)
-                .clickable { onClick() }
+                .background(bg)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .padding(horizontal = 16.dp, vertical = 14.dp),
         ) {
-            NotificationItemContent(item = item)
+            NotificationItemContent(item = item, isSelectMode = isSelectMode, isSelected = isSelected)
         }
     } else {
-        Column {
+        Column(
+            modifier = Modifier
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
-                    .clickable { onClick() }
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .background(bg)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
             ) {
-                NotificationItemContent(item = item)
+                NotificationItemContent(item = item, isSelectMode = isSelectMode, isSelected = isSelected)
             }
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 color = Color(0xFFF3F4F6),
             )
         }
@@ -326,7 +439,11 @@ private fun NotificationItemRow(item: NotificationItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NotificationItemContent(item: NotificationItem) {
+private fun NotificationItemContent(
+    item: NotificationItem,
+    isSelectMode: Boolean,
+    isSelected: Boolean,
+) {
     val relativeTime = remember(item.createdAt) { formatRelativeTime(item.createdAt) }
     val timeColor = if (relativeTime == "방금 전") Pink500N else Brown400N
 
@@ -334,6 +451,32 @@ private fun NotificationItemContent(item: NotificationItem) {
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        // 선택 모드: 체크박스 표시
+        if (isSelectMode) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(24.dp)
+                    .align(Alignment.CenterVertically)
+                    .clip(CircleShape)
+                    .background(if (isSelected) Brown900N else Color.White)
+                    .border(
+                        width = 1.5.dp,
+                        color = if (isSelected) Brown900N else Color(0xFFD1D5DB),
+                        shape = CircleShape,
+                    ),
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+        }
+
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -355,15 +498,31 @@ private fun NotificationItemContent(item: NotificationItem) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Text(
-                    text = item.title,
-                    fontFamily = PretendardFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (!item.isRead) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Pink500N),
+                        )
+                    }
+                    Text(
+                        text = item.title,
+                        fontFamily = PretendardFamily,
+                        fontSize = 16.sp,
+                        fontWeight = if (!item.isRead) FontWeight.ExtraBold else FontWeight.Medium,
+                        lineHeight = 24.sp,
+                        color = TextBlack,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = relativeTime,
@@ -392,24 +551,13 @@ private fun NotificationItemContent(item: NotificationItem) {
 
 @Composable
 private fun EmptyNotification() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.PriorityHigh,
-                contentDescription = null,
-                tint = Color(0xFFD1D5DB),
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "알림이 없습니다",
-                fontFamily = PretendardFamily,
-                fontSize = 15.sp,
-                lineHeight = 20.sp,
-                color = Brown700N,
-            )
-        }
-    }
+    EmptyStateView(
+        title = "아직 알림이 없어요",
+        subtitle = "새로운 활동이 있으면 여기에 표시됩니다",
+        iconRes = R.drawable.ic_notifications,
+        iconTint = Color(0xFF8A6E58),
+        iconBackground = Color(0xFFE8D3C2),
+    )
 }
 
 @Composable

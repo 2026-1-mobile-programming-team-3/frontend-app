@@ -1,36 +1,57 @@
 package com.example.siheunggagae.ui.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.example.siheunggagae.SiheungGagaeApp
 import com.example.siheunggagae.data.repository.AuthRepository
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 재호-1 앱 시작 스플래시
  *
- * 최소 1.5초 로고를 표시하면서 동시에 토큰 상태를 확인한다.
- *  - 토큰 없음              → onStartScreen (시작 화면)
- *  - 토큰 있고 유효함        → onHome
- *  - 토큰 만료 → 갱신 성공  → onHome
- *  - 토큰 만료 → 갱신 실패  → onStartScreen
+ * 최소 800ms 로고를 표시하면서 동시에 서버에 토큰 유효성을 확인한다.
+ *  - 토큰 없음                         → onStartScreen
+ *  - 토큰 있고 서버 검증 성공          → onHome
+ *  - 토큰 있고 서버 검증 401           → TokenAuthenticator 가 refresh 자동 시도,
+ *                                        성공 시 onHome, 실패 시 onStartScreen
+ *  - 네트워크 오류로 3초 내 응답 없음  → onStartScreen (재로그인 유도)
+ *
+ * 기존에는 클라이언트 측 만료 여부만 보고 onHome 으로 보냈는데, 서버에서 강제 로그아웃된
+ * 케이스에서는 곧장 401 → sessionExpired → Login 으로 한 번 더 튕겨, 그 사이 Home 이
+ * 0.5~1초 정도 깜빡 보이고 사라지는 현상이 있었다. /users/me 한 번으로 서버 측 실제
+ * 세션 상태를 미리 검증해 onHome 호출 자체를 미루는 식으로 깜빡임을 제거한다.
  */
 @Composable
 fun AutoSplashScreen(
@@ -40,59 +61,75 @@ fun AutoSplashScreen(
     val context = LocalContext.current
     val app = context.applicationContext as SiheungGagaeApp
 
+    // 스플래시 중 시스템 back으로 앱이 즉시 종료되는 것을 막는다.
+    BackHandler(enabled = true) { /* no-op */ }
+
     LaunchedEffect(Unit) {
         val authRepository = AuthRepository(app.tokenManager, app.fcmTokenManager)
 
-        // 토큰 확인과 1.5초 최소 표시 시간을 병렬로 실행
+        // 토큰 확인과 800ms 최소 표시 시간을 병렬로 실행
         val goHomeDeferred = async {
-            val tokenManager = app.tokenManager
-            when {
-                tokenManager.accessToken == null          -> false   // 재호-1.4: 토큰 없음
-                !tokenManager.isAccessTokenExpired()      -> true    // 재호-1.2: 유효한 토큰
-                else                                      -> authRepository.refresh()  // 재호-1.3: 만료 → 갱신
-            }
+            withTimeoutOrNull(3_000L) { authRepository.ensureSession() } ?: false
         }
 
-        delay(1_500L)                       // 최소 표시 시간
+        delay(800L)                         // 최소 표시 시간
         if (goHomeDeferred.await()) onHome() else onStartScreen()
     }
 
     SplashLogo()
 }
 
+private val OrangeSandSplash  = Color(0xFFFFEDD4)
+private val BackgroundSplash  = Color(0xFFFEFEFE)
+private val Brown700Splash    = Color(0xFF8A6E58)
+private val Orange500Splash   = Color(0xFFF7A35B)
+private val PinkSurfaceSplash = Color(0xFFFEE7EC)
+
 @Composable
 private fun SplashLogo() {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(
+                Brush.verticalGradient(
+                    listOf(OrangeSandSplash, BackgroundSplash),
+                )
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+        AnimatedVisibility(
+            visibleState = visible,
+            enter = fadeIn() + scaleIn(initialScale = 0.7f),
         ) {
-            Text(
-                text = "🐾",
-                fontSize = 64.sp,
-            )
-            Text(
-                text = "시흥가개",
-                fontFamily = PretendardFamily,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 48.sp,
-                color = Color(0xFF8A6E58),
-            )
-            Text(
-                text = "우리 동네 반려동물을 위한 따뜻한 발걸음",
-                fontFamily = PretendardFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Color(0xFFC4A882),
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data("file:///android_asset/logo.svg")
+                        .build(),
+                    contentDescription = "시흥가개 로고",
+                    modifier = Modifier.size(140.dp),
+                )
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "시흥의 모든 댕댕이를 위해 🐾",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Brown700Splash,
+                )
+            }
         }
+        LinearProgressIndicator(
+            color = Orange500Splash,
+            trackColor = PinkSurfaceSplash,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp)
+                .width(120.dp),
+        )
     }
 }
 

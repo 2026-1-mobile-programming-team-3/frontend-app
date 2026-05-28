@@ -22,6 +22,8 @@ class FavoriteStoresViewModel(private val repository: UserRepository) : ViewMode
 
     init { fetchStores() }
 
+    fun refresh() = fetchStores()
+
     fun fetchStores() {
         viewModelScope.launch {
             _uiState.value = FavoriteStoresUiState.Loading
@@ -53,6 +55,18 @@ class FavoriteStoresViewModel(private val repository: UserRepository) : ViewMode
                 }
             } catch (e: Exception) {
                 revert(removed)
+            }
+        }
+    }
+
+    fun addFavorite(storeId: Int) {
+        viewModelScope.launch {
+            try {
+                repository.addFavoriteStore(storeId)
+                // 성공 시 목록 갱신
+                fetchStores()
+            } catch (e: Exception) {
+                // 실패 시 조용히 무시 (Undo 실패)
             }
         }
     }

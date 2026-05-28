@@ -29,8 +29,9 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
             _uiState.value = PetListUiState.Loading
             try {
                 val resp = repository.getMe()
-                _uiState.value = if (resp.isSuccessful && resp.body() != null) {
-                    PetListUiState.Success(resp.body()!!.pets)
+                val body = resp.body()
+                _uiState.value = if (resp.isSuccessful && body != null) {
+                    PetListUiState.Success(body.pets)
                 } else {
                     PetListUiState.Error("반려동물 정보를 불러오지 못했습니다")
                 }
@@ -40,16 +41,30 @@ class PetListViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    fun silentRefresh() {
+        if (_uiState.value is PetListUiState.Loading) return
+        viewModelScope.launch {
+            try {
+                val resp = repository.getMe()
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    _uiState.value = PetListUiState.Success(body.pets)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     fun deletePet(petId: Int) {
         viewModelScope.launch {
             try {
                 val resp = repository.deletePet(petId)
                 if (resp.isSuccessful) {
-                    fetchPets()
+                    val current = _uiState.value
+                    if (current is PetListUiState.Success) {
+                        _uiState.value = current.copy(pets = current.pets.filter { it.id != petId })
+                    }
                 }
-            } catch (e: Exception) {
-                // 삭제 실패 시 현재 상태 유지
-            }
+            } catch (_: Exception) { }
         }
     }
 

@@ -84,10 +84,14 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.play.services.location)
+    implementation("io.coil-kt.coil3:coil-compose:3.1.0")
+    implementation("io.coil-kt.coil3:coil-svg:3.1.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.1.0")
 
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.gson)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

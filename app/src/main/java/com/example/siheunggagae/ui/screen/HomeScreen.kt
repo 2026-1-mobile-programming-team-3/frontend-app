@@ -5,6 +5,8 @@ import com.example.siheunggagae.MapViewWrapper
 import com.example.siheunggagae.R
 import com.example.siheunggagae.Screen
 import com.example.siheunggagae.SiheungGagaeApp
+import com.example.siheunggagae.ui.component.AppAsyncImage
+import com.example.siheunggagae.ui.component.CountUpText
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,6 +14,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,19 +38,23 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +66,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
@@ -69,8 +80,26 @@ import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreResponse
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.viewmodel.HomeViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.siheunggagae.ui.util.CategoryVisual
 
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +112,7 @@ private val Green500H     = Color(0xFF00A63E)
 private val Blue400H      = Color(0xFF388AF5)
 private val Orange600H    = Color(0xFFEE6A46)
 private val PinkSurfaceH  = Color(0xFFFEE7EC)
+private val MintSurfaceH  = Color(0xFFD0FEE1)
 private val BackgroundH   = Color(0xFFFEFEFE)
 private val GrayTextH     = Color(0xFF6B7280)
 private val TextBlackH    = Color(0xFF1E120A)
@@ -106,6 +136,7 @@ private val siheungDongs = listOf(
 
 // ─── 메인 화면 ────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun HomeScreen(
     unreadCount: Int = 0,
@@ -113,6 +144,8 @@ fun HomeScreen(
     onNavigate: (String) -> Unit = {},
     onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onNewsDetailClick: (String) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val context = LocalContext.current
     val viewModel: HomeViewModel = viewModel(
@@ -122,7 +155,14 @@ fun HomeScreen(
             prefs = context.getSharedPreferences("home_prefs", android.content.Context.MODE_PRIVATE),
         )
     )
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    val siheungPrefs = remember { context.getSharedPreferences("siheung_gagae_prefs", android.content.Context.MODE_PRIVATE) }
+    LaunchedEffect(uiState.nickname) {
+        if (uiState.nickname.isNotEmpty()) {
+            siheungPrefs.edit().putString("nickname", uiState.nickname).apply()
+        }
+    }
 
     var showDongModal by remember { mutableStateOf(false) }
 
@@ -167,13 +207,16 @@ fun HomeScreen(
     }
 
     Scaffold(
-        containerColor = BackgroundH,
-        bottomBar = { AppBottomBar(currentRoute = Screen.Home.route, onNavigate = onNavigate) },
+        containerColor = Color.White,
     ) { innerPadding ->
+        // Apple Large Title collapse — scroll 진행에 따라 "시흥가개" 26sp → 18sp 점진 축소.
+        val scrollState = rememberScrollState()
+        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val collapseProgress by remember { derivedStateOf { (scrollState.value / 200f).coerceIn(0f, 1f) } }
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
         ) {
             HomeTopBar(
                 nickname = uiState.nickname.ifEmpty { "사용자" },
@@ -181,6 +224,7 @@ fun HomeScreen(
                 unreadCount = unreadCount,
                 onNotificationClick = onNotificationClick,
                 onDongClick = { showDongModal = true },
+                collapseProgress = collapseProgress,
             )
             Spacer(Modifier.height(8.dp))
             WalkIndexSection(
@@ -190,7 +234,9 @@ fun HomeScreen(
                 airQuality = uiState.airQuality,
                 pendingMatchCount = uiState.pendingMatchCount,
                 nearestDDay = uiState.nearestDDay,
+                volunteerMatchCount = uiState.volunteerMatchCount,
                 onBannerClick = { onNavigate(Screen.MyRequests.route) },
+                onVolunteerBannerClick = { onNavigate("volunteer_history") }
             )
             Spacer(Modifier.height(8.dp))
             NearbyStoresSection(
@@ -203,6 +249,8 @@ fun HomeScreen(
                 onMapClick = { onNavigate(Screen.Map.route) },
                 onPlaceDetailClick = onPlaceDetailClick,
                 onFavoriteClick = { store -> viewModel.toggleFavorite(store) },
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
             Spacer(Modifier.height(8.dp))
             PetNewsSection(
@@ -211,7 +259,7 @@ fun HomeScreen(
                 onNewsClick = onNewsDetailClick,
                 onVolunteerApplyClick = { onNavigate(Screen.VolunteerApply.route) },
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(96.dp + navBottom))
         }
     }
 
@@ -241,7 +289,12 @@ fun HomeTopBar(
     unreadCount: Int = 0,
     onNotificationClick: () -> Unit = {},
     onDongClick: () -> Unit = {},
+    collapseProgress: Float = 0f,
 ) {
+    // 26sp(0f) → 18sp(1f) 보간. lineHeight 도 같이 줄임.
+    val titleSize = (26f - 8f * collapseProgress).sp
+    val titleLineHeight = (32f - 8f * collapseProgress).sp
+    val greetingAlpha = (1f - collapseProgress * 1.4f).coerceIn(0f, 1f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -251,23 +304,26 @@ fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column {
-            Text(
-                text = "안녕하세요, ${nickname}님",
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                color = Brown700H,
-            )
+            if (greetingAlpha > 0f) {
+                Text(
+                    text = "안녕하세요, ${nickname}님",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 20.sp,
+                    color = Brown700H,
+                    modifier = Modifier.alpha(greetingAlpha),
+                )
+            }
             Text(
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(color = Color(0xFF101828))) { append("시흥") }
-                    withStyle(SpanStyle(color = StarYellowH)) { append("가개") }
+                    withStyle(SpanStyle(color = Orange500H)) { append("가개") }
                 },
                 fontFamily = PretendardFamily,
-                fontSize = 26.sp,
+                fontSize = titleSize,
                 fontWeight = FontWeight.ExtraBold,
-                lineHeight = 32.sp,
+                lineHeight = titleLineHeight,
             )
         }
         Row(
@@ -302,23 +358,33 @@ fun HomeTopBar(
                         modifier = Modifier.size(22.dp),
                     )
                 }
-                if (unreadCount > 0) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Pink500H)
-                            .align(Alignment.TopEnd),
+                Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = unreadCount > 0,
+                        enter = scaleIn(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        ) + fadeIn(),
+                        exit = scaleOut() + fadeOut(),
                     ) {
-                        Text(
-                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                            fontFamily = PretendardFamily,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            lineHeight = 8.sp,
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Pink500H),
+                        ) {
+                            Text(
+                                text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                fontFamily = PretendardFamily,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                lineHeight = 8.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -327,7 +393,6 @@ fun HomeTopBar(
 }
 
 // ─── 산책지수 섹션 ────────────────────────────────────────────────────────────
-
 @Composable
 fun WalkIndexSection(
     walkScore: Int = 0,
@@ -336,7 +401,9 @@ fun WalkIndexSection(
     airQuality: String = "",
     pendingMatchCount: Int = 0,
     nearestDDay: Int? = null,
+    volunteerMatchCount: Int = 0,
     onBannerClick: () -> Unit = {},
+    onVolunteerBannerClick: () -> Unit = {},
 ) {
     val scoreColor = when {
         walkScore >= 80 -> Green500H
@@ -354,71 +421,147 @@ fun WalkIndexSection(
         if (airQuality.isNotEmpty()) append(" · 미세먼지 $airQuality")
     }.ifEmpty { "날씨 정보 없음" }
 
+    // 각 배너의 노출 조건 개별 수립
+    val showPinkBanner = pendingMatchCount > 0 || nearestDDay != null
+    val showMintBanner = volunteerMatchCount > 0
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+        modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 20.dp, vertical = 20.dp),
     ) {
         Text(
             text = "오늘 산책지수",
             fontFamily = PretendardFamily,
-            color = TextBlackH,
+            fontSize = 24.sp,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 30.sp,
+            lineHeight = 30.sp,
+            letterSpacing = (-0.48).sp,
+            color = TextBlackH,
         )
         Spacer(Modifier.height(6.dp))
-        Text(
-            text = buildAnnotatedString {
-                if (walkScore > 0) {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = scoreColor, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("${walkScore}점")
-                    }
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = TextBlackH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("으로 $scoreComment")
-                    }
-                } else {
-                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = GrayTextH, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)) {
-                        append("로딩 중...")
-                    }
-                }
-            },
-            lineHeight = 32.sp,
-        )
-        Spacer(Modifier.height(4.dp))
+        // 다른 폰트 사이즈끼리 같은 baseline 에 놓이도록 alignByBaseline() 사용.
+        // verticalAlignment=Bottom 으로 정렬하면 큰 글자가 위로 떠 보였음.
+        Row {
+            if (walkScore == 0) {
+                Text(
+                    text = "—",
+                    fontFamily = PretendardFamily,
+                    fontSize = 52.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 56.sp,
+                    letterSpacing = (-1.56).sp,
+                    color = GrayTextH,
+                    modifier = Modifier.alignByBaseline(),
+                )
+            } else {
+                CountUpText(
+                    value = walkScore,
+                    durationMs = 1200,
+                    style = androidx.compose.ui.text.TextStyle(
+                        fontFamily = PretendardFamily,
+                        fontSize = 52.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 56.sp,
+                        letterSpacing = (-1.56).sp,
+                    ),
+                    color = scoreColor,
+                    modifier = Modifier.alignByBaseline(),
+                )
+                Text(
+                    text = "점",
+                    fontFamily = PretendardFamily,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 32.sp,
+                    letterSpacing = (-0.56).sp,
+                    color = TextBlackH,
+                    modifier = Modifier.alignByBaseline(),
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "으로 $scoreComment",
+                fontFamily = PretendardFamily,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 32.sp,
+                letterSpacing = (-0.56).sp,
+                color = TextBlackH,
+                modifier = Modifier.alignByBaseline(),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
         Text(
             text = weatherText,
             fontFamily = PretendardFamily,
             fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = FontWeight.Medium,
             lineHeight = 20.sp,
-            color = GrayTextH,
+            letterSpacing = (-0.21).sp,
+            color = Brown700H,
         )
-        if (pendingMatchCount > 0 || nearestDDay != null) {
+
+        if (showPinkBanner || showMintBanner) {
             Spacer(Modifier.height(14.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(50.dp))
-                    .background(PinkSurfaceH)
-                    .clickable { onBannerClick() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = buildAnnotatedString {
-                        if (nearestDDay != null) {
-                            withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.Bold, fontSize = 12.sp)) {
-                                append("[D-${nearestDDay}]  ")
-                            }
-                        }
-                        withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 14.sp)) {
-                            append("신청 ${pendingMatchCount}건 검토하기  ")
-                        }
-                    },
-                )
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Brown700H, modifier = Modifier.size(18.dp))
+                if (showPinkBanner) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PinkSurfaceH)
+                            .clickable { onBannerClick() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = buildAnnotatedString {
+                                if (nearestDDay != null) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Pink500H, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp)) { append("[D-${nearestDDay}] ") }
+                                }
+                                // H1: pendingMatchCount=0 + nearestDDay!=null 이면 “0건 검토중” 이 모순 — 표현 분리.
+                                // 숫자는 ExtraBold 로 강조 (S5).
+                                if (pendingMatchCount > 0) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("내 요청 ") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$pendingMatchCount") }
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 검토중") }
+                                } else if (nearestDDay != null) {
+                                    withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF374151), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("가장 가까운 요청 마감") }
+                                }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Pink500H, modifier = Modifier.size(16.dp))
+                    }
+                }
+
+                if (showMintBanner) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MintSurfaceH)
+                            .clickable { onVolunteerBannerClick() }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = buildAnnotatedString {
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("봉사활동 ") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)) { append("$volunteerMatchCount") }
+                                withStyle(SpanStyle(fontFamily = PretendardFamily, color = Color(0xFF006622), fontWeight = FontWeight.Medium, fontSize = 12.sp)) { append("건 진행중") }
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Green500H, modifier = Modifier.size(16.dp))
+                    }
+                }
             }
         }
     }
@@ -426,6 +569,7 @@ fun WalkIndexSection(
 
 // ─── 주변 매장 섹션 ───────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun NearbyStoresSection(
     regionDong: String = "정왕동",
@@ -437,6 +581,8 @@ fun NearbyStoresSection(
     onMapClick: () -> Unit = {},
     onPlaceDetailClick: (Int, Double, Double) -> Unit = { _, _, _ -> },
     onFavoriteClick: (StoreResponse) -> Unit = {},
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     Column(
         modifier = Modifier
@@ -451,15 +597,29 @@ fun NearbyStoresSection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("주변 매장", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackH)
+                Text("주변 매장", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, letterSpacing = (-0.4).sp, color = TextBlackH)
                 if (nearbyStoreCount > 0) {
-                    Text("${nearbyStoreCount}곳", fontFamily = PretendardFamily, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = Pink500H)
+                    // 카운트 색을 Pink → Brown900 으로 (Pink 는 강조/태그용), 숫자만 ExtraBold (S5).
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) { append("$nearbyStoreCount") }
+                            append("곳")
+                        },
+                        fontFamily = PretendardFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        letterSpacing = (-0.4).sp,
+                        color = Brown900H,
+                    )
                 }
             }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.clickable { onMapClick() },
+                modifier = Modifier
+                    .minimumInteractiveComponentSize()
+                    .clickable(onClickLabel = "지도 화면으로 이동") { onMapClick() },
             ) {
                 Icon(painterResource(R.drawable.ic_map), null, tint = Orange500H, modifier = Modifier.size(16.dp))
                 Text("지도 보기", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Orange500H)
@@ -492,8 +652,20 @@ fun NearbyStoresSection(
                 Text(regionDong, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF374151))
             }
 
-            // 탭 시 전체 지도로 이동
-            Box(modifier = Modifier.fillMaxSize().clickable { onMapClick() })
+            // 탭 시 전체 지도로 이동 (appleTapScale + haptic)
+            val miniMapInteraction = rememberAppleInteractionSource()
+            val haptic = LocalHapticFeedback.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .appleTapScale(miniMapInteraction)
+                    .clickable(interactionSource = miniMapInteraction, indication = null) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onMapClick()
+                    }
+            )
+            // H3: 미니맵 우상단 "전체 지도 →" CTA pill 제거.
+            // 헤더 우측 "지도 보기" 액션과 기능 중복 + 지도 마커 위에 떠 있어 가독성 저하 문제 해소.
         }
 
         Spacer(Modifier.height(12.dp))
@@ -508,12 +680,24 @@ fun NearbyStoresSection(
         ) {
             StoreCategory.entries.forEach { cat ->
                 val isSel = cat == selectedCategory
+                val bg by animateColorAsState(
+                    targetValue = if (isSel) Color(0xFF1A1A1A) else Color.White,
+                    animationSpec = appleSpec(),
+                    label = "homeChipBg",
+                )
+                val fg by animateColorAsState(
+                    targetValue = if (isSel) Color.White else Brown700H,
+                    animationSpec = appleSpec(),
+                    label = "homeChipFg",
+                )
+                val interaction = rememberAppleInteractionSource()
                 Box(
                     modifier = Modifier
+                        .appleTapScale(interaction)
                         .clip(RoundedCornerShape(50.dp))
-                        .background(if (isSel) Color(0xFF1A1A1A) else Color.White)
+                        .background(bg)
                         .then(if (!isSel) Modifier.border(1.dp, BrownBorderH, RoundedCornerShape(50.dp)) else Modifier)
-                        .clickable { onCategorySelected(cat) }
+                        .clickable(interactionSource = interaction, indication = null) { onCategorySelected(cat) }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
@@ -522,7 +706,7 @@ fun NearbyStoresSection(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         lineHeight = 20.sp,
-                        color = if (isSel) Color.White else Brown700H,
+                        color = fg,
                     )
                 }
             }
@@ -536,24 +720,65 @@ fun NearbyStoresSection(
                 store = store,
                 onPlaceDetailClick = onPlaceDetailClick,
                 onFavoriteClick = onFavoriteClick,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
             if (idx < minOf(stores.size, 3) - 1) {
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF3F4F6))
             }
         }
+        // 전체보기 진입 (매장이 3개 이상이거나 표시 가능한 항목이 있을 때)
+        if (stores.size > 3 || nearbyStoreCount > 3) {
+            Spacer(Modifier.height(8.dp))
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, BrownBorderH, RoundedCornerShape(12.dp))
+                    .clickable { onMapClick() }
+                    .padding(vertical = 12.dp),
+            ) {
+                Text(
+                    text = "주변 매장 전체보기",
+                    fontFamily = PretendardFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown900H,
+                )
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun HomeStoreItem(
     number: Int,
     store: StoreResponse,
     onPlaceDetailClick: (Int, Double, Double) -> Unit,
     onFavoriteClick: (StoreResponse) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
 ) {
     val distanceText = store.distanceM?.let {
         if (it < 1000) "${"%.0f".format(it)}m" else "${"%.1f".format(it / 1000)}km"
     } ?: ""
+
+    val visual = CategoryVisual.forCategory(store.category)
+
+    // sharedElement modifier — 스코프가 있을 때만 적용, 없으면 빈 Modifier (안전한 fallback)
+    val heroModifier = if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+        with(sharedTransitionScope) {
+            Modifier.sharedElement(
+                rememberSharedContentState(key = "store_hero_${store.resolvedId}"),
+                animatedVisibilityScope = animatedVisibilityScope,
+            )
+        }
+    } else {
+        Modifier
+    }
 
     Row(
         modifier = Modifier
@@ -562,30 +787,70 @@ private fun HomeStoreItem(
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // 카테고리 아이콘 박스 (shared element — PlaceDetail hero 72dp 아이콘과 동일 key)
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(32.dp).clip(CircleShape)
-                .background(if (number == 1) Pink500H else Brown900H),
+            modifier = heroModifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Brush.linearGradient(visual.gradient)),
         ) {
-            Text("$number", fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = if (number == 1) FontWeight.Medium else FontWeight.Normal, color = Color.White)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(store.name, fontFamily = PretendardFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = TextBlackH)
-            Text(
-                text = buildString {
-                    append(storeApiToKorean(store.category))
-                    if (distanceText.isNotEmpty()) append(" · $distanceText")
-                    if (store.ratingAvg != null) append(" · ⭐ ${"%.1f".format(store.ratingAvg)}")
-                },
-                fontFamily = PretendardFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 24.sp,
-                color = Brown700H,
+            Icon(
+                painter = painterResource(visual.drawableRes),
+                contentDescription = null,
+                tint = visual.color,
+                modifier = Modifier.size(22.dp),
             )
         }
-        IconButton(onClick = { onFavoriteClick(store) }, modifier = Modifier.size(36.dp)) {
+        Spacer(Modifier.width(10.dp))
+        // 순위 뱃지
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(20.dp).clip(CircleShape)
+                .background(if (number == 1) Pink500H else Brown900H),
+        ) {
+            Text(
+                text = "$number",
+                fontFamily = PretendardFamily,
+                fontSize = 11.sp,
+                lineHeight = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(store.name, fontFamily = PretendardFamily, fontSize = 16.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp, color = TextBlackH)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = buildString {
+                        append(storeApiToKorean(store.category))
+                        if (distanceText.isNotEmpty()) append(" · $distanceText")
+                    },
+                    fontFamily = PretendardFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = 18.sp,
+                    color = Brown700H,
+                    overflow = TextOverflow.Ellipsis,
+                    maxLines = 1,
+                )
+                if (store.ratingAvg != null) {
+                    Text(" · ", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Normal, lineHeight = 18.sp, color = Brown700H)
+                    Icon(painter = painterResource(R.drawable.ic_star), contentDescription = null, modifier = Modifier.size(14.dp), tint = StarYellowH)
+                    Text(" ${"%.1f".format(store.ratingAvg)}", fontFamily = PretendardFamily, fontSize = 13.sp, fontWeight = FontWeight.Normal, lineHeight = 18.sp, color = Brown700H)
+                }
+            }
+        }
+        val haptic = LocalHapticFeedback.current
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onFavoriteClick(store)
+            },
+            modifier = Modifier.size(36.dp),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
@@ -643,12 +908,23 @@ fun PetNewsSection(
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Image(
-                painter = painterResource(R.drawable.img_home_news_thumb),
-                contentDescription = "뉴스 썸네일",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
-            )
+            val newsImageUrl = mainNews?.imageUrl
+            if (!newsImageUrl.isNullOrBlank()) {
+                AppAsyncImage(
+                    model = newsImageUrl,
+                    contentDescription = "뉴스 썸네일",
+                    placeholderRes = R.drawable.img_home_news_thumb,
+                    errorRes = R.drawable.img_home_news_thumb,
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.img_home_news_thumb),
+                    contentDescription = "뉴스 썸네일",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 if (mainNews != null) {
                     val (tColor, tBg) = newsTagColors(mainNews.category ?: "")
@@ -782,7 +1058,7 @@ private fun DongChangeModal(
             HorizontalDivider(color = Color(0xFFF3F4F6))
 
             LazyColumn(modifier = Modifier.height(280.dp)) {
-                items(siheungDongs) { dong ->
+                items(siheungDongs, key = { it }) { dong ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -47,21 +47,45 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
+import coil3.compose.AsyncImage
 import com.example.siheunggagae.data.model.NewsDetailResponse
 import com.example.siheunggagae.data.model.NewsItem
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
+import com.example.siheunggagae.ui.util.newsFallbackDrawable
+
+private fun categoryToKorean(category: String?) = when (category?.uppercase()) {
+    "POLICY"    -> "정책"
+    "EVENT"     -> "행사"
+    "VOLUNTEER" -> "봉사"
+    "SUPPORT"   -> "지원"
+    else        -> category ?: "소식"
+}
 
 private val Brown900ND    = Color(0xFF614B3A)
 private val Brown700ND    = Color(0xFF8A6E58)
 private val BrownBorderND = Color(0xFFE8D3C2)
 private val Orange500ND   = Color(0xFFF7A35B)
+private val Green500ND    = Color(0xFF00A63E)
 private val OrangeSandND  = Color(0xFFFFEDD4)
 private val PinkSurfaceND = Color(0xFFFEE7EC)
 private val BackgroundND  = Color(0xFFFEFEFE)
+
+private fun categoryColor(category: String?) = when (categoryToKorean(category)) {
+    "행사" -> Green500ND
+    "봉사" -> Pink500ND
+    "지원" -> Orange500ND
+    else   -> Brown700ND
+}
 private val TextBlackND   = Color(0xFF1E120A)
+private val Pink500ND     = Color(0xFFF04268)
 
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
@@ -91,22 +115,35 @@ fun NewsDetailScreen(
     }
 
     fun shareNews() {
+        val current = detail ?: return
         val text = buildString {
-            detail?.title?.let { append(it).append("\n") }
-            detail?.officialLink?.let { append(it) }
+            current.title?.let { append(it).append("\n") }
+            current.officialLink?.let { append(it) }
         }
-        if (text.isNotBlank()) {
+        if (text.isBlank()) return
+        runCatching {
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_TEXT, text)
             }
             context.startActivity(Intent.createChooser(intent, "공유하기"))
+        }.onFailure {
+            android.widget.Toast.makeText(
+                context,
+                "공유할 수 있는 앱이 없어요",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
     Scaffold(
         containerColor = BackgroundND,
-        topBar = { NewsDetailTopBar(onBack = onBack, onShare = ::shareNews) },
+        topBar = {
+            NewsDetailTopBar(
+                onBack = onBack,
+                onShare = ::shareNews,
+            )
+        },
     ) { innerPadding ->
         if (isLoading) {
             Box(
@@ -123,6 +160,8 @@ fun NewsDetailScreen(
                     .verticalScroll(rememberScrollState()),
             ) {
                 HeaderSection(detail = detail)
+
+                HeroImage(detail = detail)
 
                 Column(
                     modifier = Modifier
@@ -143,26 +182,16 @@ fun NewsDetailScreen(
                         )
                     }
 
-                    if (!detail?.officialLink.isNullOrEmpty()) {
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F2)),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "· 공식 링크: ${detail?.officialLink}",
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
-                                    color = TextBlackND,
-                                )
+                    val link = detail?.officialLink
+                    if (!link.isNullOrEmpty()) {
+                        OfficialLinkCard(link = link, onClick = {
+                            runCatching {
+                                val normalized = if (link.startsWith("http")) link else "https://$link"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
                             }
-                        }
+                        })
                     }
 
                     if (relatedNews.isNotEmpty()) {
@@ -179,7 +208,10 @@ fun NewsDetailScreen(
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NewsDetailTopBar(onBack: () -> Unit, onShare: () -> Unit = {}) {
+private fun NewsDetailTopBar(
+    onBack: () -> Unit,
+    onShare: () -> Unit = {},
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,21 +237,20 @@ private fun NewsDetailTopBar(onBack: () -> Unit, onShare: () -> Unit = {}) {
             )
         }
 
-        Row(
+        TopBarIconBtnND(
+            onClick = onShare,
             modifier = Modifier.align(Alignment.CenterEnd),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TopBarIconBtnND { Icon(painter = painterResource(R.drawable.ic_bookmark), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
-            TopBarIconBtnND(onClick = onShare) { Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp)) }
+            Icon(painter = painterResource(R.drawable.ic_share), null, tint = TextBlackND, modifier = Modifier.size(20.dp))
         }
     }
 }
 
 @Composable
-private fun TopBarIconBtnND(onClick: () -> Unit = {}, icon: @Composable () -> Unit) {
+private fun TopBarIconBtnND(onClick: () -> Unit = {}, modifier: Modifier = Modifier, icon: @Composable () -> Unit) {
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .size(40.dp)
             .shadow(2.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
@@ -239,11 +270,11 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
             .padding(24.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            val category = detail?.category ?: "소식"
+            val category = categoryToKorean(detail?.category)
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50.dp))
-                    .background(Orange500ND)
+                    .background(categoryColor(detail?.category))
                     .padding(horizontal = 12.dp, vertical = 5.dp),
             ) {
                 Text(
@@ -261,7 +292,7 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
                 fontFamily = PretendardFamily,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                lineHeight = 34.sp,
+                lineHeight = 32.sp,
                 color = TextBlackND,
             )
 
@@ -282,6 +313,94 @@ private fun HeaderSection(detail: NewsDetailResponse?) {
                 )
             }
         }
+    }
+}
+
+// ─── 본문 상단 히어로 이미지 ───────────────────────────────────────────────────
+
+@Composable
+private fun HeroImage(detail: NewsDetailResponse?) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .height(200.dp)
+            .clip(RoundedCornerShape(16.dp)),
+    ) {
+        val imageUrl = detail?.imageUrl
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = detail.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Image(
+                painter = painterResource(newsFallbackDrawable(detail?.newsId)),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+// ─── 공식 링크 카드 (외부 브라우저로 이동) ─────────────────────────────────────
+
+@Composable
+private fun OfficialLinkCard(link: String, onClick: () -> Unit) {
+    val displayUrl = link.removePrefix("https://").removePrefix("http://").trimEnd('/')
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(OrangeSandND)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(Color.White),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_paperclip),
+                contentDescription = null,
+                tint = Orange500ND,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "원문 바로가기",
+                fontFamily = PretendardFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 20.sp,
+                color = TextBlackND,
+            )
+            Text(
+                text = displayUrl,
+                fontFamily = PretendardFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 16.sp,
+                color = Brown700ND,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Brown700ND,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -326,7 +445,7 @@ private fun RelatedNewsSection(items: List<NewsItem>, onItemClick: (String) -> U
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = news.category ?: "소식",
+                            text = categoryToKorean(news.category),
                             fontFamily = PretendardFamily,
                             fontSize = 12.sp,
                             lineHeight = 16.sp,

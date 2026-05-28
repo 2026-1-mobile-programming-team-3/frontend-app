@@ -35,7 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -99,11 +99,11 @@ fun VolunteerBadgeListScreen(
 ) {
     val isLoading by remember(viewModel) {
         viewModel?.isLoading ?: MutableStateFlow(false)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     val badge by remember(viewModel) {
         viewModel?.badge ?: MutableStateFlow(null)
-    }.collectAsState()
+    }.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = BackgroundB,
@@ -300,8 +300,13 @@ private fun BadgeTierCard(tier: VolunteerBadgeTier, badge: VolunteerBadgeInfo?) 
             // 미달성 시 진행 바
             if (!achieved) {
                 Spacer(Modifier.height(8.dp))
+                val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = progress.coerceIn(0f, 1f),
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    label = "badgeProgress",
+                )
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { animatedProgress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(5.dp)

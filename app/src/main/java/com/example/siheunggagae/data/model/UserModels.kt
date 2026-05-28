@@ -96,7 +96,7 @@ data class ActivityStatsResponse(
 data class MyMatchResponse(
     val id: Int,
     val title: String,
-    val status: MatchStatus,
+    val status: String?,
     val scheduledAt: String?,
     val regionDong: String?,
     val petTypes: List<String> = emptyList(),
@@ -190,10 +190,10 @@ data class ReportCreateResponse(
 typealias ReportCreatedResponse = ReportCreateResponse
 
 data class ChatReportCreateRequest(
-    val chatId: Int,
+    val applicationId: Int,
     val targetUserId: Int,
     val messageId: Int,
-    val reason: String,
+    val reason: String
 )
 
 data class ChatReportCreateResponse(

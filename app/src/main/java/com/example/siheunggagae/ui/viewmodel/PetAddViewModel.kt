@@ -64,13 +64,15 @@ class PetAddViewModel(
         viewModelScope.launch {
             try {
                 val resp = repository.getMe()
-                if (resp.isSuccessful && resp.body() != null) {
-                    _initialPet.value = resp.body()!!.pets.find { it.id == petId }
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    _initialPet.value = body.pets.find { it.id == petId }
                     _uiState.value = PetAddUiState.Idle
                 } else {
                     _uiState.value = PetAddUiState.Error("반려동물 정보를 불러오지 못했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = PetAddUiState.Error(e.message ?: "네트워크 오류")
             }
         }
@@ -84,6 +86,7 @@ class PetAddViewModel(
         gender: PetGender?,
         isNeutered: Boolean,
         note: String?,
+        birthDate: String? = null // 👈 Screen 컴포넌트와 호환성을 위해 파라미터는 유지합니다.
     ) {
         viewModelScope.launch {
             _uiState.value = PetAddUiState.Saving
@@ -100,6 +103,7 @@ class PetAddViewModel(
                             gender = gender,
                             photoUrl = null,
                             note = note?.takeIf { it.isNotBlank() },
+                            // birthDate = birthDate 🛠️ [에러 해결] PetCreate 모델에 필드가 추가되기 전이므로 주석 처리
                         )
                     )
                 } else {
@@ -114,6 +118,7 @@ class PetAddViewModel(
                             gender = gender,
                             photoUrl = null,
                             note = note?.takeIf { it.isNotBlank() },
+                            // birthDate = birthDate 🛠️ [에러 해결] PetUpdate 모델에 필드가 추가되기 전이므로 주석 처리
                         )
                     )
                 }
@@ -127,16 +132,16 @@ class PetAddViewModel(
                             photoPrefs.edit().remove("photo_$id").apply()
                         }
                     }
-                    // 알림함에 시스템 알림 추가
                     val notifTitle = if (petId == null) "반려동물 등록됨" else "반려동물 수정됨"
                     val notifBody  = if (petId == null) "${name}이(가) 등록되었습니다."
-                                     else "${name} 정보가 수정되었습니다."
+                    else "${name} 정보가 수정되었습니다."
                     localNotificationStore?.add(NotificationCategory.SYSTEM, notifTitle, notifBody)
                     _uiState.value = PetAddUiState.SaveSuccess
                 } else {
                     _uiState.value = PetAddUiState.Error("저장에 실패했습니다")
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.value = PetAddUiState.Error(e.message ?: "네트워크 오류")
             }
         }

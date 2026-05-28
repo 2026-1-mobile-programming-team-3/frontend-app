@@ -42,20 +42,27 @@ import com.example.siheunggagae.data.model.MyMatchListResponse
 import com.example.siheunggagae.data.model.NewsDetailResponse
 import com.example.siheunggagae.data.model.NewsListResponse
 import com.example.siheunggagae.data.model.NotificationCategory
+import com.example.siheunggagae.data.model.NotificationDeleteRequest
 import com.example.siheunggagae.data.model.NotificationListResponse
 import com.example.siheunggagae.data.model.NotificationReadResponse
 import com.example.siheunggagae.data.model.NotificationSettingsResponse
 import com.example.siheunggagae.data.model.NotificationSettingsUpdateRequest
 import com.example.siheunggagae.data.model.PasswordChangeRequest
 import com.example.siheunggagae.data.model.PetCreate
+import com.example.siheunggagae.data.model.PetHotelListResponse
 import com.example.siheunggagae.data.model.PetResponse
 import com.example.siheunggagae.data.model.PetUpdate
 import com.example.siheunggagae.data.model.ReportCreateRequest
 import com.example.siheunggagae.data.model.ReportCreatedResponse
+import com.example.siheunggagae.data.model.GeoSearchResponse
 import com.example.siheunggagae.data.model.ReverseGeocodeResponse
 import com.example.siheunggagae.data.model.SignupRequest
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreListResponse
+import com.example.siheunggagae.data.model.StoreRequestItem
+import com.example.siheunggagae.data.model.StoreRequestListResponse
+import com.example.siheunggagae.data.model.StoreRequestSubmitRequest
+import com.example.siheunggagae.data.model.StoreRequestSubmitResponse
 import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.model.StoreReviewCreateResponse
 import com.example.siheunggagae.data.model.StoreReviewListResponse
@@ -71,10 +78,12 @@ import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.VolunteerRequestCreate
 import com.example.siheunggagae.data.model.VolunteerRequestResponse
 import com.example.siheunggagae.data.model.VolunteerStatsResponse
+import com.example.siheunggagae.data.model.MatchCancelResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -111,15 +120,23 @@ interface AuthApiService {
     @GET("api/v1/users/me/matches")
     suspend fun getMyMatches(
         @Query("role") role: String = "applicant",
-        @Query("status") status: String = "DONE",
+        @Query("status") status: String? = null,
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20,
-    ): Response<MyMatchListResponse>
+    ): Response<MatchListResponse>
+
+    @GET("api/v1/users/me/matches")
+    suspend fun getMyMatchHistory(
+        @Query("role") role: String = "applicant",
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<MatchListResponse>
 
     @PATCH("api/v1/users/me")
     suspend fun updateMe(@Body body: UserUpdateRequest): Response<UserMeResponse>
 
-    @DELETE("api/v1/users/me")
+    @HTTP(method = "DELETE", path = "api/v1/users/me", hasBody = true)
     suspend fun deleteMe(@Body body: AccountDeleteRequest): Response<MessageResponse>
 
     @PUT("api/v1/users/me/password")
@@ -142,7 +159,7 @@ interface AuthApiService {
     ): Response<PetResponse>
 
     @DELETE("api/v1/users/me/pets/{petId}")
-    suspend fun deletePet(@Path("petId") petId: Int): Response<MessageResponse>
+    suspend fun deletePet(@Path("petId") petId: Int): Response<Unit>
 
     // ── Blocks ────────────────────────────────────────────────────────────────────
 
@@ -188,6 +205,11 @@ interface AuthApiService {
         @Query("to_date") toDate: String? = null,
         @Query("page") page: Int? = null,
         @Query("size") size: Int? = null,
+        @Query("sort") sort: String? = null,
+        @Query("category") category: String? = null,
+        @Query("max_distance") maxDistance: Int? = null,
+        @Query("lat") lat: Double? = null,
+        @Query("lng") lng: Double? = null,
     ): Response<MatchListResponse>
 
     @POST("api/v1/matches")
@@ -229,12 +251,28 @@ interface AuthApiService {
         @Body body: ApplicationActionRequest,
     ): Response<ApplicationActionResponse>
 
+    @POST("api/v1/matches/{matchId}/applications/{applicationId}/cancel")
+    suspend fun cancelMatching(
+        @Path("matchId") matchId: Int,
+        @Path("applicationId") applicationId: Int
+    ): Response<MatchCancelResponse>
+
     @POST("api/v1/matches/{matchId}/review")
     suspend fun submitMatchReview(
         @Path("matchId") matchId: Int,
         @Body body: MatchReviewRequest,
     ): Response<MatchReviewResponse>
 
+    @GET("api/v1/matches/{matchId}/review")
+    suspend fun getMatchReview(
+        @Path("matchId") matchId: Int
+    ): Response<MatchReviewResponse>
+
+    @PATCH("api/v1/matches/{matchId}/review")
+    suspend fun updateMatchReview(
+        @Path("matchId") matchId: Int,
+        @Body body: MatchReviewRequest
+    ): Response<MatchReviewResponse>
     // ── Chat ──────────────────────────────────────────────────────────────────────
 
     @GET("api/v1/matches/{matchId}/chats")
@@ -324,8 +362,37 @@ interface AuthApiService {
         @Path("reviewId") reviewId: Int,
     ): Response<MessageResponse>
 
+    @GET("api/v1/maps/pet-hotels")
+    suspend fun getPetHotels(
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radius") radius: Int = 5000,
+    ): Response<PetHotelListResponse>
+
     @GET("api/v1/maps/volunteers")
     suspend fun getVolunteerMarkers(): Response<List<VolunteerMarkerDto>>
+
+    @POST("api/v1/maps/store-requests")
+    suspend fun submitStoreRequest(
+        @Body body: StoreRequestSubmitRequest,
+    ): Response<StoreRequestSubmitResponse>
+
+    @GET("api/v1/maps/store-requests")
+    suspend fun getMyStoreRequests(
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("size") size: Int = 20,
+    ): Response<StoreRequestListResponse>
+
+    @GET("api/v1/maps/store-requests/{requestId}")
+    suspend fun getStoreRequest(
+        @Path("requestId") requestId: Int,
+    ): Response<StoreRequestItem>
+
+    @DELETE("api/v1/maps/store-requests/{requestId}")
+    suspend fun cancelStoreRequest(
+        @Path("requestId") requestId: Int,
+    ): Response<Unit>
 
     // ── Geo ───────────────────────────────────────────────────────────────────────
 
@@ -334,6 +401,15 @@ interface AuthApiService {
         @Query("lat") lat: Double,
         @Query("lng") lng: Double,
     ): Response<ReverseGeocodeResponse>
+
+    @GET("api/v1/geo/search")
+    suspend fun searchGeo(
+        @Query("query") query: String,
+        @Query("x") x: Double? = null,
+        @Query("y") y: Double? = null,
+        @Query("radius") radius: Int? = null,
+        @Query("size") size: Int? = null,
+    ): Response<GeoSearchResponse>
 
     // ── Notifications ─────────────────────────────────────────────────────────────
 
@@ -361,6 +437,11 @@ interface AuthApiService {
     @PATCH("api/v1/notifications/read-all")
     suspend fun markAllNotificationsRead(): Response<MarkAllReadResponse>
 
+    @HTTP(method = "DELETE", path = "api/v1/notifications", hasBody = true)
+    suspend fun deleteNotifications(
+        @Body body: NotificationDeleteRequest,
+    ): Response<MessageResponse>
+
     @GET("api/v1/users/me/notification-settings")
     suspend fun getNotificationSettings(): Response<NotificationSettingsResponse>
 
@@ -377,5 +458,7 @@ interface AuthApiService {
     ): Response<ReportCreatedResponse>
 
     @POST("api/v1/reports/chat")
-    suspend fun reportChatUser(@Body body: ChatReportCreateRequest): Response<ChatReportCreateResponse>
+    suspend fun reportChatMessage(
+        @Body body: ChatReportCreateRequest
+    ): Response<ChatReportCreateResponse>
 }

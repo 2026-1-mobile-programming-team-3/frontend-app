@@ -26,8 +26,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.window.Dialog
+import com.example.siheunggagae.data.local.SiheungRegions
+import com.example.siheunggagae.data.location.EffectiveCenter
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.BottomSheetScaffold
@@ -35,6 +43,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -42,14 +51,21 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,7 +79,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -75,6 +94,7 @@ import com.example.siheunggagae.data.local.MapFilterStore
 import com.example.siheunggagae.data.location.LocationProvider
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import com.example.siheunggagae.data.model.StoreCategory
 import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreResponse
@@ -83,13 +103,29 @@ import com.example.siheunggagae.data.model.StoreViewportItem
 import com.example.siheunggagae.data.model.UserRole
 import com.example.siheunggagae.data.model.VolunteerMarkerDto
 import com.example.siheunggagae.data.model.toStoreResponse
+import com.example.siheunggagae.map.MarkerSpec
+import com.example.siheunggagae.map.computeMarkerSpecs
+import com.example.siheunggagae.ui.component.EmptyStateView
 import com.kakao.vectormap.KakaoMap
 import com.example.siheunggagae.data.network.RetrofitClient
 import com.example.siheunggagae.ui.theme.PretendardFamily
+import com.example.siheunggagae.ui.util.CategoryVisual
+import com.example.siheunggagae.ui.util.appleSpec
+import com.example.siheunggagae.ui.util.appleTapScale
+import com.example.siheunggagae.ui.util.matchStatusToKorean
+import com.example.siheunggagae.ui.util.rememberAppleInteractionSource
 import com.example.siheunggagae.ui.util.rememberLocationPermissionState
 import com.example.siheunggagae.ui.viewmodel.MapViewModel
 import com.kakao.vectormap.MapView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
+
+// ─── 상수 ────────────────────────────────────────────────────────────────────
+
+private val MapSheetPeekHeight = 220.dp
 
 // ─── 색상 ────────────────────────────────────────────────────────────────────
 
@@ -102,14 +138,6 @@ private val Pink500Mp    = Color(0xFFF04268)
 private val TextBlack    = Color(0xFF1E120A)
 private val StarYellow   = Color(0xFFFDC700)
 
-private val categoryColors = mapOf(
-    "CAFE"       to 0xFF8A6E58.toInt(),
-    "PARK"       to 0xFF4CAF50.toInt(),
-    "HOSPITAL"   to 0xFFF04268.toInt(),
-    "GROOMING"   to 0xFF9C27B0.toInt(),
-    "RESTAURANT" to 0xFFF7A35B.toInt(),
-)
-private val defaultMarkerColor = 0xFF614B3A.toInt()
 private val volunteerMarkerColor = 0xFF2196F3.toInt()
 
 private fun storeCategoryToKorean(category: String?): String =
@@ -139,7 +167,7 @@ fun MapScreen(
             focusStoreId = focusStoreId,
         )
     )
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val locationPermission = rememberLocationPermissionState { granted ->
@@ -149,7 +177,9 @@ fun MapScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showFilterSheet by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showDongPicker by remember { mutableStateOf(false) }
     var mapReady by remember { mutableStateOf(false) }
+    val lastMarkerTapMs = remember { mutableLongStateOf(0L) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
@@ -200,6 +230,16 @@ fun MapScreen(
         }
     }
 
+    // 내 위치 파란 점 — 권한 있고 ViewModel 이 위치 잡고 있을 때만.
+    LaunchedEffect(mapReady, uiState.location, locationPermission.hasPermission) {
+        val loc = uiState.location
+        if (mapReady && loc != null && locationPermission.hasPermission) {
+            mapWrapper.updateMyLocation(loc.latitude, loc.longitude)
+        } else if (mapReady) {
+            mapWrapper.removeMyLocation()
+        }
+    }
+
     // truncated 시 스낵바 안내
     LaunchedEffect(uiState.truncated) {
         if (uiState.truncated) {
@@ -225,86 +265,119 @@ fun MapScreen(
         )
     }
 
-    // viewport 마커 동기화 — zoom 11+ 에서 bbox 기반 데이터, 줌에 따라 클러스터링
-    LaunchedEffect(mapReady, uiState.viewportStores, uiState.visibleCategories, uiState.currentZoom) {
+    // viewport 마커 동기화 — picture-on-update 가 아니라 spec diff 기반 sync
+    LaunchedEffect(
+        mapReady,
+        uiState.viewportStores,
+        uiState.visibleCategories,
+        uiState.currentZoom,
+        uiState.selectedStore?.resolvedId,
+    ) {
         if (!mapReady) return@LaunchedEffect
-        mapWrapper.clearMarkersWithPrefix("store_")
-        mapWrapper.clearMarkersWithPrefix("cluster_")
+        val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
         val filtered = uiState.viewportStores.filter { it.category in uiState.visibleCategories }
-        computeViewportMarkers(filtered, uiState.currentZoom).forEach { marker ->
-            if (marker.singleStore != null) {
-                val color = categoryColors[marker.singleStore.category] ?: defaultMarkerColor
-                mapWrapper.addMarker(
-                    id = marker.id,
-                    lat = marker.lat,
-                    lng = marker.lng,
-                    markerColor = color,
-                    category = marker.singleStore.category,
-                    name = marker.singleStore.name,
-                    onTap = { viewModel.selectStore(marker.singleStore.toStoreResponse()) },
-                )
-            } else {
-                mapWrapper.addClusterMarker(
-                    id = marker.id,
-                    lat = marker.lat,
-                    lng = marker.lng,
-                    count = marker.count,
-                )
+        val byId = filtered.associateBy { it.storeId }
+        val specs = computeMarkerSpecs(filtered, projector, uiState.currentZoom, uiState.selectedStore?.resolvedId)
+            .map { spec ->
+                when (spec) {
+                    is MarkerSpec.Single -> {
+                        val storeIdInt = spec.id.removePrefix("store_").toIntOrNull()
+                        spec.copy(onTap = {
+                            val now = System.currentTimeMillis()
+                            if (now - lastMarkerTapMs.longValue >= 400) {
+                                lastMarkerTapMs.longValue = now
+                                byId[storeIdInt]?.toStoreResponse()?.let { viewModel.selectStore(it) }
+                            }
+                        })
+                    }
+                    is MarkerSpec.Cluster -> spec.copy(onTap = {
+                        val now = System.currentTimeMillis()
+                        if (now - lastMarkerTapMs.longValue >= 400) {
+                            lastMarkerTapMs.longValue = now
+                            mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120)
+                        }
+                    })
+                }
             }
-        }
+        mapWrapper.syncMarkers("store", specs)
     }
 
-    // 봉사요청 마커 동기화
-    LaunchedEffect(mapReady, uiState.isVolunteerMode, uiState.volunteerMarkers) {
+    // 봉사요청 마커 동기화 (같은 픽셀 거리 클러스터링 사용)
+    LaunchedEffect(mapReady, uiState.isVolunteerMode, uiState.volunteerMarkers, uiState.currentZoom) {
         if (!mapReady) return@LaunchedEffect
-        mapWrapper.clearMarkersWithPrefix("vol_")
-        if (uiState.isVolunteerMode) {
-            uiState.volunteerMarkers.forEach { vol ->
-                mapWrapper.addMarker(
-                    id = "vol_${vol.requestId}",
-                    lat = vol.latitude,
-                    lng = vol.longitude,
-                    markerColor = volunteerMarkerColor,
-                    onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(vol.requestId)) },
-                )
-            }
+        if (!uiState.isVolunteerMode) {
+            mapWrapper.syncMarkers("vol", emptyList())
+            return@LaunchedEffect
         }
+        val projector = mapWrapper.screenProjector() ?: return@LaunchedEffect
+        // 봉사요청을 StoreViewportItem 형태로 어댑팅 — 카테고리 "VOLUNTEER" 단일
+        val asItems = uiState.volunteerMarkers.map { v ->
+            StoreViewportItem(
+                storeId = v.requestId,
+                name = v.title ?: "",
+                latitude = v.latitude,
+                longitude = v.longitude,
+                category = "VOLUNTEER",
+            )
+        }
+        val specs = computeMarkerSpecs(asItems, projector, uiState.currentZoom, selectedId = null)
+            .map { spec ->
+                when (spec) {
+                    is MarkerSpec.Single -> {
+                        val volId = spec.id.removePrefix("store_").toIntOrNull() ?: return@map spec
+                        spec.copy(
+                            id = "vol_$volId",
+                            color = volunteerMarkerColor,
+                            onTap = { onNavigate(Screen.MatchingPublicDetail.createRoute(volId)) },
+                        )
+                    }
+                    is MarkerSpec.Cluster -> spec.copy(
+                        id = "volcluster_" + spec.id.removePrefix("cluster_"),
+                        onTap = { mapWrapper.fitMapPoints(spec.memberCoords, paddingPx = 120) },
+                    )
+                }
+            }
+        mapWrapper.syncMarkers("vol", specs)
     }
 
+    // skipHiddenState=true 로 시트가 완전히 숨겨지지 않게 — 사용자가 한 번 접으면 다시 펼 방법이 없는 버그 방지.
     val sheetState = rememberBottomSheetScaffoldState(
         bottomSheetState = rememberStandardBottomSheetState(
             initialValue = SheetValue.PartiallyExpanded,
-            skipHiddenState = false,
+            skipHiddenState = true,
         )
     )
 
-    // 매장 선택 시 카메라 이동 + 목록 시트 숨기기 / 해제 시 다시 표시
+    // 매장 선택 시 카메라 이동 + 시트는 peek 으로 — StoreDetailSheet 모달이 위에 뜨므로 시트를 hide 할 필요 없음.
     LaunchedEffect(uiState.selectedStore) {
         val store = uiState.selectedStore
-        if (store != null) {
-            if (mapReady) mapWrapper.moveCamera(store.latitude, store.longitude)
-            sheetState.bottomSheetState.hide()
-        } else {
-            if (sheetState.bottomSheetState.currentValue == SheetValue.Hidden) {
-                sheetState.bottomSheetState.partialExpand()
-            }
+        if (store != null && mapReady) {
+            val z = mapWrapper.getCurrentZoom().coerceAtLeast(16)
+            mapWrapper.animateCamera(store.latitude, store.longitude, z, durationMs = 350)
+            sheetState.bottomSheetState.partialExpand()
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.Transparent,
-        bottomBar = { AppBottomBar(currentRoute = Screen.Map.route, onNavigate = onNavigate) },
     ) { navPadding ->
         BottomSheetScaffold(
             modifier = Modifier.padding(navPadding),
             scaffoldState = sheetState,
-            sheetPeekHeight = 280.dp,
+            sheetPeekHeight = MapSheetPeekHeight,
             sheetContainerColor = Color.White,
             sheetTonalElevation = 0.dp,
             sheetShadowElevation = 8.dp,
             sheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            sheetDragHandle = { MapDragHandle() },
+            sheetDragHandle = {
+                MapDragHandle(
+                    isExpanded = sheetState.bottomSheetState.currentValue == SheetValue.Expanded,
+                    onCollapseClick = {
+                        scope.launch { sheetState.bottomSheetState.partialExpand() }
+                    },
+                )
+            },
             sheetContent = {
                 if (uiState.isVolunteerMode) {
                     VolunteerBottomSheetContent(
@@ -317,6 +390,7 @@ fun MapScreen(
                     MapBottomSheetContent(
                         stores = uiState.stores,
                         totalCount = uiState.totalCount,
+                        truncated = uiState.truncated,
                         onStoreClick = { store -> viewModel.selectStore(store) },
                         onFavoriteToggle = { store -> viewModel.toggleFavorite(store) },
                     )
@@ -328,35 +402,87 @@ fun MapScreen(
                 // 실제 카카오 MapView
                 AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
-                // 상단 검색바 + 카테고리 칩
+                // 상단 검색바 + 카테고리 칩 + 펫호텔 비교 배너
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .padding(top = 16.dp, start = 16.dp, end = 16.dp),
                 ) {
+                    // GPS 가 시흥 밖일 때 fallback 안내 배너 — design.md §5 색 의미론: 위치=Mint
+                    AnimatedVisibility(
+                        visible = uiState.centerFallback != null,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    ) {
+                        uiState.centerFallback?.let { cf ->
+                            FallbackCenterBanner(
+                                center = cf,
+                                onChangeClick = { showDongPicker = true },
+                                onDismiss = { viewModel.dismissFallbackBanner() },
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                        }
+                    }
                     MapSearchCard(onClick = { showSearch = true })
                     Spacer(Modifier.height(8.dp))
                     MapCategoryChipRow(
                         selected = uiState.selectedCategory,
                         onSelect = { viewModel.selectCategory(it) },
                     )
+                    // PET_HOTEL 단독 선택 시 비교 배너
+                    val isPetHotelOnly = uiState.selectedCategory == StoreCategory.PET_HOTEL
+                    val petHotelCount = if (isPetHotelOnly) {
+                        uiState.viewportStores.count { it.category == "PET_HOTEL" }
+                    } else 0
+                    AnimatedVisibility(
+                        visible = isPetHotelOnly && petHotelCount > 0,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    ) {
+                        PetHotelCompareBanner(
+                            count = petHotelCount,
+                            onClick = {
+                                val center = uiState.cameraTarget
+                                val lat = center?.first ?: 37.3799
+                                val lng = center?.second ?: 126.8030
+                                // /maps/pet-hotels 는 원형 radius 만 지원하므로 viewport 대각선의 절반을
+                                // radius 로 넘겨 일단 viewport 를 외접하도록 가져온 뒤, 비교 화면에서
+                                // viewport bbox 로 다시 클리핑해 배너 카운트와 결과 개수를 일치시킨다.
+                                val radius = radiusFromViewport(uiState.viewportBounds)
+                                onNavigate(
+                                    com.example.siheunggagae.Screen.PetHotelCompare.createRoute(
+                                        lat = lat,
+                                        lng = lng,
+                                        radius = radius,
+                                        viewportBounds = uiState.viewportBounds,
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 }
 
-                // 우측 플로팅 버튼
+                // 우측 플로팅 버튼 — peek 시트 위에 위치하도록 BottomEnd 기준. iOS 스타일 tap haptic.
+                val haptic = LocalHapticFeedback.current
                 Column(
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp, bottom = 80.dp),
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = MapSheetPeekHeight + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     MapIconFab(R.drawable.ic_my_location, "내 위치") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.moveToCurrentLocation()
                     }
-                    MapIconFab(R.drawable.ic_layers, "레이어") { showFilterSheet = true }
-                    MapIconFab(R.drawable.ic_refresh, "새로고침") {
-                        val loc = uiState.location
-                        if (loc != null) viewModel.refresh(loc.latitude, loc.longitude)
+                    MapIconFab(R.drawable.ic_layers, "레이어", iconSize = 26.dp) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showFilterSheet = true
+                    }
+                    MapIconFab(R.drawable.ic_refresh, "새로고침", iconSize = 20.dp) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.refresh()
                     }
                 }
 
@@ -414,6 +540,158 @@ fun MapScreen(
             },
         )
     }
+
+    if (showDongPicker) {
+        DongPickerDialog(
+            currentDong = uiState.centerFallback?.regionDong,
+            onDismiss = { showDongPicker = false },
+            onSelect = { dong ->
+                viewModel.moveToDong(dong)
+                showDongPicker = false
+            },
+        )
+    }
+}
+
+// ─── Fallback 배너 (GPS 가 시흥 밖일 때) ──────────────────────────────────────
+
+@Composable
+private fun FallbackCenterBanner(
+    center: EffectiveCenter,
+    onChangeClick: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val regionLabel = center.regionDong ?: "시흥시청"
+    val sourceLabel = when (center.source) {
+        EffectiveCenter.Source.USER_PROFILE -> "내 등록 동네"
+        EffectiveCenter.Source.DEFAULT -> "시흥 기본 위치"
+        EffectiveCenter.Source.GPS -> "현재 위치"
+    }
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFEAFBF1),
+        shadowElevation = 2.dp,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_location_on),
+                contentDescription = null,
+                tint = Color(0xFF00A63E),
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "현재 위치가 시흥 밖이라 ${regionLabel} 기준으로 보고 있어요",
+                    fontFamily = PretendardFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlack,
+                    lineHeight = 16.sp,
+                )
+                Text(
+                    text = sourceLabel,
+                    fontFamily = PretendardFamily,
+                    fontSize = 10.sp,
+                    color = Brown700Mp,
+                    lineHeight = 14.sp,
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color.White)
+                    .clickable { onChangeClick() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    text = "변경",
+                    fontFamily = PretendardFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF00A63E),
+                )
+            }
+            Spacer(Modifier.width(4.dp))
+            IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "닫기",
+                    tint = Brown400Mp,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+// ─── 동네 선택 다이얼로그 ──────────────────────────────────────────────────────
+
+@Composable
+private fun DongPickerDialog(
+    currentDong: String?,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = "동네 변경",
+                fontFamily = PretendardFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 24.sp,
+                color = TextBlack,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+            HorizontalDivider(color = Color(0xFFF3F4F6))
+            LazyColumn(modifier = Modifier.height(360.dp)) {
+                items(SiheungRegions.dongCoordinates.keys.toList()) { dong ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(dong) }
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            dong,
+                            fontFamily = PretendardFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 24.sp,
+                            color = TextBlack,
+                        )
+                        if (dong == currentDong) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Pink500Mp,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = Color(0xFFF3F4F6),
+                    )
+                }
+            }
+        }
+    }
 }
 
 // ─── 검색바 ─────────────────────────────────────────────────────────────────
@@ -435,7 +713,7 @@ private fun MapSearchCard(onClick: () -> Unit = {}) {
         Icon(
             painter = painterResource(R.drawable.ic_search),
             contentDescription = null,
-            tint = Brown400Mp,
+            tint = Brown700Mp,
             modifier = Modifier.size(20.dp),
         )
         Text(
@@ -444,8 +722,78 @@ private fun MapSearchCard(onClick: () -> Unit = {}) {
             fontSize = 16.sp,
             fontWeight = FontWeight.Normal,
             lineHeight = 20.sp,
-            color = Brown400Mp,
+            color = Brown700Mp,
         )
+    }
+}
+
+// ─── 펫호텔 비교 배너 ─────────────────────────────────────────────────────────
+
+/**
+ * viewport bbox [swLat, swLng, neLat, neLng] 의 대각선 절반(meter) 을 radius 로 추정.
+ * 1km ~ 50km 로 clamp. bbox 가 null 이면 5km 디폴트.
+ */
+private fun radiusFromViewport(bbox: DoubleArray?): Int {
+    if (bbox == null || bbox.size < 4) return 5000
+    val swLat = bbox[0]
+    val swLng = bbox[1]
+    val neLat = bbox[2]
+    val neLng = bbox[3]
+    val avgLat = (swLat + neLat) / 2.0
+    val latM = (neLat - swLat) * 111_000.0
+    val lngM = (neLng - swLng) * 111_000.0 * kotlin.math.cos(Math.toRadians(avgLat))
+    val diagonal = kotlin.math.sqrt(latM * latM + lngM * lngM)
+    return (diagonal / 2.0).toInt().coerceIn(1000, 50000)
+}
+
+@Composable
+private fun PetHotelCompareBanner(
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color.White,
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "주변 펫호텔 ${count}곳",
+                    fontFamily = PretendardFamily,
+                    color = Color(0xFF1E120A),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "가격순 보기",
+                    fontFamily = PretendardFamily,
+                    color = Color(0xFF8A6E58),
+                    fontSize = 10.sp,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(Color(0xFF614B3A))
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+            ) {
+                Text(
+                    text = "가격 비교 →",
+                    fontFamily = PretendardFamily,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 
@@ -461,12 +809,28 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
     ) {
         StoreCategory.entries.forEach { category ->
             val isSelected = category == selected
+            // bg/fg 색을 AppleEaseOut 으로 보간 — 선택 시 hard cut 대신 부드러운 morph.
+            val bg by animateColorAsState(
+                targetValue = if (isSelected) Color(0xFF1A1A1A) else Color.White,
+                animationSpec = appleSpec(),
+                label = "mapChipBg",
+            )
+            val fg by animateColorAsState(
+                targetValue = if (isSelected) Color.White else Brown700Mp,
+                animationSpec = appleSpec(),
+                label = "mapChipFg",
+            )
+            val interaction = rememberAppleInteractionSource()
             Box(
                 modifier = Modifier
+                    .appleTapScale(interaction)
                     .shadow(2.dp, RoundedCornerShape(50.dp))
                     .clip(RoundedCornerShape(50.dp))
-                    .background(if (isSelected) Color(0xFF1A1A1A) else Color.White)
-                    .clickable { onSelect(category) }
+                    .background(bg)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = null,
+                    ) { onSelect(category) }
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -475,7 +839,7 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     lineHeight = 20.sp,
-                    color = if (isSelected) Color.White else Brown700Mp,
+                    color = fg,
                 )
             }
         }
@@ -485,21 +849,29 @@ private fun MapCategoryChipRow(selected: StoreCategory, onSelect: (StoreCategory
 // ─── 플로팅 버튼 ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapIconFab(iconRes: Int, contentDescription: String, onClick: () -> Unit = {}) {
+private fun MapIconFab(
+    iconRes: Int,
+    contentDescription: String,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp,
+    onClick: () -> Unit = {},
+) {
+    val interaction = rememberAppleInteractionSource()
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(40.dp)
-            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .appleTapScale(interaction)
+            .size(42.dp)
+            // P3: 지도 표면 위 분리감 강화 — 4dp → 8dp.
+            .shadow(8.dp, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { onClick() },
+            .clickable(interactionSource = interaction, indication = null) { onClick() },
     ) {
         Icon(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             tint = Brown700Mp,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(iconSize),
         )
     }
 }
@@ -530,7 +902,10 @@ private fun VolunteerToggleChip(isOn: Boolean, onClick: () -> Unit, modifier: Mo
 // ─── 드래그 핸들 ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun MapDragHandle() {
+private fun MapDragHandle(
+    isExpanded: Boolean = false,
+    onCollapseClick: (() -> Unit)? = null,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -544,6 +919,25 @@ private fun MapDragHandle() {
                 .clip(RoundedCornerShape(3.dp))
                 .background(Color(0xFFE8E8E8)),
         )
+        if (isExpanded && onCollapseClick != null) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 12.dp)
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF3F4F6))
+                    .clickable { onCollapseClick() },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_chevron_down),
+                    contentDescription = "접기",
+                    tint = Brown700Mp,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
     }
 }
 
@@ -553,6 +947,7 @@ private fun MapDragHandle() {
 private fun MapBottomSheetContent(
     stores: List<StoreResponse>,
     totalCount: Int,
+    truncated: Boolean,
     onStoreClick: (StoreResponse) -> Unit,
     onFavoriteToggle: (StoreResponse) -> Unit,
 ) {
@@ -566,18 +961,40 @@ private fun MapBottomSheetContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "주변 매장 ${displayCount}개",
-                    fontFamily = PretendardFamily,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 24.sp,
-                    color = TextBlack,
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { },
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(color = TextBlack)) { append("주변 매장 ") }
+                            withStyle(SpanStyle(color = Pink500Mp, fontWeight = FontWeight.ExtraBold)) {
+                                append("${displayCount}개")
+                            }
+                        },
+                        fontFamily = PretendardFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 24.sp,
+                        letterSpacing = (-0.4).sp,
+                    )
+                    // 표시 한도 초과 시 영구 배지 — 스낵바 4 초 안내 대체.
+                    if (truncated) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(Color(0xFFFEF3C7))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = "더 확대해 주세요",
+                                fontFamily = PretendardFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFCA8A04),
+                            )
+                        }
+                    }
+                }
+                // 정렬: API 가 거리순으로 반환하므로 정적 라벨. (추후 정렬 옵션 추가 시 클릭 가능 칩으로 전환)
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         painter = painterResource(R.drawable.ic_swap_vert),
                         contentDescription = null,
@@ -585,7 +1002,7 @@ private fun MapBottomSheetContent(
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        text = "거리순",
+                        text = "가까운 순",
                         fontFamily = PretendardFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -595,19 +1012,27 @@ private fun MapBottomSheetContent(
                 }
             }
             HorizontalDivider(color = Color(0xFFF3F4F6))
-            LazyColumn(modifier = Modifier.weight(1f)) {
-                items(stores, key = { it.resolvedId }) { store ->
-                    MapPlaceItem(
-                        place = store,
-                        onClick = { onStoreClick(store) },
-                        onFavoriteToggle = { onFavoriteToggle(store) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        color = Color(0xFFF3F4F6),
-                    )
+            if (stores.isEmpty()) {
+                EmptyStateView(
+                    title = "이 영역에 매장이 없어요",
+                    subtitle = "지도를 옮기거나 확대해 보세요",
+                    iconRes = R.drawable.ic_map,
+                )
+            } else {
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(stores, key = { it.resolvedId }) { store ->
+                        MapPlaceItem(
+                            place = store,
+                            onClick = { onStoreClick(store) },
+                            onFavoriteToggle = { onFavoriteToggle(store) },
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 20.dp),
+                            color = Color(0xFFF3F4F6),
+                        )
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
                 }
-                item { Spacer(Modifier.height(16.dp)) }
             }
         }
     }
@@ -687,7 +1112,7 @@ private fun VolunteerBottomSheetContent(
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
                             Text(
-                                text = vol.status ?: "",
+                                text = vol.status?.let { matchStatusToKorean(it) } ?: "",
                                 fontFamily = PretendardFamily,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Normal,
@@ -736,18 +1161,30 @@ private fun StoreDetailSheet(
         dragHandle = { MapDragHandle() },
     ) {
         // 그라디언트 배너
+        val visual = CategoryVisual.forCategory(store.category)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(90.dp)
-                .background(Brush.linearGradient(listOf(Color(0xFFD0FEE1), Color(0xFFE0F7FA)))),
+                .height(120.dp)
+                .background(Brush.linearGradient(visual.gradient)),
             contentAlignment = Alignment.Center,
         ) {
+            // 워터마크 (반투명 큰 아이콘)
             Icon(
-                painter = painterResource(R.drawable.ic_location_on),
+                painter = painterResource(visual.drawableRes),
                 contentDescription = null,
-                tint = Pink500Mp,
-                modifier = Modifier.size(36.dp),
+                tint = Color.White.copy(alpha = 0.18f),
+                modifier = Modifier
+                    .size(140.dp)
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 8.dp),
+            )
+            // 전경 카테고리 아이콘 (선명)
+            Icon(
+                painter = painterResource(visual.drawableRes),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(56.dp),
             )
         }
 
@@ -831,9 +1268,15 @@ private fun StoreDetailSheet(
                 }
                 detail.phone?.let { phone ->
                     Row(
-                        modifier = Modifier.clickable {
-                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
-                        },
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clickable(onClickLabel = "전화 걸기") {
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+                                }.onFailure {
+                                    Toast.makeText(context, "전화 앱을 열 수 없어요", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -947,7 +1390,14 @@ private fun MapPlaceItem(
                 }
             }
         }
-        IconButton(onClick = { onFavoriteToggle() }, modifier = Modifier.size(36.dp)) {
+        val haptic = LocalHapticFeedback.current
+        IconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onFavoriteToggle()
+            },
+            modifier = Modifier.size(36.dp),
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_favorite),
                 contentDescription = "즐겨찾기",
@@ -956,41 +1406,6 @@ private fun MapPlaceItem(
             )
         }
     }
-}
-
-// ─── Viewport 마커 클러스터링 ──────────────────────────────────────────────────
-
-private data class ViewportMarker(
-    val id: String,
-    val lat: Double,
-    val lng: Double,
-    val count: Int,
-    val singleStore: StoreViewportItem?,  // null = 클러스터
-)
-
-/**
- * zoom >= 14: 개별 마커
- * zoom 11~13: 소수점 자리 수 기반 그리드 클러스터링
- *   zoom 11~12 → 1자리(≈11km 격자), zoom 13 → 2자리(≈1km 격자)
- */
-private fun computeViewportMarkers(stores: List<StoreViewportItem>, zoom: Int): List<ViewportMarker> {
-    if (zoom >= 14) {
-        return stores.map { ViewportMarker("store_${it.storeId}", it.latitude, it.longitude, 1, it) }
-    }
-    val decimals = if (zoom <= 12) 1 else 2
-    return stores
-        .groupBy { "${"%.${decimals}f".format(it.latitude)},${"%.${decimals}f".format(it.longitude)}" }
-        .map { (key, group) ->
-            val centerLat = group.sumOf { it.latitude } / group.size
-            val centerLng = group.sumOf { it.longitude } / group.size
-            ViewportMarker(
-                id = "cluster_$key",
-                lat = centerLat,
-                lng = centerLng,
-                count = group.size,
-                singleStore = if (group.size == 1) group.first() else null,
-            )
-        }
 }
 
 // ─── 검색 오버레이 (병화-4) ───────────────────────────────────────────────────
@@ -1003,6 +1418,7 @@ private fun MapSearchOverlay(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<StoreSearchResult>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(query) {
         if (query.isBlank()) {
@@ -1074,6 +1490,8 @@ private fun MapSearchOverlay(
                             fontSize = 15.sp,
                             color = TextBlack,
                         ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -1102,7 +1520,7 @@ private fun MapSearchOverlay(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(results) { result ->
+                    items(results, key = { it.resolvedId ?: it.hashCode() }) { result ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.siheunggagae.data.model.NotificationCategory
 import com.example.siheunggagae.data.model.NotificationItem
 import com.example.siheunggagae.data.repository.NotificationRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -13,7 +14,7 @@ import kotlinx.coroutines.launch
 
 // UI-layer tab enum (many backend categories → few UI tabs)
 enum class NotiTab(val label: String) {
-    ALL("전체"), MATCHING("매칭"), NEWS("소식"), SYSTEM("시스템")
+    ALL("전체"), MATCHING("매칭"), SYSTEM("시스템")
 }
 
 val NotificationCategory.notiTab: NotiTab
@@ -22,7 +23,7 @@ val NotificationCategory.notiTab: NotiTab
         NotificationCategory.MATCH,
         NotificationCategory.REVIEW -> NotiTab.MATCHING
         NotificationCategory.NEWS,
-        NotificationCategory.POLICY -> NotiTab.NEWS
+        NotificationCategory.POLICY,
         NotificationCategory.SYSTEM -> NotiTab.SYSTEM
     }
 
@@ -33,6 +34,9 @@ data class NotificationState(
     val hasMore: Boolean = false,
     val error: String? = null,
     val selectedTab: NotiTab = NotiTab.ALL,
+    val isSelectMode: Boolean = false,
+    val selectedIds: Set<Int> = emptySet(),
+    val deletedCount: Int? = null,
 )
 
 class NotificationViewModel(
@@ -45,6 +49,7 @@ class NotificationViewModel(
     private val buffer = mutableListOf<NotificationItem>()
     private var currentPage = 1
     private var total = 0
+    private var loadJob: Job? = null
 
     init { loadPage() }
 
@@ -87,12 +92,56 @@ class NotificationViewModel(
         }
     }
 
-    private fun loadPage() {
+    // ── 선택 모드 ──────────────────────────────────────────────────────────────
+
+    fun enterSelectMode(id: Int) {
+        _state.update { it.copy(isSelectMode = true, selectedIds = setOf(id)) }
+    }
+
+    fun toggleSelect(id: Int) {
+        _state.update { s ->
+            val newIds = if (id in s.selectedIds) s.selectedIds - id else s.selectedIds + id
+            s.copy(selectedIds = newIds)
+        }
+    }
+
+    fun exitSelectMode() {
+        _state.update { it.copy(isSelectMode = false, selectedIds = emptySet()) }
+    }
+
+    fun deleteSelected() {
+        val ids = _state.value.selectedIds
+        if (ids.isEmpty()) { exitSelectMode(); return }
+        val count = ids.size
         viewModelScope.launch {
+            val localIds = ids.filter { it < 0 }
+            val serverIds = ids.filter { it > 0 }
+            if (localIds.isNotEmpty()) repository.deleteLocalNotifications(localIds)
+            if (serverIds.isNotEmpty()) repository.deleteServerNotifications(serverIds)
+            buffer.removeAll { it.id in ids }
+            total = maxOf(0, total - count)
+            _state.update {
+                it.copy(
+                    items = buffer.toList(),
+                    isSelectMode = false,
+                    selectedIds = emptySet(),
+                    deletedCount = count,
+                )
+            }
+        }
+    }
+
+    fun clearDeletedMessage() {
+        _state.update { it.copy(deletedCount = null) }
+    }
+
+    private fun loadPage() {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             try {
                 val resp = repository.getNotifications(page = currentPage, size = 20)
-                if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
                     total = body.total
                     buffer.addAll(body.items)
                     currentPage++
@@ -111,6 +160,7 @@ class NotificationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _state.update {
                     it.copy(isLoading = false, isLoadingMore = false, error = e.message ?: "네트워크 오류")
                 }
