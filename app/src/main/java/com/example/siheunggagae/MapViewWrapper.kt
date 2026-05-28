@@ -42,6 +42,12 @@ class MapViewWrapper(private val mapView: MapView) {
             val count: Int,
         ) : BitmapKey
         data object MyLocation : BitmapKey
+        data class DongBubble(
+            val dongName: String,
+            val count: Int,
+            val minKrw: Int,
+            val maxKrw: Int,
+        ) : BitmapKey
     }
 
     // 지도가 파괴됐을 때 composable에서 감지할 수 있도록 노출
@@ -214,7 +220,20 @@ class MapViewWrapper(private val mapView: MapView) {
                 markers[spec.id] = label
                 spec.onTap?.let { markerCallbacks[spec.id] = it }
             }
-            is MarkerSpec.DongBubble -> { /* implemented in Task 5 */ }
+            is MarkerSpec.DongBubble -> {
+                val key = BitmapKey.DongBubble(spec.dongName, spec.count, spec.minKrw, spec.maxKrw)
+                val bmp = bitmapCache.get(key)
+                    ?: createDongBubbleBitmap(spec.dongName, spec.count, spec.minKrw, spec.maxKrw)
+                        .also { bitmapCache.put(key, it) }
+                val style = LabelStyles.from(LabelStyle.from(bmp))
+                val label = layer.addLabel(
+                    LabelOptions.from(LatLng.from(spec.lat, spec.lng)).setStyles(style)
+                )
+                label.tag = spec.id
+                label.setClickable(spec.onTap != null)
+                markers[spec.id] = label
+                spec.onTap?.let { markerCallbacks[spec.id] = it }
+            }
         }
     }
 
@@ -430,6 +449,133 @@ class MapViewWrapper(private val mapView: MapView) {
             color = 0xFF2196F3.toInt()
         })
         return bm
+    }
+
+    /**
+     * 동 가격 버블 비트맵 — Brown 카드 디자인.
+     * - White bg, 14dp radius, 1.5dp 베이지(#E8D3C2) border
+     * - 그림자: Paint.setShadowLayer(14f, 0, 4f, 0x33614B3A)
+     * - 상단: 동명(12sp Bold #1E120A) + "${count}곳"(10sp SemiBold #8A6E58)
+     * - 하단: "${min}~${max}만" or "${val}만" (14sp ExtraBold #614B3A, letter-spacing -0.4)
+     * - 하단 중앙 7px 화살표 tail
+     * - min canvas width 96px
+     */
+    private fun createDongBubbleBitmap(
+        dongName: String, count: Int, minKrw: Int, maxKrw: Int,
+    ): Bitmap {
+        val density = 3f  // ~ xxhdpi 기준 1dp=3px. 캔버스 단위는 px.
+        val cornerR = 14f * density
+        val borderW = 1.5f * density
+        val padH = 12f * density
+        val padV = 7f * density
+        val tailH = 7f * density
+        val tailHalfW = 7f * density
+        val rowGap = 1f * density
+        val shadowR = 14f
+        val shadowDy = 4f
+
+        // 텍스트 페인트
+        val dongPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF1E120A.toInt()
+            textSize = 12f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.LEFT
+        }
+        val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF8A6E58.toInt()
+            textSize = 10f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.RIGHT
+        }
+        val pricePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF614B3A.toInt()
+            textSize = 14f * density
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.LEFT
+            letterSpacing = -0.4f / 14f
+        }
+
+        val countText = "${count}곳"
+        val priceText = formatPriceRange(minKrw, maxKrw)
+
+        // 가로폭: max( 동명+gap+개수, 가격 ) + padH*2
+        val topGap = 6f * density
+        val topWidth = dongPaint.measureText(dongName) + topGap + countPaint.measureText(countText)
+        val priceWidth = pricePaint.measureText(priceText)
+        val contentW = maxOf(topWidth, priceWidth)
+        val minCanvasW = 96f * density
+        val cardW = maxOf(contentW + padH * 2, minCanvasW)
+
+        val dongH = dongPaint.descent() - dongPaint.ascent()
+        val priceH = pricePaint.descent() - pricePaint.ascent()
+        val cardH = padV + dongH + rowGap + priceH + padV
+
+        val totalW = cardW
+        val totalH = cardH + tailH
+
+        // 그림자를 위한 여유 공간 (canvas는 shadow를 잘라먹지 않음 - bitmap 사이즈만 넉넉히)
+        val shadowPad = shadowR + shadowDy
+        val bitmap = Bitmap.createBitmap(
+            (totalW + shadowPad * 2).toInt(),
+            (totalH + shadowPad * 2).toInt(),
+            Bitmap.Config.ARGB_8888,
+        )
+        val canvas = Canvas(bitmap)
+        canvas.translate(shadowPad, shadowPad)
+
+        // 카드 body path = 라운드 사각 + 아래 화살표
+        val bodyPath = Path().apply {
+            // 라운드 사각
+            addRoundRect(RectF(0f, 0f, cardW, cardH), cornerR, cornerR, Path.Direction.CW)
+            // 화살표 (아래쪽으로 삼각형, 카드 하단 중앙)
+            val tipX = cardW / 2f
+            moveTo(tipX - tailHalfW, cardH - 0.5f)
+            lineTo(tipX, cardH + tailH)
+            lineTo(tipX + tailHalfW, cardH - 0.5f)
+            close()
+        }
+
+        // 그림자 + 흰 채움
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            setShadowLayer(shadowR, 0f, shadowDy, 0x33614B3A)
+        }
+        canvas.drawPath(bodyPath, fillPaint)
+
+        // 보더 (라운드 사각만, 화살표 포함하면 라인이 겹쳐 보임)
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFE8D3C2.toInt()
+            style = Paint.Style.STROKE
+            strokeWidth = borderW
+        }
+        canvas.drawRoundRect(
+            RectF(borderW / 2, borderW / 2, cardW - borderW / 2, cardH - borderW / 2),
+            cornerR, cornerR, borderPaint,
+        )
+
+        // 텍스트
+        val dongY = padV - dongPaint.ascent()
+        canvas.drawText(dongName, padH, dongY, dongPaint)
+        canvas.drawText(countText, cardW - padH, dongY, countPaint)
+
+        val priceY = padV + dongH + rowGap - pricePaint.ascent()
+        canvas.drawText(priceText, padH, priceY, pricePaint)
+
+        return bitmap
+    }
+
+    /** "5.3~12만" or "5.3만" (min == max 일 때). */
+    private fun formatPriceRange(minKrw: Int, maxKrw: Int): String {
+        val minStr = krwToManwon(minKrw)
+        return if (minKrw == maxKrw) "${minStr}만"
+               else "${minStr}~${krwToManwon(maxKrw)}만"
+    }
+
+    private fun krwToManwon(krw: Int): String {
+        val tenths = (krw + 500) / 1_000
+        val whole = tenths / 10
+        val frac = tenths % 10
+        return if (frac == 0) whole.toString() else "$whole.$frac"
     }
 
     /** computeMarkerSpecs 에 넘길 projector. 호출 시점의 KakaoMap 좌표 변환을 캡처. */
