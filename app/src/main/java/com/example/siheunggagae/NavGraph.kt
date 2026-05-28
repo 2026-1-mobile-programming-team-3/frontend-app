@@ -539,12 +539,19 @@ fun AppNavGraph(
         }
     }
 
-    // 단일 공유 BottomBar — 탭 라우트일 때만 표시하고, 라우트가 바뀔 때만
-    // morph 애니메이션이 일어나도록 NavHost 위에 한 번만 mount.
+    // 단일 공유 BottomBar — 탭 라우트 + 가게 상세 화면에서 표시.
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val showBottomBar = isTopLevelTabRoute(currentRoute)
-    val tabRoute = normalizeTabRoute(currentRoute)
+    val isOnPlaceDetail = currentRoute?.startsWith("place_detail") == true
+    val showBottomBar = isTopLevelTabRoute(currentRoute) || isOnPlaceDetail
+    val backStack by navController.currentBackStack.collectAsState()
+    val tabRoute = if (isOnPlaceDetail) {
+        backStack.lastOrNull { isTopLevelTabRoute(it.destination.route) }
+            ?.destination?.route
+            ?.let { normalizeTabRoute(it) } ?: Screen.Map.route
+    } else {
+        normalizeTabRoute(currentRoute)
+    }
 
     SharedTransitionLayout {
     Box(modifier = Modifier.fillMaxSize()) {
