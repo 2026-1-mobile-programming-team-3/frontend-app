@@ -22,7 +22,6 @@ class SiheungGagaeApp : Application(), SingletonImageLoader.Factory {
 
     override fun newImageLoader(context: coil3.PlatformContext): ImageLoader =
         ImageLoader.Builder(context).crossfade(200).build()
-
     lateinit var tokenManager: TokenManager
         private set
 

@@ -299,7 +299,7 @@ fun MatchingDetailScreen(
                         if (currentStatus == "DONE") {
                             Button(
                                 onClick = {
-                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = false))
+                                    onNavigate(Screen.MatchReview.createRoute(requestId, "DONE", isViewOnly = true, canEdit = false, reviewerUserId = requestData?.author?.userId ?: -1))
                                 },
                                 modifier = Modifier.fillMaxWidth().height(52.dp).shadow(2.dp, RoundedCornerShape(26.dp)),
                                 colors = ButtonDefaults.buttonColors(containerColor = Brown700D),

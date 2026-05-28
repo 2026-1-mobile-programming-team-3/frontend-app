@@ -85,6 +85,7 @@ import com.example.siheunggagae.data.model.StoreDetailResponse
 import com.example.siheunggagae.data.model.StoreReview
 import com.example.siheunggagae.data.model.StoreReviewCreateRequest
 import com.example.siheunggagae.data.network.RetrofitClient
+import com.example.siheunggagae.ui.component.ReportBottomSheet
 import com.example.siheunggagae.ui.theme.PretendardFamily
 import com.example.siheunggagae.ui.theme.SiheungGagaeTheme
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -133,6 +134,7 @@ fun PlaceDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isFavorited by remember { mutableStateOf(false) }
     var showReviewSheet by remember { mutableStateOf(false) }
+    var reportingUserId by remember { mutableStateOf<Int?>(null) }
     var myNickname by remember { mutableStateOf<String?>(null) }
     var myUserId by remember { mutableStateOf<Int?>(null) }
     var displayCount by remember { mutableIntStateOf(3) }
@@ -629,6 +631,8 @@ fun PlaceDetailScreen(
                     }
                 }
 
+                item { Spacer(Modifier.height(8.dp)) }
+
                 // 리뷰 목록 (displayCount만큼만 표시)
                 items(reviews.take(displayCount)) { review ->
                     val uid = myUserId
@@ -654,10 +658,10 @@ fun PlaceDetailScreen(
                                 }
                             }
                         },
+                        onReport = { uid -> reportingUserId = uid },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color.White)
-                            .padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
                     )
                 }
 
@@ -667,7 +671,7 @@ fun PlaceDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 24.dp, vertical = 4.dp)
+                                .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
                                 .clip(RoundedCornerShape(50.dp))
                                 .border(1.dp, BrownBorderPL, RoundedCornerShape(50.dp))
                                 .clickable { displayCount += 5 }
@@ -707,6 +711,14 @@ fun PlaceDetailScreen(
                     showReviewSheet = false
                 }
             },
+        )
+    }
+
+    val uid = reportingUserId
+    if (uid != null) {
+        ReportBottomSheet(
+            targetUserId = uid,
+            onDismiss = { reportingUserId = null },
         )
     }
 }
@@ -1322,17 +1334,19 @@ private fun PlaceReviewCardFromApi(
     review: StoreReview,
     isMyReview: Boolean = false,
     onDelete: () -> Unit = {},
+    onReport: (userId: Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val avatarBg = avatarColors[(review.nickname?.length ?: 0) % avatarColors.size].copy(alpha = 0.15f)
     val avatarFg = avatarColors[(review.nickname?.length ?: 0) % avatarColors.size]
     var showMenu by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
+            .shadow(2.dp, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
-            .border(1.dp, DividerPL, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -1356,57 +1370,83 @@ private fun PlaceReviewCardFromApi(
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = review.nickname ?: "익명",
-                    fontFamily = PretendardFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 20.sp,
-                    color = TextBlackPL,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = review.nickname ?: "익명",
+                        fontFamily = PretendardFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 20.sp,
+                        color = TextBlackPL,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = review.createdAt?.take(10) ?: "",
+                        fontFamily = PretendardFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 16.sp,
+                        color = Brown400PL,
+                    )
+                    Box {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "더보기",
+                            tint = Brown400PL,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable { showMenu = true },
+                        )
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                        ) {
+                            if (isMyReview) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "삭제",
+                                            fontFamily = PretendardFamily,
+                                            fontSize = 14.sp,
+                                            color = Pink500PL,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        onDelete()
+                                    },
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "신고",
+                                            fontFamily = PretendardFamily,
+                                            fontSize = 14.sp,
+                                            color = Pink500PL,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        val uid = review.userId
+                                        if (uid != null) {
+                                            onReport(uid)
+                                        } else {
+                                            android.widget.Toast.makeText(context, "신고할 수 없어요", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     val rating = review.rating ?: 0
                     repeat(5) { i ->
                         Icon(imageVector = Icons.Filled.Star, null, tint = if (i < rating) StarYellowPL else Gray100PL, modifier = Modifier.size(12.dp))
-                    }
-                }
-            }
-            Text(
-                text = review.createdAt?.take(10) ?: "",
-                fontFamily = PretendardFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 16.sp,
-                color = Brown400PL,
-            )
-            if (isMyReview) {
-                Box {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "더보기",
-                        tint = Brown400PL,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable { showMenu = true },
-                    )
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = "삭제",
-                                    fontFamily = PretendardFamily,
-                                    fontSize = 14.sp,
-                                    color = Pink500PL,
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onDelete()
-                            },
-                        )
                     }
                 }
             }
