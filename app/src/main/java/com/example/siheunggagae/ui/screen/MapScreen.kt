@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -395,7 +396,14 @@ fun MapScreen(
     }
 
     Scaffold(
-        snackbarHost = { SiheungSnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SiheungSnackbarHost(
+                snackbarHostState,
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(bottom = 88.dp, start = 16.dp, end = 16.dp),
+            )
+        },
         containerColor = Color.Transparent,
     ) { navPadding ->
         BottomSheetScaffold(

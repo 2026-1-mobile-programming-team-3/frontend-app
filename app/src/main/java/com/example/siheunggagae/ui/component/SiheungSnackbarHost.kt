@@ -20,10 +20,13 @@ import androidx.compose.ui.unit.sp
 import com.example.siheunggagae.ui.theme.PretendardFamily
 
 @Composable
-fun SiheungSnackbarHost(hostState: SnackbarHostState) {
+fun SiheungSnackbarHost(
+    hostState: SnackbarHostState,
+    modifier: Modifier = Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp),
+) {
     SnackbarHost(
         hostState = hostState,
-        modifier = Modifier.padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+        modifier = modifier
     ) { data ->
         Snackbar(
             modifier = Modifier.padding(12.dp),
