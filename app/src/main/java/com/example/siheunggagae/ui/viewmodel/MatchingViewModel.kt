@@ -130,7 +130,7 @@ class MatchingViewModel(
 
     fun loadMore() {
         val s = _state.value as? MatchingUi.Success ?: return
-        if (!s.hasMore || s.isRefreshing) return
+        if (!s.hasMore || s.isRefreshing || fetchJob?.isActive == true) return
         fetch(reset = false)
     }
 
