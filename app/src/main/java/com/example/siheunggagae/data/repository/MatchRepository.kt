@@ -32,6 +32,7 @@ class MatchRepository(private val api: AuthApiService) {
                 Result.failure(IllegalStateException("HTTP ${response.code()}"))
             }
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }
@@ -42,6 +43,7 @@ class MatchRepository(private val api: AuthApiService) {
             if (response.isSuccessful) Result.success(Unit)
             else Result.failure(IllegalStateException("HTTP ${response.code()}"))
         } catch (e: Throwable) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Result.failure(e)
         }
     }
